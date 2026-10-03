@@ -14,6 +14,7 @@ use Drupal\Core\Entity\Routing\AdminHtmlRouteProvider;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\product_prices\Form\ProductPriceForm;
+use Drupal\product_prices\ProductPriceAccessControlHandler;
 use Drupal\product_prices\ProductPriceInterface;
 use Drupal\product_prices\ProductPriceListBuilder;
 use Drupal\views\EntityViewsData;
@@ -35,6 +36,7 @@ use Drupal\views\EntityViewsData;
   handlers: [
     'list_builder' => ProductPriceListBuilder::class,
     'views_data' => EntityViewsData::class,
+    'access' => ProductPriceAccessControlHandler::class,
     'form' => [
       'add' => ProductPriceForm::class,
       'edit' => ProductPriceForm::class,

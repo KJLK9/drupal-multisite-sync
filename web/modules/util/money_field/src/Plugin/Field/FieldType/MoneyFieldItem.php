@@ -58,6 +58,12 @@ final class MoneyFieldItem extends FieldItemBase {
 
   /**
    * {@inheritdoc}
+   *
+   * @param \Drupal\Core\Field\FieldStorageDefinitionInterface $field_definition
+   *   The field definition.
+   *
+   * @return array<string, mixed>
+   *   The field schema.
    */
   public static function schema(FieldStorageDefinitionInterface $field_definition): array {
     return [
@@ -77,6 +83,9 @@ final class MoneyFieldItem extends FieldItemBase {
 
   /**
    * {@inheritdoc}
+   *
+   * @return array<string, mixed>
+   *   The constraints.
    */
   public function getConstraints(): array {
     $constraints = parent::getConstraints();
@@ -94,6 +103,12 @@ final class MoneyFieldItem extends FieldItemBase {
 
   /**
    * {@inheritdoc}
+   *
+   * @param \Drupal\Core\Field\FieldDefinitionInterface $field_definition
+   *   The field definition.
+   *
+   * @return array<string, mixed>
+   *   The sample field values.
    */
   public static function generateSampleValue(FieldDefinitionInterface $field_definition): array {
     $values['number'] = (string) (rand(100, 10000) / 100);

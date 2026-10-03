@@ -14,6 +14,9 @@ final class ProductListBuilder extends EntityListBuilder {
 
   /**
    * {@inheritdoc}
+   *
+   * @return array<string, mixed>
+   *   The table header.
    */
   public function buildHeader(): array {
     $header['id'] = $this->t('ID');
@@ -27,15 +30,23 @@ final class ProductListBuilder extends EntityListBuilder {
 
   /**
    * {@inheritdoc}
+   *
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   *   The entity.
+   *
+   * @return array<string, mixed>
+   *   The table row.
    */
   public function buildRow(EntityInterface $entity): array {
     /** @var \Drupal\products\ProductInterface $entity */
     $row['id'] = $entity->id();
     $row['label'] = $entity->toLink();
     $row['status'] = $entity->get('status')->value ? $this->t('Enabled') : $this->t('Disabled');
+    /** @var \Drupal\user\UserInterface|null $owner */
+    $owner = $entity->getOwner();
     $username_options = [
       'label' => 'hidden',
-      'settings' => ['link' => $entity->get('uid')->entity->isAuthenticated()],
+      'settings' => ['link' => $owner?->isAuthenticated() ?? FALSE],
     ];
     $row['uid']['data'] = $entity->get('uid')->view($username_options);
     $row['created']['data'] = $entity->get('created')->view(['label' => 'hidden']);

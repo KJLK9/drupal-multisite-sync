@@ -14,6 +14,9 @@ final class ProductPriceListBuilder extends EntityListBuilder {
 
   /**
    * {@inheritdoc}
+   *
+   * @return array<string, mixed>
+   *   The table header.
    */
   public function buildHeader(): array {
     $header['id'] = $this->t('ID');
@@ -24,6 +27,12 @@ final class ProductPriceListBuilder extends EntityListBuilder {
 
   /**
    * {@inheritdoc}
+   *
+   * @param \Drupal\Core\Entity\EntityInterface $entity
+   *   The entity.
+   *
+   * @return array<string, mixed>
+   *   The table row.
    */
   public function buildRow(EntityInterface $entity): array {
     /** @var \Drupal\product_prices\ProductPriceInterface $entity */

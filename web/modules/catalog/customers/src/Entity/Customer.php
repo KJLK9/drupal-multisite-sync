@@ -188,7 +188,6 @@ class Customer extends ContentEntityBase implements CustomerInterface {
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);
 
-
     return $fields;
   }
 

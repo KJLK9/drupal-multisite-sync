@@ -22,7 +22,8 @@ final class CustomerAccessControlHandler extends EntityAccessControlHandler {
    * {@inheritdoc}
    */
   protected function checkAccess(EntityInterface $entity, $operation, AccountInterface $account): AccessResult {
-    if ($account->hasPermission($this->entityType->getAdminPermission())) {
+    $admin_permission = $this->entityType->getAdminPermission();
+    if ($admin_permission !== FALSE && $account->hasPermission($admin_permission)) {
       return AccessResult::allowed()->cachePerPermissions();
     }
 
@@ -36,6 +37,13 @@ final class CustomerAccessControlHandler extends EntityAccessControlHandler {
 
   /**
    * {@inheritdoc}
+   *
+   * @param \Drupal\Core\Session\AccountInterface $account
+   *   The account.
+   * @param array<string, mixed> $context
+   *   The access context.
+   * @param mixed $entity_bundle
+   *   The entity bundle.
    */
   protected function checkCreateAccess(AccountInterface $account, array $context, $entity_bundle = NULL): AccessResult {
     return AccessResult::allowedIfHasPermissions($account, ['create customer', 'administer customer'], 'OR');

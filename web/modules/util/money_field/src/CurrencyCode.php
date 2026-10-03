@@ -17,6 +17,9 @@ enum CurrencyCode: string {
   case USD = 'USD';
   case GBP = 'GBP';
 
+  /**
+   * Returns the human readable name of the currency.
+   */
   public function label(): string {
     return match ($this) {
       self::EUR => 'Euro',
@@ -25,10 +28,17 @@ enum CurrencyCode: string {
     };
   }
 
+  /**
+   * Returns the cases as an options array keyed by ISO code.
+   *
+   * @return array<string, string>
+   *   The currency labels, keyed by currency code.
+   */
   public static function options(): array {
     return array_combine(
       array_map(fn ($case) => $case->value, self::cases()),
       array_map(fn ($case) => $case->label(), self::cases())
     );
   }
+
 }

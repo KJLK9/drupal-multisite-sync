@@ -23,6 +23,20 @@ final class MoneyFieldWidget extends WidgetBase {
 
   /**
    * {@inheritdoc}
+   *
+   * @param \Drupal\Core\Field\FieldItemListInterface<\Drupal\Core\Field\FieldItemInterface> $items
+   *   The field items.
+   * @param mixed $delta
+   *   The delta of the item.
+   * @param array<string, mixed> $element
+   *   The form element.
+   * @param array<string, mixed> $form
+   *   The form structure.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The current state of the form.
+   *
+   * @return array<string, mixed>
+   *   The form element.
    */
   public function formElement(FieldItemListInterface $items, $delta, array $element, array &$form, FormStateInterface $form_state): array {
     $item = $items[$delta];

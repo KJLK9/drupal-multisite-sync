@@ -11,6 +11,8 @@ use Drupal\Core\StringTranslation\TranslatableMarkup;
 
 /**
  * Plugin implementation of the 'Money field' formatter.
+ *
+ * @extends \Drupal\Core\Field\FormatterBase<\Drupal\Core\Field\FieldItemListInterface<\Drupal\Core\Field\FieldItemInterface>>
  */
 #[FieldFormatter(
   id: 'money_field',
@@ -21,6 +23,14 @@ class MoneyFieldFormatter extends FormatterBase {
 
   /**
    * {@inheritdoc}
+   *
+   * @param \Drupal\Core\Field\FieldItemListInterface<\Drupal\Core\Field\FieldItemInterface> $items
+   *   The field items.
+   * @param string $langcode
+   *   The language code.
+   *
+   * @return array<int, array<string, mixed>>
+   *   The render arrays, one per item.
    */
   public function viewElements(FieldItemListInterface $items, $langcode): array {
     return array_map(function ($item) {
