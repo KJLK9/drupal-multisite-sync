@@ -1,0 +1,11 @@
+administer customer:
+  title: 'Administer customers'
+  restrict access: true
+view customer:
+  title: 'View customer'
+edit customer:
+  title: 'Edit customer'
+delete customer:
+  title: 'Delete customer'
+create customer:
+  title: 'Create customer'

@@ -1,0 +1,22 @@
+entity.customer.settings:
+  title: 'Settings'
+  route_name: entity.customer.settings
+  base_route: entity.customer.settings
+entity.customer.view:
+  title: 'View'
+  route_name: entity.customer.canonical
+  base_route: entity.customer.canonical
+entity.customer.edit_form:
+  title: 'Edit'
+  route_name: entity.customer.edit_form
+  base_route: entity.customer.canonical
+entity.customer.delete_form:
+  title: 'Delete'
+  route_name: entity.customer.delete_form
+  base_route: entity.customer.canonical
+  weight: 10
+entity.customer.collection:
+  title: 'Customers'
+  route_name: entity.customer.collection
+  base_route: system.admin_content
+  weight: 10

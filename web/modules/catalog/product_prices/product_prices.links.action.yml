@@ -1,0 +1,5 @@
+product_price.add_form:
+  title: 'Add product prices'
+  route_name: entity.product_price.add_form
+  appears_on:
+    - entity.product_price.collection

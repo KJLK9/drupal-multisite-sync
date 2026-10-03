@@ -1,0 +1,10 @@
+langcode: en
+status: true
+dependencies:
+  module:
+    - customers
+id: customer_save_action
+label: 'Save customers'
+type: customer
+plugin: entity:save_action:customer
+configuration: {  }

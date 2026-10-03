@@ -1,0 +1,5 @@
+name: 'Default content'
+type: module
+description: 'Provides a command to generate default content for site B'
+package: Custom
+core_version_requirement: ^10 || ^11

@@ -1,0 +1,7 @@
+entity.customer.settings:
+  path: 'admin/structure/customer'
+  defaults:
+    _form: '\Drupal\customers\Form\CustomerSettingsForm'
+    _title: 'Customer'
+  requirements:
+    _permission: 'administer customer'

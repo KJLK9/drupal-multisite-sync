@@ -1,0 +1,3 @@
+administer product_price:
+  title: 'Administer product pricess'
+  restrict access: true

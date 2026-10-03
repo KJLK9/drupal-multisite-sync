@@ -1,0 +1,5 @@
+name: 'Customers'
+type: module
+description: 'Provides the Customer entity'
+package: Custom
+core_version_requirement: ^10 || ^11

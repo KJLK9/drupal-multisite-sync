@@ -1,0 +1,11 @@
+entity.customer.settings:
+  title: 'Customer'
+  description: 'Configure a Customer entity type.'
+  route_name:  entity.customer.settings
+  parent: system.admin_structure
+
+entity.customer.collection:
+  title: 'Customers'
+  description: 'List of customers.'
+  route_name: entity.customer.collection
+  parent: system.admin_content

@@ -1,0 +1,11 @@
+entity.product.settings:
+  title: 'Products'
+  description: 'Configure a Products entity type.'
+  route_name:  entity.product.settings
+  parent: system.admin_structure
+
+entity.product.collection:
+  title: 'Productss'
+  description: 'List of productss.'
+  route_name: entity.product.collection
+  parent: system.admin_content

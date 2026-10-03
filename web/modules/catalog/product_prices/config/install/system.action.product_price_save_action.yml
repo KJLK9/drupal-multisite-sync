@@ -1,0 +1,10 @@
+langcode: en
+status: true
+dependencies:
+  module:
+    - product_prices
+id: product_price_save_action
+label: 'Save product pricess'
+type: product_price
+plugin: entity:save_action:product_price
+configuration: {  }

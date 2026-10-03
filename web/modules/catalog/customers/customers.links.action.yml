@@ -1,0 +1,5 @@
+customer.add_form:
+  title: 'Add customer'
+  route_name: entity.customer.add_form
+  appears_on:
+    - entity.customer.collection

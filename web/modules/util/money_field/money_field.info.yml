@@ -1,0 +1,5 @@
+name: 'Money field'
+type: module
+description: 'Provides the money field type'
+package: Custom
+core_version_requirement: ^10 || ^11

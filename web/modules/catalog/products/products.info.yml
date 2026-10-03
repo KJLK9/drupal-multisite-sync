@@ -1,0 +1,5 @@
+name: 'Products'
+type: module
+description: 'Provides the Product entity'
+package: Custom
+core_version_requirement: ^10 || ^11

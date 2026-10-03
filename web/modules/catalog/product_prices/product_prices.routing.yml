@@ -1,0 +1,7 @@
+entity.product_price.settings:
+  path: 'admin/structure/product-price'
+  defaults:
+    _form: '\Drupal\product_prices\Form\ProductPriceSettingsForm'
+    _title: 'Product prices'
+  requirements:
+    _permission: 'administer product_price'

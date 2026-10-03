@@ -1,0 +1,10 @@
+langcode: en
+status: true
+dependencies:
+  module:
+    - product_prices
+id: product_price_delete_action
+label: 'Delete product pricess'
+type: product_price
+plugin: entity:delete_action:product_price
+configuration: {  }
