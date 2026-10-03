@@ -8,6 +8,23 @@ on:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    services:
+      db:
+        image: mariadb:11.8
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: drupal
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      # Kernel tests create prefixed tables in this database.
+      SIMPLETEST_DB: mysql://root:root@127.0.0.1:3306/drupal
+      SIMPLETEST_BASE_URL: http://localhost
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -17,8 +34,6 @@ jobs:
           coverage: none
           tools: composer:v2
       - run: composer install --no-interaction --prefer-dist
-        env:
-          GRUMPHP_SKIP_INSTALL: '1'
       - run: composer phpcs
       - run: composer phpstan
       - run: composer rector

@@ -2,7 +2,7 @@
 # PostToolUse: auto-fix and lint the PHP file Claude just edited.
 file=$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("tool_input",{}).get("file_path",""))')
 case "$file" in
-  */web/modules/catalog/*|*/web/modules/util/*) ;;
+  */web/modules/custom/*) ;;
   *) exit 0 ;;
 esac
 case "$file" in

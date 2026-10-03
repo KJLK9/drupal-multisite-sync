@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ruleset name="drupal-import-poc">
   <description>Coding standards for custom code.</description>
-  <file>web/modules/catalog</file>
-  <file>web/modules/util</file>
+  <file>web/modules/custom</file>
   <arg name="extensions" value="php,module,inc,install,test,profile,theme,css,info,txt,md,yml"/>
   <arg name="colors"/>
   <arg value="sp"/>

@@ -7,7 +7,7 @@ grumphp:
       standard: phpcs.xml.dist
       triggered_by: [php, module, inc, install, yml]
       whitelist_patterns:
-        - '/^web\/modules\/(catalog|util)\//'
+        - '/^web\/modules\/custom\//'
     phpstan:
       configuration: phpstan.neon
       memory_limit: 1G

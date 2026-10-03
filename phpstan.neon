@@ -1,6 +1,5 @@
 parameters:
   level: 8
   paths:
-    - web/modules/catalog
-    - web/modules/util
+    - web/modules/custom
   treatPhpDocTypesAsCertain: false

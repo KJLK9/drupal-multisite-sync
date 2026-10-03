@@ -14,8 +14,7 @@
   </php>
   <testsuites>
     <testsuite name="custom">
-      <directory>web/modules/catalog/*/tests</directory>
-      <directory>web/modules/util/*/tests</directory>
+      <directory>web/modules/custom/*/*/tests</directory>
     </testsuite>
   </testsuites>
 </phpunit>

@@ -12,8 +12,7 @@ return static function (RectorConfig $rectorConfig): void {
     Drupal11SetList::DRUPAL_11,
   ]);
   $rectorConfig->paths([
-    __DIR__ . '/web/modules/catalog',
-    __DIR__ . '/web/modules/util',
+    __DIR__ . '/web/modules/custom',
   ]);
   $rectorConfig->fileExtensions(['php', 'module', 'inc', 'install']);
 };

@@ -14,8 +14,8 @@ catalog_graphql  ──depends on──▶  customers, products, product_prices
 product_prices ──references──▶ products, customers      all use ▶ money_field
 ```
 
-- `web/modules/catalog/*`: domain entities. `catalog_graphql` is the API layer.
-- `web/modules/util/money_field`: money field type (amount + ISO currency).
+- `web/modules/custom/catalog/*`: domain entities. `catalog_graphql` is the API layer.
+- `web/modules/custom/util/money_field`: money field type (amount + ISO currency).
 - Decisions are recorded in [docs/decisions](docs/decisions).
 
 ## Development
