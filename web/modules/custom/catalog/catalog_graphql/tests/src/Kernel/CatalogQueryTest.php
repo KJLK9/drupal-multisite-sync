@@ -18,6 +18,7 @@ use Symfony\Component\HttpFoundation\Request;
  * Tests the catalog GraphQL schema end to end.
  */
 #[Group('catalog_graphql')]
+#[\PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses]
 class CatalogQueryTest extends KernelTestBase {
 
   use UserCreationTrait;

@@ -15,6 +15,7 @@ use PHPUnit\Framework\Attributes\Group;
  * Tests access to product prices.
  */
 #[Group('product_prices')]
+#[\PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses]
 class ProductPriceAccessTest extends KernelTestBase {
 
   use UserCreationTrait;

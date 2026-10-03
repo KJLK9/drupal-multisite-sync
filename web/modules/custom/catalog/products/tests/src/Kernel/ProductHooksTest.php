@@ -13,6 +13,7 @@ use PHPUnit\Framework\Attributes\Group;
  * Tests the hook implementations of the product module.
  */
 #[Group('products')]
+#[\PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses]
 class ProductHooksTest extends KernelTestBase {
 
   use UserCreationTrait;

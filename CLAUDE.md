@@ -4,7 +4,8 @@ Drupal 11 PoC (PHP 8.4, DDEV, MariaDB 11.8): a product catalog (customers,
 products, product prices) exposed through a read-only GraphQL API.
 
 ## Commands (always via DDEV)
-- `ddev composer check`: phpcs + phpstan + phpunit (the definition of done)
+- `ddev composer check`: phpcs + phpstan + rector (dry-run) + phpunit; this is
+  exactly what CI runs and the definition of done
 - `ddev composer phpcs` / `phpcbf`: Drupal + DrupalPractice standards
 - `ddev composer phpstan`: level 8, no baseline
 - `ddev composer rector`: Drupal deprecation scan (dry-run)

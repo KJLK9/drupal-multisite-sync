@@ -122,10 +122,11 @@
         "check": [
             "@phpcs",
             "@phpstan",
+            "@rector",
             "@test"
         ]
     },
     "scripts-descriptions": {
-        "check": "Run phpcs, phpstan and phpunit."
+        "check": "Run phpcs, phpstan, rector (dry-run) and phpunit, as CI does."
     }
 }

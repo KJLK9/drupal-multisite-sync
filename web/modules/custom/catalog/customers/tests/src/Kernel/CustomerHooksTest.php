@@ -13,6 +13,7 @@ use PHPUnit\Framework\Attributes\Group;
  * Tests the hook implementations of the customer module.
  */
 #[Group('customers')]
+#[\PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses]
 class CustomerHooksTest extends KernelTestBase {
 
   use UserCreationTrait;
