@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ddev composer phpcs:*)",
+      "Bash(ddev composer phpcbf:*)",
+      "Bash(ddev composer phpstan:*)",
+      "Bash(ddev composer rector:*)",
+      "Bash(ddev composer test:*)",
+      "Bash(ddev composer check:*)",
+      "Bash(ddev drush cex:*)",
+      "Bash(ddev drush cr:*)",
+      "Bash(ddev drush status:*)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(rm -rf:*)",
+      "Bash(ddev drush sql-drop:*)",
+      "Bash(ddev drush sql:cli:*)",
+      "Bash(ddev drush sql:query:*)",
+      "Bash(ddev delete:*)",
+      "Read(./.env)",
+      "Read(./web/sites/*/settings*.php)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/php-lint.sh" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stop-check.sh", "timeout": 300 }
+        ]
+      }
+    ]
+  }
+}
