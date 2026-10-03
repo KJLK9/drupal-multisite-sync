@@ -7,9 +7,10 @@ type Customer {
   id: ID!
   uuid: String
   label: String
+  customerNumber: String
   status: Boolean
   description: String
-  prices(limit: Int = 50): [ProductPrice!]!
+  prices(limit: Int! = 50): [ProductPrice!]!
 }
 
 type Product {
@@ -19,7 +20,7 @@ type Product {
   status: Boolean
   description: String
   basePrice: Money
-  prices(limit: Int = 50): [ProductPrice!]!
+  prices(limit: Int! = 50): [ProductPrice!]!
 }
 
 type ProductPrice {

@@ -54,6 +54,7 @@ class CatalogSchemaExtension extends SdlSchemaExtensionPluginBase {
       $this->addValueField($registry, $builder, $type, 'status');
       $this->addValueField($registry, $builder, $type, 'description');
     }
+    $this->addValueField($registry, $builder, 'Customer', 'customer_number', 'customerNumber');
 
     $this->addMoneyField($registry, $builder, 'Product', 'basePrice', 'base_price');
     $this->addMoneyField($registry, $builder, 'ProductPrice', 'price', 'price');
@@ -88,7 +89,9 @@ class CatalogSchemaExtension extends SdlSchemaExtensionPluginBase {
       $builder->produce('entity_query')
         ->map('type', $builder->fromValue($entity_type))
         ->map('limit', $this->limitResolver($builder))
-        ->map('offset', $this->offsetResolver($builder)),
+        ->map('offset', $this->offsetResolver($builder))
+        // Offset paging needs a deterministic order.
+        ->map('sorts', $builder->fromValue([['field' => 'id', 'direction' => 'ASC']])),
       $builder->produce('entity_load_multiple')
         ->map('type', $builder->fromValue($entity_type))
         ->map('ids', $builder->fromParent()),
@@ -98,8 +101,8 @@ class CatalogSchemaExtension extends SdlSchemaExtensionPluginBase {
   /**
    * Maps a simple field to the "value" property of the entity field.
    */
-  protected function addValueField(ResolverRegistryInterface $registry, ResolverBuilder $builder, string $type, string $field): void {
-    $this->addPathField($registry, $builder, $type, $field, $field . '.value', 'entity:' . self::ENTITY_TYPES[$type]);
+  protected function addValueField(ResolverRegistryInterface $registry, ResolverBuilder $builder, string $type, string $field, ?string $graphql_field = NULL): void {
+    $this->addPathField($registry, $builder, $type, $graphql_field ?? $field, $field . '.value', 'entity:' . self::ENTITY_TYPES[$type]);
   }
 
   /**

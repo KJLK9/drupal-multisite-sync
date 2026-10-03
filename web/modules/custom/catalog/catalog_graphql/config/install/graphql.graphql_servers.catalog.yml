@@ -1,0 +1,19 @@
+langcode: en
+status: true
+name: catalog
+label: Catalog
+schema: composable
+schema_configuration:
+  composable:
+    extensions:
+      catalog: catalog
+endpoint: /graphql/catalog
+debug_flag: 0
+caching: true
+batching: true
+disable_introspection: false
+# The schema is cyclic (product -> prices -> customer -> prices -> ...), so
+# bound how deep a query may go.
+query_depth: 5
+query_complexity: 200
+persisted_queries_settings: {  }

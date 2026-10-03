@@ -57,17 +57,13 @@ class CatalogQueryTest extends KernelTestBase {
     $this->installEntitySchema('customer');
     $this->installEntitySchema('product');
     $this->installEntitySchema('product_price');
-    $this->server = Server::create([
-      'schema' => 'composable',
-      'id' => 'catalog',
-      'name' => 'catalog',
-      'debug_flag' => 3,
-      'endpoint' => '/graphql/catalog',
-      'schema_configuration' => [
-        'composable' => ['extensions' => ['catalog' => 'catalog']],
-      ],
-    ]);
-    $this->server->save();
+    // Use the server configuration the module ships with.
+    $this->installConfig(['catalog_graphql']);
+    $server = Server::load('catalog');
+    $this->assertInstanceOf(Server::class, $server);
+    $this->server = $server;
+    // Expose error details so failing tests are readable.
+    $this->server->set('debug_flag', 3)->save();
 
     $this->setUpCurrentUser([], [
       'access content',
@@ -246,6 +242,69 @@ class CatalogQueryTest extends KernelTestBase {
   }
 
   /**
+   * Every scalar field of every type resolves (boolean, text, ids).
+   */
+  public function testScalarFieldsResolve(): void {
+    $customer = Customer::create([
+      'label' => 'ACME',
+      'customer_number' => 'C-100',
+      'status' => FALSE,
+      'description' => 'Preferred customer',
+    ]);
+    $customer->save();
+    $product = $this->createProduct('Widget', '9.95');
+
+    $data = $this->query('{
+      customer(id: "' . $customer->id() . '") { id uuid label customerNumber status description }
+      product(id: "' . $product->id() . '") { id uuid label status description }
+    }');
+
+    $this->assertSame((string) $customer->id(), (string) $data['customer']['id']);
+    $this->assertSame($customer->uuid(), $data['customer']['uuid']);
+    $this->assertSame('C-100', $data['customer']['customerNumber']);
+    $this->assertFalse($data['customer']['status']);
+    $this->assertSame('Preferred customer', $data['customer']['description']);
+    $this->assertTrue($data['product']['status']);
+  }
+
+  /**
+   * An explicit null limit or offset is a validation error, not a crash.
+   */
+  public function testNullPaginationArgumentsAreRejected(): void {
+    $this->createProduct('Widget', '1.00');
+    foreach (['limit', 'offset'] as $argument) {
+      $content = $this->rawQuery('{ products(' . $argument . ': null) { id } }');
+      $this->assertArrayHasKey('errors', $content);
+      $this->assertStringNotContainsString('Internal server error', json_encode($content, JSON_THROW_ON_ERROR));
+    }
+  }
+
+  /**
+   * Pages are ordered by id, so offset paging is stable.
+   */
+  public function testListsAreOrderedById(): void {
+    for ($i = 1; $i <= 7; $i++) {
+      $this->createProduct("Product $i", '1.00');
+    }
+    $ids = [];
+    foreach ([0, 3, 6] as $offset) {
+      $page = $this->query('{ products(limit: 3, offset: ' . $offset . ') { id } }')['products'];
+      $ids = array_merge($ids, array_map(static fn (array $row): int => (int) $row['id'], $page));
+    }
+    $this->assertSame(range(1, 7), $ids);
+  }
+
+  /**
+   * The cyclic schema cannot be used to build arbitrarily deep queries.
+   */
+  public function testQueryDepthIsLimited(): void {
+    $deep = '{ products { prices { customer { prices { product { prices { customer { id } } } } } } } }';
+    $content = $this->rawQuery($deep);
+    $this->assertArrayHasKey('errors', $content);
+    $this->assertStringContainsString('depth', strtolower(json_encode($content, JSON_THROW_ON_ERROR)));
+  }
+
+  /**
    * Creates and saves a product.
    */
   protected function createProduct(string $label, string $price): Product {
@@ -265,11 +324,21 @@ class CatalogQueryTest extends KernelTestBase {
    *   The "data" part of the response.
    */
   protected function query(string $query): array {
+    $content = $this->rawQuery($query);
+    $this->assertArrayNotHasKey('errors', $content, json_encode($content, JSON_THROW_ON_ERROR));
+    return $content['data'];
+  }
+
+  /**
+   * Executes a query against the server and returns the full response.
+   *
+   * @return array<string, mixed>
+   *   The decoded JSON response, including any errors.
+   */
+  protected function rawQuery(string $query): array {
     $request = Request::create($this->server->get('endpoint'), 'GET', ['query' => $query]);
     $response = $this->container->get('http_kernel')->handle($request);
-    $content = json_decode((string) $response->getContent(), TRUE);
-    $this->assertArrayNotHasKey('errors', $content, (string) $response->getContent());
-    return $content['data'];
+    return json_decode((string) $response->getContent(), TRUE, 512, JSON_THROW_ON_ERROR);
   }
 
 }
