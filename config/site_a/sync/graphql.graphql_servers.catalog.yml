@@ -1,0 +1,21 @@
+uuid: 5cbce344-04a3-4479-a12e-73284a007510
+langcode: en
+status: true
+dependencies: {  }
+_core:
+  default_config_hash: 9hr1AMKu1VWGrLP5tc8emI5IcYj6AiX03oDWzNX8gJo
+name: catalog
+label: Catalog
+endpoint: /graphql/catalog
+debug_flag: 0
+schema: composable
+caching: true
+batching: true
+disable_introspection: false
+query_depth: 5
+query_complexity: 200
+schema_configuration:
+  composable:
+    extensions:
+      catalog: catalog
+persisted_queries_settings: {  }

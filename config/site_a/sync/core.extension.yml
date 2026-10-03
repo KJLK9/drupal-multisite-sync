@@ -7,6 +7,7 @@ module:
   block: 0
   block_content: 0
   breakpoint: 0
+  catalog_graphql: 0
   ckeditor5: 0
   config: 0
   contextual: 0
@@ -19,6 +20,7 @@ module:
   field_ui: 0
   file: 0
   filter: 0
+  graphql: 0
   help: 0
   image: 0
   jsonapi: 0
@@ -41,6 +43,7 @@ module:
   system: 0
   taxonomy: 0
   text: 0
+  typed_data: 0
   update: 0
   user: 0
   views_ui: 0
