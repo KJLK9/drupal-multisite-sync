@@ -8,15 +8,19 @@ products, product prices) exposed through a read-only GraphQL API.
 - `ddev composer phpcs` / `phpcbf`: Drupal + DrupalPractice standards
 - `ddev composer phpstan`: level 8, no baseline
 - `ddev composer rector`: Drupal deprecation scan (dry-run)
-- `ddev composer test`: PHPUnit (`web/modules/*/*/tests`)
-- `ddev drush cex` / `cim` / `cr`: config export / import / cache rebuild
+- `ddev composer test`: PHPUnit (`web/modules/custom/*/*/tests`)
+- `ddev drush @ddev.site_a cex` / `cim` / `cr`: config export / import / cache
+  rebuild. Always target a site (`@ddev.site_a`, `@ddev.site_b`, see
+  `drush/sites/ddev.site.yml`); plain `drush` hits the unused `default` site.
 
 ## Layout
-- `web/modules/catalog/`: domain modules (`customers`, `products`,
+- `web/modules/custom/catalog/`: domain modules (`customers`, `products`,
   `product_prices`) and `catalog_graphql` (API layer, depends on the others,
   never the other way round).
-- `web/modules/util/`: reusable helpers (`money_field`).
-- `config/`: exported config. Contrib lives in `web/modules/contrib` (ignored).
+- `web/modules/custom/util/`: reusable helpers (`money_field`).
+- `config/<site>/sync`: exported config per site (`site_a`, `site_b`), set by
+  `config_sync_directory` in each `web/sites/<site>/settings.php`. Committed.
+  Contrib lives in `web/modules/contrib` (ignored).
 - Decisions: `docs/decisions/` (one short ADR per architecture choice).
 
 ## Rules

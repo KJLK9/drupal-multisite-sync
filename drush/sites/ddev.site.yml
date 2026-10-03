@@ -1,0 +1,9 @@
+# Multisite aliases. `ddev drush @ddev.site_a cex` targets site A explicitly;
+# plain `ddev drush` targets the "default" site, which is not used for the
+# catalog.
+site_a:
+  root: /var/www/html/web
+  uri: https://site-a.ddev.site
+site_b:
+  root: /var/www/html/web
+  uri: https://site-b.ddev.site
