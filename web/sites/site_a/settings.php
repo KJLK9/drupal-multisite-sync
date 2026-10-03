@@ -90,18 +90,6 @@
  */
 $databases = [];
 
-$databases['default']['default'] = [
-  'database' => 'site_a',
-  'username' => 'db',
-  'password' => 'db',
-  'prefix' => '',
-  'host' => 'db',
-  'port' => '3306',
-  'driver' => 'mysql',
-  'namespace' => 'Drupal\\mysql\\Driver\\Database\\mysql',
-  'autoload' => 'core/modules/mysql/src/Driver/Database/mysql/',
-];
-
 /**
  * Customizing database settings.
  *
@@ -268,7 +256,7 @@ $databases['default']['default'] = [
  * directory in the public files path. The setting below allows you to set
  * its location.
  */
-$settings['config_sync_directory'] = '../config/site_a/sync';
+#$settings['config_sync_directory'] = '../config/site_a/sync';
 
 
 /**
@@ -299,7 +287,7 @@ $settings['config_sync_directory'] = '../config/site_a/sync';
  *   $settings['hash_salt'] = file_get_contents('/home/example/salt.txt');
  * @endcode
  */
-$settings['hash_salt'] = '2TFhwXJCe-5mSe0B2kdi3WSF3bbhNfwGr6Qggv1gOlnWyTcd7p5oK0CvgnO1pDzRgD1CJMyosQ';
+# $settings['hash_salt'] = '2TFhwXJCe-5mSe0B2kdi3WSF3bbhNfwGr6Qggv1gOlnWyTcd7p5oK0CvgnO1pDzRgD1CJMyosQ';
 
 /**
  * Deployment identifier.
@@ -916,16 +904,5 @@ $settings['migrate_node_migrate_type_classic'] = FALSE;
 # if (file_exists($app_root . '/' . $site_path . '/settings.local.php')) {
 #   include $app_root . '/' . $site_path . '/settings.local.php';
 # }
-$databases['default']['default'] = array (
-  'database' => 'site_a',
-  'username' => 'db',
-  'password' => 'db',
-  'prefix' => '',
-  'host' => 'db',
-  'port' => '3306',
-  'isolation_level' => 'READ COMMITTED',
-  'driver' => 'mysql',
-  'namespace' => 'Drupal\\mysql\\Driver\\Database\\mysql',
-  'autoload' => 'core/modules/mysql/src/Driver/Database/mysql/',
-);
-$settings['config_sync_directory'] = 'sites/site_a/files/config_cPklAsIMm02swR_snJeoVklIvyuNQW7dBfJTyg6alZ9lPudrbSKxFa5GtDK0T7drvyIfzmkWhA/sync';
+
+include $app_root . '/../config/' . basename($site_path) . '/settings.php';
