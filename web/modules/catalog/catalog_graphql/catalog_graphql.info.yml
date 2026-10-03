@@ -1,0 +1,10 @@
+name: 'Catalog GraphQL'
+type: module
+description: 'Read-only GraphQL API for customers, products and product prices.'
+package: Custom
+core_version_requirement: ^10 || ^11
+dependencies:
+  - graphql:graphql
+  - customers:customers
+  - products:products
+  - product_prices:product_prices

@@ -1,0 +1,4 @@
+services:
+  catalog_graphql.buffer.prices:
+    class: Drupal\catalog_graphql\GraphQL\Buffers\PriceBuffer
+    arguments: ['@entity_type.manager']

@@ -1,0 +1,31 @@
+type Money {
+  number: String
+  currencyCode: String
+}
+
+type Customer {
+  id: ID!
+  uuid: String
+  label: String
+  status: Boolean
+  description: String
+  prices(limit: Int = 50): [ProductPrice!]!
+}
+
+type Product {
+  id: ID!
+  uuid: String
+  label: String
+  status: Boolean
+  description: String
+  basePrice: Money
+  prices(limit: Int = 50): [ProductPrice!]!
+}
+
+type ProductPrice {
+  id: ID!
+  uuid: String
+  product: Product
+  customer: Customer
+  price: Money
+}
