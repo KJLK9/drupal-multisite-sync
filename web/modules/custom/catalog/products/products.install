@@ -1,0 +1,18 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the Products module.
+ */
+
+declare(strict_types=1);
+
+/**
+ * Installs the base_price field on existing products.
+ */
+function products_update_11001(): void {
+  $definition = \Drupal::service('entity_field.manager')
+    ->getFieldStorageDefinitions('product')['base_price'];
+  \Drupal::entityDefinitionUpdateManager()
+    ->installFieldStorageDefinition('base_price', 'product', 'products', $definition);
+}
