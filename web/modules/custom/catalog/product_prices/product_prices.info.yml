@@ -2,8 +2,8 @@ name: 'Product Prices'
 type: module
 description: 'Provides the pricing structure for Products'
 package: Custom
-core_version_requirement: ^10 || ^11
+core_version_requirement: ^11.2
 dependencies:
   - customers:customers
   - products:products
-  - util:money_field
+  - money_field:money_field

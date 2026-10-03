@@ -107,4 +107,28 @@ class ProductPriceAccessTest extends KernelTestBase {
     $this->assertTrue($price->access('view', $admin));
   }
 
+  /**
+   * Deleting a product or customer deletes the prices that reference it.
+   */
+  public function testPricesAreDeletedWithTheirProductOrCustomer(): void {
+    $customer = Customer::load($this->price->get('customer')->target_id);
+    $product = Product::load($this->price->get('product_id')->target_id);
+    $this->assertNotNull($product);
+    $other_customer = Customer::create(['label' => 'Other']);
+    $other_customer->save();
+    $other_price = ProductPrice::create([
+      'product_id' => $product->id(),
+      'customer' => $other_customer->id(),
+    ]);
+    $other_price->save();
+
+    $other_customer->delete();
+    $this->assertNull(ProductPrice::load($other_price->id()));
+    $this->assertNotNull(ProductPrice::load($this->price->id()));
+
+    $product->delete();
+    $this->assertNull(ProductPrice::load($this->price->id()));
+    $this->assertNotNull($customer);
+  }
+
 }

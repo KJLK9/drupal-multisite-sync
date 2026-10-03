@@ -165,7 +165,7 @@ class Product extends ContentEntityBase implements ProductInterface {
 
     $fields['created'] = BaseFieldDefinition::create('created')
       ->setLabel(t('Authored on'))
-      ->setDescription(t('The time that the products was created.'))
+      ->setDescription(t('The time that the product was created.'))
       ->setDisplayOptions('view', [
         'label' => 'above',
         'type' => 'timestamp',
@@ -180,7 +180,7 @@ class Product extends ContentEntityBase implements ProductInterface {
 
     $fields['changed'] = BaseFieldDefinition::create('changed')
       ->setLabel(t('Changed'))
-      ->setDescription(t('The time that the products was last edited.'));
+      ->setDescription(t('The time that the product was last edited.'));
 
     $fields['base_price'] = BaseFieldDefinition::create('money_field')
       ->setLabel(t('Price'))

@@ -7,7 +7,7 @@ dependencies:
 _core:
   default_config_hash: q05Rs4SOnOxfHL5H0ZKuUkhUcJUyPbEa2tpl8vzRsIs
 id: product_price_delete_action
-label: 'Delete product pricess'
+label: 'Delete product prices'
 type: product_price
 plugin: 'entity:delete_action:product_price'
 configuration: {  }

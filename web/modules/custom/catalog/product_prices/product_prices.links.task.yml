@@ -16,7 +16,7 @@ entity.product_price.delete_form:
   base_route: entity.product_price.canonical
   weight: 10
 entity.product_price.collection:
-  title: 'Product pricess'
+  title: 'Product prices'
   route_name: entity.product_price.collection
   base_route: system.admin_content
   weight: 10

@@ -13,3 +13,5 @@ settings.ddev.php
 # Local secrets
 .env
 .env.local
+# Drupal creates these in the config sync directories.
+config/*/sync/.htaccess

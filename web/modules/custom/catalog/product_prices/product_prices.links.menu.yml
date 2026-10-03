@@ -5,7 +5,7 @@ entity.product_price.settings:
   parent: system.admin_structure
 
 entity.product_price.collection:
-  title: 'Product pricess'
-  description: 'List of product pricess.'
+  title: 'Product prices'
+  description: 'List of product prices.'
   route_name: entity.product_price.collection
   parent: system.admin_content

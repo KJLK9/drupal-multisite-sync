@@ -7,7 +7,7 @@ dependencies:
 _core:
   default_config_hash: Fi1_ayLu7nD9ajMW3UhJf9v8_bnCGDzyvq8z3RkPwko
 id: product_save_action
-label: 'Save productss'
+label: 'Save products'
 type: product
 plugin: 'entity:save_action:product'
 configuration: {  }

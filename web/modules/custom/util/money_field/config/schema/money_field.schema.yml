@@ -1,7 +1,10 @@
 field.value.money_field:
   type: mapping
-  label: Default value
+  label: 'Default value'
   mapping:
-    value:
-      type: label
-      label: Value
+    number:
+      type: string
+      label: 'Amount'
+    currency_code:
+      type: string
+      label: 'Currency code'

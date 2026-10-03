@@ -1,5 +1,5 @@
 administer product:
-  title: 'Administer productss'
+  title: 'Administer products'
   restrict access: true
 view product:
   title: 'View products'

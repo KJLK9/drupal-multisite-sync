@@ -93,6 +93,13 @@ final class MoneyFieldItem extends FieldItemBase {
     $constraints[] = $this->getTypedDataManager()
       ->getValidationConstraintManager()
       ->create('ComplexData', [
+        // numeric(19, 6): at most 13 integer and 6 decimal digits.
+        'number' => [
+          'Regex' => [
+            'pattern' => '/^\d{1,13}(\.\d{1,6})?$/',
+            'message' => 'The amount must be a non-negative number with at most 6 decimals.',
+          ],
+        ],
         'currency_code' => [
           'Choice' => ['choices' => array_column(CurrencyCode::cases(), 'value')],
         ],
