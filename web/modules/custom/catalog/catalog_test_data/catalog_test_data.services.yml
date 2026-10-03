@@ -1,0 +1,4 @@
+services:
+  catalog_test_data.generator:
+    class: Drupal\catalog_test_data\TestDataGenerator
+    autowire: true

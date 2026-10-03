@@ -26,6 +26,14 @@ cp .env.example .env   # fill in the DB credentials and hash salts per site
 ddev composer check   # phpcs (Drupal, DrupalPractice) + phpstan level 8 + phpunit
 ```
 
+Development data (dev only, not part of the exported config):
+
+```bash
+ddev drush @ddev.site_a en catalog_test_data -y
+ddev drush @ddev.site_a generate:test-data --customers=10 --products=20 --coverage=70
+ddev drush @ddev.site_a pmu catalog_test_data -y
+```
+
 Quality tooling: Drupal Coder, PHPStan (+ drupal, deprecation rules), Drupal
 Rector, PHPUnit, GrumPHP pre-commit hook (phpcs, phpstan, conventional
 commits) and GitHub Actions CI.

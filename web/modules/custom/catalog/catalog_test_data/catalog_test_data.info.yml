@@ -1,0 +1,9 @@
+name: 'Catalog test data'
+type: module
+description: 'Drush command that generates customers, products and price agreements for development.'
+package: Custom
+core_version_requirement: ^11.2
+dependencies:
+  - customers:customers
+  - products:products
+  - product_prices:product_prices
