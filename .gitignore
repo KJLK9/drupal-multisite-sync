@@ -9,3 +9,7 @@ web/sites/*/private/**
 settings.ddev.php
 .idea
 .phpunit.cache
+
+# Local secrets
+.env
+.env.local

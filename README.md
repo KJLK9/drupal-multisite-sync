@@ -22,6 +22,7 @@ product_prices ──references──▶ products, customers      all use ▶ mo
 
 ```bash
 ddev start && ddev composer install
+cp .env.example .env   # fill in the DB credentials and hash salts per site
 ddev composer check   # phpcs (Drupal, DrupalPractice) + phpstan level 8 + phpunit
 ```
 

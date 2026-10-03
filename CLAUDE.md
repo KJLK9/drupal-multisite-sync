@@ -24,6 +24,12 @@ products, product prices) exposed through a read-only GraphQL API.
   Contrib lives in `web/modules/contrib` (ignored).
 - Decisions: `docs/decisions/` (one short ADR per architecture choice).
 
+## Secrets
+- DB credentials and `hash_salt` live in `.env` (git-ignored; template in
+  `.env.example`), read per site via `<SITE>_DB_*` / `<SITE>_HASH_SALT` by
+  `config/settings.env.php`. Never put them in `settings.php` or commit them.
+- `.env` is off-limits for Claude (deny rule); ask the user for values.
+
 ## Rules
 - `declare(strict_types=1);` in every PHP file; typed properties and returns.
 - Dependency injection everywhere; no `\Drupal::` statics. Hooks are OOP

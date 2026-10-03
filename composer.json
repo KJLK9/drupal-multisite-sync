@@ -22,7 +22,8 @@
         "drupal/core-recommended": "^11.4",
         "drupal/graphql": "^5.1",
         "drupal/jsonapi_include": "^2.0",
-        "drush/drush": "^13.8"
+        "drush/drush": "^13.8",
+        "symfony/dotenv": "^7.4"
     },
     "conflict": {
         "drupal/drupal": "*"

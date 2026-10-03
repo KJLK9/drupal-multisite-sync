@@ -11,6 +11,9 @@ grumphp:
     phpstan:
       configuration: phpstan.neon
       memory_limit: 1G
+      # Analyse the paths from phpstan.neon, not every staged file: settings
+      # files rely on variables Drupal provides.
+      use_grumphp_paths: false
     composer:
       no_check_all: true
     git_commit_message:

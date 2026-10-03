@@ -10,3 +10,6 @@
 
 // Absolute path: Drupal's installer may append its own value to settings.php.
 $settings['config_sync_directory'] = __DIR__ . '/sync';
+
+// Database connection and hash salt come from .env (see .env.example).
+require dirname(__DIR__) . '/settings.env.php';
