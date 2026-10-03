@@ -1,0 +1,13 @@
+uuid: c08b0f61-10f0-4f39-bbef-58a399a55de3
+langcode: en
+status: true
+dependencies:
+  module:
+    - product_prices
+_core:
+  default_config_hash: q05Rs4SOnOxfHL5H0ZKuUkhUcJUyPbEa2tpl8vzRsIs
+id: product_price_delete_action
+label: 'Delete product pricess'
+type: product_price
+plugin: 'entity:delete_action:product_price'
+configuration: {  }

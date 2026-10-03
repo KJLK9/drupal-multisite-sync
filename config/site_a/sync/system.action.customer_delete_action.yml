@@ -1,0 +1,13 @@
+uuid: 930def03-6265-4a67-a42e-e50927fd3894
+langcode: en
+status: true
+dependencies:
+  module:
+    - customers
+_core:
+  default_config_hash: TUQcjKBmvD0-e4ROensmnxUwMHdA2bbAa-X3I6DgLdA
+id: customer_delete_action
+label: 'Delete customers'
+type: customer
+plugin: 'entity:delete_action:customer'
+configuration: {  }

@@ -1,0 +1,13 @@
+uuid: 0d4301e6-22c3-4c5a-ba92-dd9b927e4f22
+langcode: en
+status: true
+dependencies:
+  module:
+    - products
+_core:
+  default_config_hash: Fi1_ayLu7nD9ajMW3UhJf9v8_bnCGDzyvq8z3RkPwko
+id: product_save_action
+label: 'Save productss'
+type: product
+plugin: 'entity:save_action:product'
+configuration: {  }

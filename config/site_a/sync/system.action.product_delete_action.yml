@@ -1,0 +1,13 @@
+uuid: a5a5f0ce-8884-4bd5-bd1b-340954f87fdf
+langcode: en
+status: true
+dependencies:
+  module:
+    - products
+_core:
+  default_config_hash: Qgw9y1a7u0xaRlrznIoegCrDNcpF9E5UlUkzznQs72Q
+id: product_delete_action
+label: 'Delete productss'
+type: product
+plugin: 'entity:delete_action:product'
+configuration: {  }

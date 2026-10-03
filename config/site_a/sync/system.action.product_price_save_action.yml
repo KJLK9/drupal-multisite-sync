@@ -1,0 +1,13 @@
+uuid: 888ee334-0982-4a3a-85b4-7764f7fb68c7
+langcode: en
+status: true
+dependencies:
+  module:
+    - product_prices
+_core:
+  default_config_hash: fbWdlfTwOjf_JRwrFwszeG_7JbBrKV99RE0rDe-YX9w
+id: product_price_save_action
+label: 'Save product pricess'
+type: product_price
+plugin: 'entity:save_action:product_price'
+configuration: {  }

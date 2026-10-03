@@ -1,0 +1,13 @@
+uuid: 86ceb49b-ecff-4a1a-8f57-f0a5992d47ef
+langcode: en
+status: true
+dependencies:
+  module:
+    - customers
+_core:
+  default_config_hash: DiM6k287K477wtliZs6B8hl-Gf4t3sYMNZNNx7mfJFA
+id: customer_save_action
+label: 'Save customers'
+type: customer
+plugin: 'entity:save_action:customer'
+configuration: {  }

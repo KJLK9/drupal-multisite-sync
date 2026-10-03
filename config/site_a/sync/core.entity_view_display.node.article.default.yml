@@ -1,0 +1,29 @@
+uuid: b6968b39-0d06-4317-8179-e486c5985558
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.node.article.field_sku
+    - node.type.article
+  module:
+    - user
+id: node.article.default
+targetEntityType: node
+bundle: article
+mode: default
+content:
+  field_sku:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+      link_rel: canonical
+    third_party_settings: {  }
+    weight: 101
+    region: content
+  links:
+    settings: {  }
+    third_party_settings: {  }
+    weight: 100
+    region: content
+hidden: {  }
