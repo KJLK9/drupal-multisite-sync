@@ -1,0 +1,22 @@
+grumphp:
+  # PHP lives in the DDEV container, not on the host.
+  git_hook_variables:
+    EXEC_GRUMPHP_COMMAND: 'ddev php'
+  tasks:
+    phpcs:
+      standard: phpcs.xml.dist
+      triggered_by: [php, module, inc, install, yml]
+      whitelist_patterns:
+        - '/^web\/modules\/(catalog|util)\//'
+    phpstan:
+      configuration: phpstan.neon
+      memory_limit: 1G
+    composer:
+      no_check_all: true
+    git_commit_message:
+      enforce_capitalized_subject: false
+      max_subject_width: 72
+      max_body_width: 100
+      case_insensitive: false
+      matchers:
+        "Conventional commits": '/^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?!?: .+/'

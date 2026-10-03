@@ -8,3 +8,4 @@ web/sites/*/files/**
 web/sites/*/private/**
 settings.ddev.php
 .idea
+.phpunit.cache

@@ -39,7 +39,8 @@
             "dealerdirect/phpcodesniffer-composer-installer": true,
             "php-http/discovery": true,
             "php-tuf/composer-integration": true,
-            "symfony/runtime": true
+            "symfony/runtime": true,
+            "phpro/grumphp": true
         },
         "sort-packages": true
     },
@@ -102,5 +103,29 @@
                 "      composer remove drupal/core-project-message"
             ]
         }
+    },
+    "require-dev": {
+        "drupal/coder": "^8.3",
+        "drupal/core-dev": "^11.4",
+        "mglaman/phpstan-drupal": "^2.2",
+        "palantirnet/drupal-rector": "^1.1",
+        "phpro/grumphp": "^2.25",
+        "phpstan/extension-installer": "^1.4",
+        "phpstan/phpstan-deprecation-rules": "^2"
+    },
+    "scripts": {
+        "phpcs": "phpcs --standard=phpcs.xml.dist",
+        "phpcbf": "phpcbf --standard=phpcs.xml.dist",
+        "phpstan": "phpstan analyse --memory-limit=1G",
+        "rector": "rector process --dry-run",
+        "test": "phpunit -c phpunit.xml.dist",
+        "check": [
+            "@phpcs",
+            "@phpstan",
+            "@test"
+        ]
+    },
+    "scripts-descriptions": {
+        "check": "Run phpcs, phpstan and phpunit."
     }
 }
