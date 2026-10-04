@@ -6,6 +6,7 @@ namespace Drupal\import_engine\Drive;
 
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\import_engine\Breaker\CircuitBreaker;
 use Drupal\import_engine\Entity\ImportDefinition;
 use Drupal\import_engine\Extract\ExtractStage;
 use Drupal\import_engine\Extract\ExtractStatus;
@@ -50,6 +51,7 @@ final class RunDriver {
     private readonly ProcessStage $process,
     private readonly FinishStage $finish,
     private readonly SourceFactory $sources,
+    private readonly CircuitBreaker $breaker,
     private readonly EntityTypeManagerInterface $entityTypeManager,
     private readonly TimeInterface $time,
   ) {
@@ -76,7 +78,7 @@ final class RunDriver {
     $items = 0;
 
     if (in_array($run->getStatus(), [RunStatus::Queued, RunStatus::Extracting], TRUE)) {
-      $source ??= $this->sources->create($definition);
+      $source ??= $this->breaker->wrap($this->sources->create($definition), $definition);
       do {
         $result = $this->extract->extract($run, $definition, $source, self::PAGES_PER_PORTION, $budget->deadline);
         $pages += $result->pages;

@@ -29,6 +29,27 @@ interface SourceInterface extends PluginInspectionInterface, ConfigurableInterfa
   public function fetchPage(?string $cursor = NULL): SourcePage;
 
   /**
+   * Returns what the circuit breaker is kept per: the server this talks to.
+   *
+   * Imports that read from the same server share one breaker, so an outage
+   * is noticed once and none of them keeps hammering it.
+   */
+  public function getEndpoint(): string;
+
+  /**
+   * Checks that the source answers, cheaply.
+   *
+   * Used by the circuit breaker to find out whether a source that was down is
+   * back. It does not return data.
+   *
+   * @throws \Drupal\import_engine\Source\SourceException
+   *   When the source does not answer properly. A transient one means it is
+   *   still down; a permanent one means it answered, but with an error that
+   *   waiting does not fix (for example bad credentials).
+   */
+  public function probe(): void;
+
+  /**
    * Checks the source while an import is being set up.
    *
    * Tries to connect and read, and reports what it found as messages and

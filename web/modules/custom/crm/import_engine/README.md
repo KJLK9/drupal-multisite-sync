@@ -211,3 +211,20 @@ cron and later the interface only decide the budget. See ADR 0012.
   cancels a run.
 - Cron continues runs that are not over only when `cron_resume_seconds` in
   `import_engine.settings` is above 0. It never starts one.
+
+## Resilience
+
+A circuit breaker per server stops imports from calling a source that is down,
+and probes it to find out when it is back. See ADR 0013.
+
+- It opens after `breaker.threshold` transient failures in a row (default 5) at
+  the same server, shared by every import that reads from it. Permanent errors
+  such as bad credentials do not count.
+- While open, reading the source is refused and the extraction is interrupted;
+  it resumes later. Processing items carries on, as the payload is in the queue.
+- After `breaker.cooldown` seconds (default 60, doubling up to 15 minutes) one
+  process probes the source. If it answers, calls go through; the first failure
+  opens the breaker again and the first success closes it.
+- `drush import:breaker` shows the breakers, `import:breaker-trip <server>`
+  opens one by hand and `import:breaker-reset <server>` closes it. Switch it off
+  per import with `breaker.enabled`.

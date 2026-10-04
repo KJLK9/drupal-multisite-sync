@@ -82,6 +82,17 @@ interface ImportDefinitionInterface extends ConfigEntityInterface {
   public function getDeleteThresholdPercent(): int;
 
   /**
+   * Returns the settings of the circuit breaker of the source.
+   *
+   * The breaker opens after this many transient failures in a row at the same
+   * server; after the cooldown, in seconds, a probe checks whether it is back.
+   *
+   * @return array{enabled: bool, threshold: int, cooldown: int}
+   *   The settings.
+   */
+  public function getBreaker(): array;
+
+  /**
    * Returns the reporters that are told how a run went.
    *
    * @return list<array{plugin: string, configuration: array<string, mixed>}>

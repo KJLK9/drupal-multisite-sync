@@ -41,6 +41,7 @@ class ImportCommandsTest extends NodeTestBase {
       $this->container->get('import_engine.run_starter'),
       $this->container->get('import_engine.run_manager'),
       $this->container->get('import_engine.item_storage'),
+      $this->container->get('import_engine.breaker_store'),
       $this->container->get('entity_type.manager'),
       $this->container->get('datetime.time'),
     );
@@ -192,6 +193,27 @@ class ImportCommandsTest extends NodeTestBase {
     $this->assertStringContainsString('1 waiting items skipped', $this->output->fetch());
     $this->assertSame(1, $commands->cancel((string) $run->id())->getExitCode());
     $this->assertStringContainsString('already over (cancelled)', $this->output->fetch());
+  }
+
+  /**
+   * The breaker commands show, open and close a circuit breaker.
+   */
+  public function testBreakerCommands(): void {
+    $commands = $this->commands();
+    $commands->breaker();
+    $this->assertStringNotContainsString('OPEN', strtoupper($this->output->fetch()));
+
+    $commands->breakerTrip('site-a.test');
+    $this->assertStringContainsString('The circuit breaker for site-a.test is open.', $this->output->fetch());
+    $commands->breaker();
+    $text = $this->output->fetch();
+    $this->assertStringContainsString('site-a.test', $text);
+    $this->assertStringContainsString('Open (by hand)', $text);
+
+    $commands->breakerReset('site-a.test');
+    $this->assertStringContainsString('is closed.', $this->output->fetch());
+    $commands->breakerReset('site-a.test');
+    $this->assertStringContainsString('was closed already.', $this->output->fetch());
   }
 
 }

@@ -182,6 +182,19 @@ class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInter
 
   /**
    * {@inheritdoc}
+   *
+   * The host and port of the URL, in lower case.
+   */
+  public function getEndpoint(): string {
+    $parts = parse_url((string) $this->configuration['url']);
+    if (!is_array($parts) || !isset($parts['host'])) {
+      return parent::getEndpoint();
+    }
+    return strtolower($parts['host']) . (isset($parts['port']) ? ':' . $parts['port'] : '');
+  }
+
+  /**
+   * {@inheritdoc}
    */
   public function fetchPage(?string $cursor = NULL): SourcePage {
     $request = $this->pagination->applyCursor($this->baseRequest(), $cursor);

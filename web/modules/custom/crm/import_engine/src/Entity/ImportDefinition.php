@@ -45,6 +45,7 @@ use Drupal\import_engine\ImportDefinitionInterface;
     'delete_policy',
     'delete_threshold_percent',
     'resilience',
+    'breaker',
     'reporters',
     'pool',
   ],
@@ -137,6 +138,17 @@ class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInter
   ];
 
   /**
+   * The circuit breaker of the source.
+   *
+   * @var array{enabled: bool, threshold: int, cooldown: int}
+   */
+  protected array $breaker = [
+    'enabled' => TRUE,
+    'threshold' => 5,
+    'cooldown' => 60,
+  ];
+
+  /**
    * The reporters that are told how a run went.
    *
    * @var list<array{plugin: string, configuration: array<string, mixed>}>
@@ -209,6 +221,13 @@ class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInter
    */
   public function getDeleteThresholdPercent(): int {
     return $this->delete_threshold_percent;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getBreaker(): array {
+    return $this->breaker;
   }
 
   /**

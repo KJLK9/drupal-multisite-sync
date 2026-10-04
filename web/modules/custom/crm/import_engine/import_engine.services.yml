@@ -141,6 +141,7 @@ services:
       - '@import_engine.process_stage'
       - '@import_engine.finish_stage'
       - '@import_engine.source_factory'
+      - '@import_engine.circuit_breaker'
       - '@entity_type.manager'
       - '@datetime.time'
 
@@ -151,3 +152,11 @@ services:
   import_engine.run_manager:
     class: Drupal\import_engine\Run\RunManager
     arguments: ['@entity_type.manager', '@import_engine.item_storage', '@lock.persistent', '@datetime.time']
+
+  import_engine.breaker_store:
+    class: Drupal\import_engine\Breaker\BreakerStore
+    arguments: ['@database']
+
+  import_engine.circuit_breaker:
+    class: Drupal\import_engine\Breaker\CircuitBreaker
+    arguments: ['@import_engine.breaker_store', '@logger.channel.import_engine', '@datetime.time']

@@ -7,6 +7,8 @@ namespace Drupal\import_engine\Drush\Commands;
 use Consolidation\AnnotatedCommand\CommandResult;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\import_engine\Breaker\BreakerState;
+use Drupal\import_engine\Breaker\BreakerStore;
 use Drupal\import_engine\Drive\DriveResult;
 use Drupal\import_engine\Drive\DriveStatus;
 use Drupal\import_engine\Drive\RunBudget;
@@ -50,6 +52,8 @@ final class ImportCommands extends DrushCommands {
     private readonly RunManager $manager,
     #[Autowire(service: 'import_engine.item_storage')]
     private readonly ItemStorage $items,
+    #[Autowire(service: 'import_engine.breaker_store')]
+    private readonly BreakerStore $breakers,
     #[Autowire(service: 'entity_type.manager')]
     private readonly EntityTypeManagerInterface $entityTypeManager,
     #[Autowire(service: 'datetime.time')]
@@ -182,6 +186,55 @@ final class ImportCommands extends DrushCommands {
     }
     $skipped = $this->manager->cancel($entity);
     $this->io()->writeln(sprintf('Run %s cancelled; %d waiting items skipped.', $run, $skipped));
+    return CommandResult::exitCode(0);
+  }
+
+  /**
+   * Shows the circuit breaker of every server that has one.
+   */
+  #[CLI\Command(name: 'import:breaker')]
+  #[CLI\Usage(name: 'drush import:breaker', description: 'Show the state of the circuit breakers.')]
+  public function breaker(): CommandResult {
+    $rows = [];
+    foreach ($this->breakers->all() as $record) {
+      $rows[] = [
+        $record->endpoint,
+        $record->state->name . ($record->manual ? ' (by hand)' : ''),
+        (string) $record->failures,
+        $record->nextProbe > 0 && $record->state === BreakerState::Open && !$record->manual ? date('Y-m-d H:i:s', $record->nextProbe) : '',
+      ];
+    }
+    $this->io()->table(['Server', 'State', 'Failures in a row', 'Next probe'], $rows);
+    return CommandResult::exitCode(0);
+  }
+
+  /**
+   * Opens the circuit breaker of a server by hand, so nothing calls it.
+   *
+   * @param string $endpoint
+   *   The server, as shown by import:breaker, for example site-a.test.
+   */
+  #[CLI\Command(name: 'import:breaker-trip')]
+  #[CLI\Argument(name: 'endpoint', description: 'The server, for example site-a.test.')]
+  #[CLI\Usage(name: 'drush import:breaker-trip site-a.test', description: 'Stop all imports from calling site-a.test until it is reset.')]
+  public function breakerTrip(string $endpoint): CommandResult {
+    $this->breakers->trip($endpoint, $this->time->getCurrentTime());
+    $this->io()->writeln(sprintf('The circuit breaker for %s is open. Reset it with import:breaker-reset.', $endpoint));
+    return CommandResult::exitCode(0);
+  }
+
+  /**
+   * Closes the circuit breaker of a server.
+   *
+   * @param string $endpoint
+   *   The server, as shown by import:breaker.
+   */
+  #[CLI\Command(name: 'import:breaker-reset')]
+  #[CLI\Argument(name: 'endpoint', description: 'The server, for example site-a.test.')]
+  #[CLI\Usage(name: 'drush import:breaker-reset site-a.test', description: 'Let imports call site-a.test again.')]
+  public function breakerReset(string $endpoint): CommandResult {
+    $changed = $this->breakers->reset($endpoint, $this->time->getCurrentTime());
+    $this->io()->writeln($changed ? sprintf('The circuit breaker for %s is closed.', $endpoint) : sprintf('The circuit breaker for %s was closed already.', $endpoint));
     return CommandResult::exitCode(0);
   }
 

@@ -28,6 +28,22 @@ abstract class SourcePluginBase extends PluginBase implements SourceInterface {
 
   /**
    * {@inheritdoc}
+   */
+  public function getEndpoint(): string {
+    return $this->getPluginId();
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * By default the first page is requested and thrown away.
+   */
+  public function probe(): void {
+    $this->fetchPage(NULL);
+  }
+
+  /**
+   * {@inheritdoc}
    *
    * @return array<string, mixed>
    *   The configuration.

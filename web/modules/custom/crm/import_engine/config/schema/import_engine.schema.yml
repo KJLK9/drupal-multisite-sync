@@ -60,6 +60,27 @@ import_engine.import_definition.*:
         Range:
           min: 0
           max: 100
+    breaker:
+      type: mapping
+      label: 'Circuit breaker'
+      mapping:
+        enabled:
+          type: boolean
+          label: 'Use a circuit breaker for the source'
+        threshold:
+          type: integer
+          label: 'Transient failures in a row that open the breaker'
+          constraints:
+            Range:
+              min: 1
+              max: 100
+        cooldown:
+          type: integer
+          label: 'Seconds before a probe checks whether the source is back'
+          constraints:
+            Range:
+              min: 1
+              max: 3600
     reporters:
       type: sequence
       label: 'Reporters'

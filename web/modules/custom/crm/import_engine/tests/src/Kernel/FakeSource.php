@@ -27,6 +27,16 @@ final class FakeSource extends SourcePluginBase {
   public array $calls = [];
 
   /**
+   * The server this source talks to, for the circuit breaker.
+   */
+  public string $endpoint = 'fake.test';
+
+  /**
+   * When set, the server is down: every call and every probe throws this.
+   */
+  public ?SourceException $down = NULL;
+
+  /**
    * Exceptions to throw, per page index; each is thrown once.
    *
    * @var array<int, list<\Drupal\import_engine\Source\SourceException>>
@@ -61,6 +71,9 @@ final class FakeSource extends SourcePluginBase {
    */
   public function fetchPage(?string $cursor = NULL): SourcePage {
     $this->calls[] = $cursor;
+    if ($this->down !== NULL) {
+      throw $this->down;
+    }
     $call = $cursor === NULL ? 0 : (int) $cursor;
     $index = $this->sequence === NULL ? $call : $this->sequence[$call];
 
@@ -69,6 +82,24 @@ final class FakeSource extends SourcePluginBase {
     }
     $last = $this->sequence === NULL ? count($this->pages) - 1 : count($this->sequence) - 1;
     return new SourcePage($this->pages[$index], $call < $last ? (string) ($call + 1) : NULL);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getEndpoint(): string {
+    return $this->endpoint;
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * A probe is not a call of fetchPage(): it does not read a page.
+   */
+  public function probe(): void {
+    if ($this->down !== NULL) {
+      throw $this->down;
+    }
   }
 
   /**

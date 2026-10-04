@@ -19,6 +19,8 @@ declare(strict_types=1);
  * - import_mapping: one row per known source item: which target entity it
  *   became, its hash and when it was last seen. It follows the size of the
  *   dataset, never the number of runs.
+ * - import_breaker: one row per server the sources talk to: the state of its
+ *   circuit breaker.
  * - import_event: an append-only log of what changed or went wrong. The
  *   primary key includes the time, so it can be partitioned by date.
  *
@@ -132,6 +134,25 @@ function import_engine_schema(): array {
       // The sweep: everything of an import not seen in the latest run.
       'last_seen' => ['definition_id', 'gone', 'last_seen_run'],
     ],
+  ];
+
+  $schema['import_breaker'] = [
+    'description' => 'The circuit breaker per server: whether calls are allowed, and the failures that led there.',
+    'fields' => [
+      'endpoint' => ['type' => 'varchar', 'length' => 190, 'not null' => TRUE],
+      'state' => ['type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      'failures' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      // How many times in a row the breaker opened; the cooldown grows with it.
+      'trips' => ['type' => 'int', 'size' => 'small', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      'opened' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      'next_probe' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      // A probe is claimed until this time, so only one process probes.
+      'probe_until' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      // Opened by hand: only a reset closes it.
+      'manual' => ['type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      'changed' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+    ],
+    'primary key' => ['endpoint'],
   ];
 
   return $schema;

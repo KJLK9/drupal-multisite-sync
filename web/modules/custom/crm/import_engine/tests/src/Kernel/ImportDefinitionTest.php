@@ -123,6 +123,7 @@ class ImportDefinitionTest extends KernelTestBase {
     $this->assertSame(60, $definition->getRetryDelay());
     $this->assertSame(20, $definition->getDeleteThresholdPercent());
     $this->assertSame([], $definition->getReporters());
+    $this->assertSame(['enabled' => TRUE, 'threshold' => 5, 'cooldown' => 60], $definition->getBreaker());
     $this->assertSame('default', $definition->getPool());
     $this->assertTrue($definition->status());
   }
@@ -204,6 +205,14 @@ class ImportDefinitionTest extends KernelTestBase {
       'too many key paths' => [['source_key' => ['a', 'b', 'c', 'd', 'e', 'f']], 'source_key'],
       'key path with an empty segment' => [['source_key' => ['a..b']], 'source_key.0'],
       'unknown delete policy' => [['delete_policy' => 'archive'], 'delete_policy'],
+      'no breaker threshold' => [
+        ['breaker' => ['enabled' => TRUE, 'threshold' => 0, 'cooldown' => 60]],
+        'breaker.threshold',
+      ],
+      'no breaker cooldown' => [
+        ['breaker' => ['enabled' => TRUE, 'threshold' => 5, 'cooldown' => 0]],
+        'breaker.cooldown',
+      ],
       'threshold above 100' => [['delete_threshold_percent' => 101], 'delete_threshold_percent'],
       'negative threshold' => [['delete_threshold_percent' => -1], 'delete_threshold_percent'],
       'unknown reporter plugin' => [
