@@ -25,6 +25,7 @@ class TestDataGeneratorTest extends KernelTestBase {
     'field',
     'text',
     'money_field',
+    'published_access',
     'customers',
     'products',
     'product_prices',

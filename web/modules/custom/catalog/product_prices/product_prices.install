@@ -1,0 +1,27 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the Product Prices module.
+ */
+
+declare(strict_types=1);
+
+/**
+ * Enforces one price per product and customer in the database.
+ *
+ * Adds the unique key and makes the product, customer and price required.
+ * Fails (and leaves the site untouched) if duplicate prices exist: remove
+ * them first.
+ */
+function product_prices_update_11001(): void {
+  $entity_type = \Drupal::entityTypeManager()->getDefinition('product_price');
+  \Drupal::entityDefinitionUpdateManager()->updateEntityType($entity_type);
+
+  $manager = \Drupal::entityDefinitionUpdateManager();
+  $field_manager = \Drupal::service('entity_field.manager');
+  foreach (['product_id', 'customer', 'price'] as $field) {
+    $definition = $field_manager->getFieldStorageDefinitions('product_price')[$field];
+    $manager->updateFieldStorageDefinition($definition);
+  }
+}

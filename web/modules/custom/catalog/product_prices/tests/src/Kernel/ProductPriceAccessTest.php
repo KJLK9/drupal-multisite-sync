@@ -29,6 +29,7 @@ class ProductPriceAccessTest extends KernelTestBase {
     'field',
     'text',
     'money_field',
+    'published_access',
     'customers',
     'products',
     'product_prices',
@@ -129,6 +130,19 @@ class ProductPriceAccessTest extends KernelTestBase {
     $product->delete();
     $this->assertNull(ProductPrice::load($this->price->id()));
     $this->assertNotNull($customer);
+  }
+
+  /**
+   * A price is hidden along with an unpublished product or customer.
+   */
+  public function testPriceOfUnpublishedProductIsHidden(): void {
+    $viewer = $this->createUser(['view product', 'view customer']);
+    $product = Product::load($this->price->get('product_id')->target_id);
+    $this->assertNotNull($product);
+
+    $product->set('status', FALSE)->save();
+
+    $this->assertFalse($this->price->access('view', $viewer));
   }
 
 }

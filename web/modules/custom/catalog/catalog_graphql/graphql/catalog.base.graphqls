@@ -41,9 +41,9 @@ type ProductPrice {
 
 """
 Lists share one shape: a page of `items` and the number of matches in total,
-so clients know when to stop paging. At the top level the total counts every
-match before the per-item view access filter; for `prices` it counts only what
-the current user may view.
+so clients know when to stop paging. Totals count what the current user may
+see: unpublished items, and prices of products or customers the user may not
+view, are excluded.
 """
 type CustomerList {
   items: [Customer!]!

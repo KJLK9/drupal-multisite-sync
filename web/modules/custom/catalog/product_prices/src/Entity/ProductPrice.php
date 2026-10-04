@@ -17,6 +17,7 @@ use Drupal\product_prices\Form\ProductPriceForm;
 use Drupal\product_prices\ProductPriceAccessControlHandler;
 use Drupal\product_prices\ProductPriceInterface;
 use Drupal\product_prices\ProductPriceListBuilder;
+use Drupal\product_prices\ProductPriceStorageSchema;
 use Drupal\views\EntityViewsData;
 
 /**
@@ -37,6 +38,7 @@ use Drupal\views\EntityViewsData;
     'list_builder' => ProductPriceListBuilder::class,
     'views_data' => EntityViewsData::class,
     'access' => ProductPriceAccessControlHandler::class,
+    'storage_schema' => ProductPriceStorageSchema::class,
     'form' => [
       'add' => ProductPriceForm::class,
       'edit' => ProductPriceForm::class,
@@ -62,6 +64,9 @@ use Drupal\views\EntityViewsData;
     'plural' => '@count product prices',
   ],
   field_ui_base_route: 'entity.product_price.settings',
+  constraints: [
+    'UniqueProductPrice' => [],
+  ],
 )]
 class ProductPrice extends ContentEntityBase implements ProductPriceInterface {
 
@@ -95,6 +100,7 @@ class ProductPrice extends ContentEntityBase implements ProductPriceInterface {
 
     $fields['product_id'] = BaseFieldDefinition::create('entity_reference')
       ->setLabel(t('Product'))
+      ->setRequired(TRUE)
       ->setDescription(t('The ID of the product.'))
       ->setSetting('target_type', 'product')
       ->setDisplayConfigurable('form', TRUE)
@@ -102,6 +108,7 @@ class ProductPrice extends ContentEntityBase implements ProductPriceInterface {
 
     $fields['customer'] = BaseFieldDefinition::create('entity_reference')
       ->setLabel(t('Customer'))
+      ->setRequired(TRUE)
       ->setDescription(t('The ID of the customer.'))
       ->setSetting('target_type', 'customer')
       ->setDisplayConfigurable('form', TRUE)
@@ -109,6 +116,7 @@ class ProductPrice extends ContentEntityBase implements ProductPriceInterface {
 
     $fields['price'] = BaseFieldDefinition::create('money_field')
       ->setLabel(t('Price'))
+      ->setRequired(TRUE)
       ->setDescription(t('The price of the product.'))
       ->setDisplayConfigurable('form', TRUE)
       ->setDisplayConfigurable('view', TRUE);

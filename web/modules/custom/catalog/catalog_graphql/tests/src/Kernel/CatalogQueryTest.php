@@ -36,6 +36,7 @@ class CatalogQueryTest extends KernelTestBase {
     'text',
     'graphql',
     'money_field',
+    'published_access',
     'customers',
     'products',
     'product_prices',
@@ -261,7 +262,7 @@ class CatalogQueryTest extends KernelTestBase {
     $customer = Customer::create([
       'label' => 'ACME',
       'customer_number' => 'C-100',
-      'status' => FALSE,
+      'status' => TRUE,
       'description' => 'Preferred customer',
     ]);
     $customer->save();
@@ -275,9 +276,57 @@ class CatalogQueryTest extends KernelTestBase {
     $this->assertSame((string) $customer->id(), (string) $data['customer']['id']);
     $this->assertSame($customer->uuid(), $data['customer']['uuid']);
     $this->assertSame('C-100', $data['customer']['customerNumber']);
-    $this->assertFalse($data['customer']['status']);
+    $this->assertTrue($data['customer']['status']);
     $this->assertSame('Preferred customer', $data['customer']['description']);
     $this->assertTrue($data['product']['status']);
+  }
+
+  /**
+   * Unpublished customers and products are hidden from non-administrators.
+   */
+  public function testUnpublishedItemsAreHidden(): void {
+    $this->createProduct('Visible', '1.00');
+    $hidden = $this->createProduct('Hidden', '1.00');
+    $hidden->set('status', FALSE)->save();
+    $hidden_customer = Customer::create(['label' => 'Hidden customer', 'status' => FALSE]);
+    $hidden_customer->save();
+    // A price of a hidden product is hidden with it.
+    $visible_customer = Customer::create(['label' => 'Visible customer', 'status' => TRUE]);
+    $visible_customer->save();
+    ProductPrice::create([
+      'product_id' => $hidden->id(),
+      'customer' => $visible_customer->id(),
+      'price' => ['number' => '5.00', 'currency_code' => 'EUR'],
+    ])->save();
+
+    $query = '{
+      products { totalCount items { label } }
+      customers { totalCount items { label } }
+      productPrices { totalCount items { id } }
+      product(id: "' . $hidden->id() . '") { label }
+      customer(id: "' . $hidden_customer->id() . '") { label }
+    }';
+    $data = $this->query($query);
+
+    // Counts, items and single lookups agree: nothing unpublished leaks.
+    $this->assertSame(['totalCount' => 1, 'items' => [['label' => 'Visible']]], $data['products']);
+    $this->assertSame(['totalCount' => 1, 'items' => [['label' => 'Visible customer']]], $data['customers']);
+    $this->assertSame(0, $data['productPrices']['totalCount']);
+    $this->assertNull($data['product']);
+    $this->assertNull($data['customer']);
+
+    // Administrators still see everything.
+    $this->setUpCurrentUser([], [
+      'administer product',
+      'administer customer',
+      'administer product_price',
+      'execute catalog arbitrary graphql requests',
+    ]);
+    $admin = $this->query($query);
+    $this->assertSame(2, $admin['products']['totalCount']);
+    $this->assertSame(2, $admin['customers']['totalCount']);
+    $this->assertSame(1, $admin['productPrices']['totalCount']);
+    $this->assertSame('Hidden', $admin['product']['label']);
   }
 
   /**
