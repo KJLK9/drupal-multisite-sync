@@ -13,6 +13,7 @@ use Drupal\import_engine\Process\PlanFactory;
 use Drupal\import_engine\Reporter\RunReport;
 use Drupal\import_engine\Reporter\RunReporter;
 use Drupal\import_engine\Run\ImportRunInterface;
+use Drupal\import_engine\Run\RunCounters;
 use Drupal\import_engine\Run\RunStatus;
 use Drupal\import_engine\Storage\EventLog;
 use Drupal\import_engine\Storage\ItemStorage;
@@ -53,6 +54,7 @@ final class FinishStage {
    */
   public function __construct(
     private readonly ItemStorage $items,
+    private readonly RunCounters $counters,
     private readonly PageStore $pages,
     private readonly EventLog $events,
     private readonly Sweeper $sweeper,
@@ -124,7 +126,7 @@ final class FinishStage {
       $sweep = $this->sweep($runId, $definition, fn (): bool => $this->lock->acquire($lock, self::LOCK_SECONDS), $now);
     }
 
-    $this->snapshot($run, $sweep);
+    $run->setCounters($this->counters->derive($run, $sweep->swept));
     $status = $this->finalStatus($run, $sweep);
     $summary = trim($run->getSummary() . ' ' . ($sweep->message ?? ''));
     $run->setSummary($summary)->transitionTo($status, $now)->save();
@@ -156,26 +158,6 @@ final class FinishStage {
       return new SweepResult(message: 'Sweep skipped: ' . $exception->getMessage(), problem: TRUE);
     }
     return $this->sweeper->sweep($runId, $definition, $target, $heartbeat, $now);
-  }
-
-  /**
-   * Stores the counters of the run, derived from its items.
-   */
-  private function snapshot(ImportRunInterface $run, SweepResult $sweep): void {
-    $runId = (int) $run->id();
-    $before = $run->getCounters();
-    $outcomes = $this->items->countByOutcome($runId);
-    $states = $this->items->countByState($runId);
-    $run->setCounters([
-      'created' => $outcomes['created'],
-      'updated' => $outcomes['updated'],
-      'unchanged' => $outcomes['unchanged'],
-      'skipped' => $outcomes['skipped'],
-      // The items without a usable key were counted by the extraction.
-      'failed' => $before['failed'] + $outcomes['failed'],
-      'dead' => $states['dead'],
-      'deleted' => $sweep->swept,
-    ]);
   }
 
   /**

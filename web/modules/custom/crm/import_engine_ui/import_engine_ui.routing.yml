@@ -1,0 +1,31 @@
+import_engine_ui.runs:
+  path: '/admin/config/system/import-engine/runs'
+  defaults:
+    _controller: 'Drupal\import_engine_ui\Controller\RunController::list'
+    _title: 'Import runs'
+  requirements:
+    _permission: 'view import runs'
+
+import_engine_ui.run:
+  path: '/admin/config/system/import-engine/runs/{import_run}'
+  defaults:
+    _controller: 'Drupal\import_engine_ui\Controller\RunController::view'
+    _title_callback: 'Drupal\import_engine_ui\Controller\RunController::title'
+  requirements:
+    _entity_access: 'import_run.view'
+  options:
+    parameters:
+      import_run:
+        type: 'entity:import_run'
+
+import_engine_ui.run_cancel:
+  path: '/admin/config/system/import-engine/runs/{import_run}/cancel'
+  defaults:
+    _form: 'Drupal\import_engine_ui\Form\RunCancelForm'
+    _title: 'Cancel run'
+  requirements:
+    _permission: 'administer import runs'
+  options:
+    parameters:
+      import_run:
+        type: 'entity:import_run'

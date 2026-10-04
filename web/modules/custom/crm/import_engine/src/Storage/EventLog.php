@@ -153,6 +153,14 @@ final class EventLog {
   }
 
   /**
+   * Counts the events of a run.
+   */
+  public function countForRun(int $runId): int {
+    $query = $this->database->select('import_event', 'e')->condition('run_id', $runId);
+    return (int) $this->statement($query->countQuery())->fetchField();
+  }
+
+  /**
    * Counts the events of a run by type.
    *
    * @return array<string, int>

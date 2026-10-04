@@ -125,6 +125,7 @@ services:
     class: Drupal\import_engine\Finish\FinishStage
     arguments:
       - '@import_engine.item_storage'
+      - '@import_engine.run_counters'
       - '@import_engine.page_store'
       - '@import_engine.event_log'
       - '@import_engine.sweeper'
@@ -160,3 +161,7 @@ services:
   import_engine.circuit_breaker:
     class: Drupal\import_engine\Breaker\CircuitBreaker
     arguments: ['@import_engine.breaker_store', '@logger.channel.import_engine', '@datetime.time']
+
+  import_engine.run_counters:
+    class: Drupal\import_engine\Run\RunCounters
+    arguments: ['@import_engine.item_storage']

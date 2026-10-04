@@ -7,6 +7,7 @@ namespace Drupal\import_engine\Storage;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Database\Query\Condition;
+use Drupal\Core\Database\Query\SelectInterface;
 
 /**
  * The work queue: items of a run, claimed and handled by workers.
@@ -402,6 +403,76 @@ final class ItemStorage {
   }
 
   /**
+   * Lists items for the interface, without their payload.
+   *
+   * @param list<int>|null $runIds
+   *   Only items of these runs; all runs when NULL.
+   * @param \Drupal\import_engine\Storage\ItemState|null $state
+   *   Only items in this state.
+   * @param int $limit
+   *   The most items to return.
+   * @param int $offset
+   *   The items to skip.
+   *
+   * @return list<\Drupal\import_engine\Storage\ImportItem>
+   *   The items, newest first.
+   */
+  public function listItems(?array $runIds, ?ItemState $state, int $limit, int $offset = 0): array {
+    $query = $this->database->select('import_item', 'i')
+      ->fields('i', [
+        'id',
+        'run_id',
+        'pool',
+        'source_key',
+        'state',
+        'outcome',
+        'attempts',
+        'priority',
+        'next_attempt',
+        'claimed_by',
+        'hash',
+        'error',
+      ]);
+    $this->filter($query, $runIds, $state);
+    $rows = $this->rows($query->orderBy('id', 'DESC')->range($offset, $limit));
+    return array_map($this->hydrate(...), $rows);
+  }
+
+  /**
+   * Counts items for the interface.
+   *
+   * @param list<int>|null $runIds
+   *   Only items of these runs; all runs when NULL.
+   * @param \Drupal\import_engine\Storage\ItemState|null $state
+   *   Only items in this state.
+   */
+  public function countItems(?array $runIds, ?ItemState $state): int {
+    $query = $this->database->select('import_item', 'i');
+    $this->filter($query, $runIds, $state);
+    return (int) $this->statement($query->countQuery())->fetchField();
+  }
+
+  /**
+   * Adds the conditions of a listing.
+   *
+   * @param \Drupal\Core\Database\Query\SelectInterface $query
+   *   The query.
+   * @param list<int>|null $runIds
+   *   Only items of these runs.
+   * @param \Drupal\import_engine\Storage\ItemState|null $state
+   *   Only items in this state.
+   */
+  private function filter(SelectInterface $query, ?array $runIds, ?ItemState $state): void {
+    if ($runIds !== NULL) {
+      // No runs means no items; an empty IN () is not valid SQL.
+      $query->condition('run_id', $runIds === [] ? [0] : $runIds, 'IN');
+    }
+    if ($state !== NULL) {
+      $query->condition('state', $state->value);
+    }
+  }
+
+  /**
    * Counts the items of a run by state.
    *
    * @return array<string, int>
@@ -534,7 +605,7 @@ final class ItemStorage {
       $row->claimed_by === NULL ? NULL : (string) $row->claimed_by,
       $row->hash === NULL ? NULL : bin2hex((string) $row->hash),
       $row->error === NULL ? NULL : (string) $row->error,
-      $row->payload === NULL ? NULL : $this->codec->decode((string) $row->payload),
+      !isset($row->payload) ? NULL : $this->codec->decode((string) $row->payload),
     );
   }
 

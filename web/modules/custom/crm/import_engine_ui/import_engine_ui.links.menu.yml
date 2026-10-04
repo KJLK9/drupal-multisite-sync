@@ -1,0 +1,5 @@
+import_engine_ui.runs:
+  title: 'Import runs'
+  description: 'See the runs of the imports, their items and events.'
+  parent: system.admin_config_system
+  route_name: import_engine_ui.runs

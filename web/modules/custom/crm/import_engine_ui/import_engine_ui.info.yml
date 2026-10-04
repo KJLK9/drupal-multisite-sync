@@ -1,0 +1,7 @@
+name: 'Import engine UI'
+type: module
+description: 'Pages to see and control the runs, items and circuit breakers of the import engine.'
+package: Custom
+core_version_requirement: ^11.2
+dependencies:
+  - import_engine:import_engine
