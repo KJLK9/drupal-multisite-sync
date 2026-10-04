@@ -27,6 +27,7 @@ class CustomerHooksTest extends KernelTestBase {
     'field',
     'text',
     'money_field',
+    'published_access',
     'customers',
   ];
 

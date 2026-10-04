@@ -8,6 +8,7 @@ use Drupal\Core\Entity\Attribute\ContentEntityType;
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\ContentEntityDeleteForm;
 use Drupal\Core\Entity\EntityChangedTrait;
+use Drupal\Core\Entity\EntityPublishedTrait;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Entity\Form\DeleteMultipleForm;
@@ -15,10 +16,10 @@ use Drupal\Core\Entity\Routing\AdminHtmlRouteProvider;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\products\Form\ProductForm;
-use Drupal\products\ProductAccessControlHandler;
 use Drupal\products\ProductInterface;
 use Drupal\products\ProductListBuilder;
 use Drupal\user\EntityOwnerTrait;
+use Drupal\published_access\Access\PublishedEntityAccessControlHandler;
 use Drupal\views\EntityViewsData;
 
 /**
@@ -40,7 +41,7 @@ use Drupal\views\EntityViewsData;
   handlers: [
     'list_builder' => ProductListBuilder::class,
     'views_data' => EntityViewsData::class,
-    'access' => ProductAccessControlHandler::class,
+    'access' => PublishedEntityAccessControlHandler::class,
     'form' => [
       'add' => ProductForm::class,
       'edit' => ProductForm::class,
@@ -70,6 +71,7 @@ use Drupal\views\EntityViewsData;
 class Product extends ContentEntityBase implements ProductInterface {
 
   use EntityChangedTrait;
+  use EntityPublishedTrait;
   use EntityOwnerTrait;
 
   /**

@@ -6,11 +6,12 @@ namespace Drupal\products;
 
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityChangedInterface;
+use Drupal\Core\Entity\EntityPublishedInterface;
 use Drupal\user\EntityOwnerInterface;
 
 /**
  * Provides an interface defining a products entity type.
  */
-interface ProductInterface extends ContentEntityInterface, EntityOwnerInterface, EntityChangedInterface {
+interface ProductInterface extends ContentEntityInterface, EntityOwnerInterface, EntityChangedInterface, EntityPublishedInterface {
 
 }

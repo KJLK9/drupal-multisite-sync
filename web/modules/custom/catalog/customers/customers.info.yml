@@ -6,3 +6,4 @@ core_version_requirement: ^11.2
 dependencies:
   - drupal:text
   - drupal:user
+  - published_access:published_access

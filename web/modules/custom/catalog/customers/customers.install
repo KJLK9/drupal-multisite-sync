@@ -1,0 +1,17 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the Customers module.
+ */
+
+declare(strict_types=1);
+
+/**
+ * Records the new access handler on the customer entity type.
+ */
+function customers_update_11001(): void {
+  \Drupal::entityDefinitionUpdateManager()->updateEntityType(
+    \Drupal::entityTypeManager()->getDefinition('customer'),
+  );
+}

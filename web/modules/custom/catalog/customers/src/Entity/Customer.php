@@ -8,17 +8,18 @@ use Drupal\Core\Entity\Attribute\ContentEntityType;
 use Drupal\Core\Entity\ContentEntityBase;
 use Drupal\Core\Entity\ContentEntityDeleteForm;
 use Drupal\Core\Entity\EntityChangedTrait;
+use Drupal\Core\Entity\EntityPublishedTrait;
 use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Entity\Form\DeleteMultipleForm;
 use Drupal\Core\Entity\Routing\AdminHtmlRouteProvider;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\customers\CustomerAccessControlHandler;
 use Drupal\customers\CustomerInterface;
 use Drupal\customers\CustomerListBuilder;
 use Drupal\customers\Form\CustomerForm;
 use Drupal\user\EntityOwnerTrait;
+use Drupal\published_access\Access\PublishedEntityAccessControlHandler;
 use Drupal\views\EntityViewsData;
 
 /**
@@ -40,7 +41,7 @@ use Drupal\views\EntityViewsData;
   handlers: [
     'list_builder' => CustomerListBuilder::class,
     'views_data' => EntityViewsData::class,
-    'access' => CustomerAccessControlHandler::class,
+    'access' => PublishedEntityAccessControlHandler::class,
     'form' => [
       'add' => CustomerForm::class,
       'edit' => CustomerForm::class,
@@ -70,6 +71,7 @@ use Drupal\views\EntityViewsData;
 class Customer extends ContentEntityBase implements CustomerInterface {
 
   use EntityChangedTrait;
+  use EntityPublishedTrait;
   use EntityOwnerTrait;
 
   /**

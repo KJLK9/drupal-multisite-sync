@@ -1,0 +1,5 @@
+name: 'Published access'
+type: module
+description: 'Entity access handler and query filter that hide unpublished content entities from everyone but administrators.'
+package: Custom
+core_version_requirement: ^11.2

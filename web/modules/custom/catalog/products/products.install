@@ -16,3 +16,12 @@ function products_update_11001(): void {
   \Drupal::entityDefinitionUpdateManager()
     ->installFieldStorageDefinition('base_price', 'product', 'products', $definition);
 }
+
+/**
+ * Records the new access handler on the product entity type.
+ */
+function products_update_11002(): void {
+  \Drupal::entityDefinitionUpdateManager()->updateEntityType(
+    \Drupal::entityTypeManager()->getDefinition('product'),
+  );
+}
