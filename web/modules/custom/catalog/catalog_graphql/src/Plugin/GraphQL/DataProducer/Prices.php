@@ -101,29 +101,30 @@ final class Prices extends DataProducerPluginBase implements ContainerFactoryPlu
    *   The field context, used for cache metadata.
    *
    * @return \GraphQL\Deferred
-   *   Resolves to at most $limit prices the current user may view.
+   *   Resolves to `items` (at most $limit prices the current user may view)
+   *   and `totalCount` (all prices the user may view).
    */
   public function resolve(EntityInterface $entity, string $field, int $limit, FieldContext $context): Deferred {
     $resolver = $this->buffer->add($field, (int) $entity->id());
 
     return new Deferred(function () use ($resolver, $limit, $context): array {
-      $prices = [];
+      $viewable = [];
       foreach ($resolver() as $price) {
-        if (count($prices) >= $limit) {
-          break;
-        }
         $access = $price->access('view', NULL, TRUE);
         $context->addCacheableDependency($access);
         if ($access->isAllowed()) {
           $context->addCacheableDependency($price);
-          $prices[] = $price;
+          $viewable[] = $price;
         }
       }
 
       // New prices must invalidate this result.
       $context->addCacheTags(['product_price_list']);
 
-      return $prices;
+      return [
+        'items' => array_slice($viewable, 0, $limit),
+        'totalCount' => count($viewable),
+      ];
     });
   }
 

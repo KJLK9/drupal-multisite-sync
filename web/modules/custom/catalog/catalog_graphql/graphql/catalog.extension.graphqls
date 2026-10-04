@@ -1,17 +1,17 @@
 extend type Query {
   customer(id: ID!): Customer
   """
-  Page of results: `limit` defaults to 50 and is clamped to 1..100, `offset` is at least 0.
+  Page of customers: `limit` defaults to 50 and is clamped to 1..100, `offset` is at least 0.
   """
-  customers(limit: Int! = 50, offset: Int! = 0): [Customer!]!
+  customers(limit: Int! = 50, offset: Int! = 0): CustomerList!
   product(id: ID!): Product
   """
-  Page of results: `limit` defaults to 50 and is clamped to 1..100, `offset` is at least 0.
+  Page of products: `limit` defaults to 50 and is clamped to 1..100, `offset` is at least 0.
   """
-  products(limit: Int! = 50, offset: Int! = 0): [Product!]!
+  products(limit: Int! = 50, offset: Int! = 0): ProductList!
   productPrice(id: ID!): ProductPrice
   """
-  Page of results: `limit` defaults to 50 and is clamped to 1..100, `offset` is at least 0.
+  Page of product prices: `limit` defaults to 50 and is clamped to 1..100, `offset` is at least 0.
   """
-  productPrices(limit: Int! = 50, offset: Int! = 0): [ProductPrice!]!
+  productPrices(limit: Int! = 50, offset: Int! = 0): ProductPriceList!
 }

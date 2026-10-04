@@ -8,6 +8,7 @@ use Drupal\KernelTests\KernelTestBase;
 use Drupal\Core\Database\Database;
 use Drupal\customers\Entity\Customer;
 use Drupal\graphql\Entity\Server;
+use GraphQL\Type\Introspection;
 use Drupal\product_prices\Entity\ProductPrice;
 use Drupal\products\Entity\Product;
 use Drupal\Tests\user\Traits\UserCreationTrait;
@@ -90,7 +91,7 @@ class CatalogQueryTest extends KernelTestBase {
       product(id: "' . $product->id() . '") {
         label
         basePrice { number currencyCode }
-        prices { price { number currencyCode } customer { label } product { label } }
+        prices { totalCount items { price { number currencyCode } customer { label } product { label } } }
       }
     }');
 
@@ -98,10 +99,13 @@ class CatalogQueryTest extends KernelTestBase {
       'label' => 'Widget',
       'basePrice' => ['number' => '9.950000', 'currencyCode' => 'EUR'],
       'prices' => [
-        [
-          'price' => ['number' => '7.500000', 'currencyCode' => 'EUR'],
-          'customer' => ['label' => 'ACME'],
-          'product' => ['label' => 'Widget'],
+        'totalCount' => 1,
+        'items' => [
+          [
+            'price' => ['number' => '7.500000', 'currencyCode' => 'EUR'],
+            'customer' => ['label' => 'ACME'],
+            'product' => ['label' => 'Widget'],
+          ],
         ],
       ],
     ], $data['product']);
@@ -127,7 +131,7 @@ class CatalogQueryTest extends KernelTestBase {
       }
     }
 
-    $query = '{ products(limit: 50) { label prices { price { number } customer { label } } } }';
+    $query = '{ products(limit: 50) { items { label prices { items { price { number } customer { label } } } } } }';
     // Saved entities are cached; start cold so loads show up as queries.
     foreach (['customer', 'product', 'product_price'] as $type) {
       $this->container->get('entity_type.manager')->getStorage($type)->resetCache();
@@ -136,9 +140,9 @@ class CatalogQueryTest extends KernelTestBase {
     $data = $this->query($query);
     $queries = Database::getLog('catalog');
 
-    $this->assertCount(50, $data['products']);
-    foreach ($data['products'] as $product) {
-      $this->assertCount(2, $product['prices']);
+    $this->assertCount(50, $data['products']['items']);
+    foreach ($data['products']['items'] as $product) {
+      $this->assertCount(2, $product['prices']['items']);
     }
 
     $price_queries = array_filter(
@@ -181,12 +185,12 @@ class CatalogQueryTest extends KernelTestBase {
       $this->container->get('entity_type.manager')->getStorage($type)->resetCache();
     }
     Database::startLog('catalog');
-    $data = $this->query('{ customers(limit: 20) { label prices { price { number } product { label } } } }');
+    $data = $this->query('{ customers(limit: 20) { items { label prices { items { price { number } product { label } } } } } }');
     $queries = Database::getLog('catalog');
 
-    $this->assertCount(20, $data['customers']);
-    foreach ($data['customers'] as $customer) {
-      $this->assertCount(3, $customer['prices']);
+    $this->assertCount(20, $data['customers']['items']);
+    foreach ($data['customers']['items'] as $customer) {
+      $this->assertCount(3, $customer['prices']['items']);
     }
     $price_queries = array_filter(
       $queries,
@@ -195,10 +199,13 @@ class CatalogQueryTest extends KernelTestBase {
     $this->assertLessThanOrEqual(3, count($price_queries), implode("\n", array_column($price_queries, 'query')));
 
     // The nested list is bounded as well: limit is applied per parent.
-    $first = $this->query('{ customers(limit: 1) { prices(limit: 2) { id } } }');
-    $this->assertCount(2, $first['customers'][0]['prices']);
-    $over = $this->query('{ customers(limit: 1) { prices(limit: 1000) { id } } }');
-    $this->assertCount(3, $over['customers'][0]['prices']);
+    $first = $this->query('{ customers(limit: 1) { items { prices(limit: 2) { totalCount items { id } } } } }');
+    $prices = $first['customers']['items'][0]['prices'];
+    $this->assertCount(2, $prices['items']);
+    // The total is not limited by the page size.
+    $this->assertSame(3, $prices['totalCount']);
+    $over = $this->query('{ customers(limit: 1) { items { prices(limit: 1000) { items { id } } } } }');
+    $this->assertCount(3, $over['customers']['items'][0]['prices']['items']);
   }
 
   /**
@@ -213,14 +220,16 @@ class CatalogQueryTest extends KernelTestBase {
       'customer' => $customer->id(),
       'price' => ['number' => '7.50', 'currency_code' => 'EUR'],
     ])->save();
-    $query = '{ product(id: "' . $product->id() . '") { prices { price { number } } } }';
+    $query = '{ product(id: "' . $product->id() . '") { prices { totalCount items { price { number } } } } }';
 
     // Both view permissions (the default test user).
-    $this->assertCount(1, $this->query($query)['product']['prices']);
+    $prices = $this->query($query)['product']['prices'];
+    $this->assertCount(1, $prices['items']);
+    $this->assertSame(1, $prices['totalCount']);
 
     // Product only: the price is hidden.
     $this->setUpCurrentUser([], ['view product', 'execute catalog arbitrary graphql requests']);
-    $this->assertSame([], $this->query($query)['product']['prices']);
+    $this->assertSame(['totalCount' => 0, 'items' => []], $this->query($query)['product']['prices']);
 
     // Customer only: the product itself is not visible.
     $this->setUpCurrentUser([], ['view customer', 'execute catalog arbitrary graphql requests']);
@@ -235,10 +244,14 @@ class CatalogQueryTest extends KernelTestBase {
       $this->createProduct("Product $i", '1.00');
     }
 
-    $this->assertCount(50, $this->query('{ products { id } }')['products']);
-    $this->assertCount(100, $this->query('{ products(limit: 500) { id } }')['products']);
-    $this->assertCount(1, $this->query('{ products(limit: 0) { id } }')['products']);
-    $this->assertCount(5, $this->query('{ products(limit: 100, offset: 100) { id } }')['products']);
+    $this->assertCount(50, $this->query('{ products { items { id } } }')['products']['items']);
+    $this->assertCount(100, $this->query('{ products(limit: 500) { items { id } } }')['products']['items']);
+    $this->assertCount(1, $this->query('{ products(limit: 0) { items { id } } }')['products']['items']);
+    $last = $this->query('{ products(limit: 100, offset: 100) { totalCount items { id } } }')['products'];
+    $this->assertCount(5, $last['items']);
+    // The total counts all matches, independent of limit and offset.
+    $this->assertSame(105, $last['totalCount']);
+    $this->assertSame(105, $this->query('{ products(limit: 10) { totalCount } }')['products']['totalCount']);
   }
 
   /**
@@ -273,9 +286,12 @@ class CatalogQueryTest extends KernelTestBase {
   public function testNullPaginationArgumentsAreRejected(): void {
     $this->createProduct('Widget', '1.00');
     foreach (['limit', 'offset'] as $argument) {
-      $content = $this->rawQuery('{ products(' . $argument . ': null) { id } }');
+      $content = $this->rawQuery('{ products(' . $argument . ': null) { items { id } } }');
       $this->assertArrayHasKey('errors', $content);
-      $this->assertStringNotContainsString('Internal server error', json_encode($content, JSON_THROW_ON_ERROR));
+      $json = json_encode($content, JSON_THROW_ON_ERROR);
+      $this->assertStringNotContainsString('Internal server error', $json);
+      // Rejected because the argument is non-null, not because of a typo.
+      $this->assertStringContainsString('Int!', $json);
     }
   }
 
@@ -288,18 +304,33 @@ class CatalogQueryTest extends KernelTestBase {
     }
     $ids = [];
     foreach ([0, 3, 6] as $offset) {
-      $page = $this->query('{ products(limit: 3, offset: ' . $offset . ') { id } }')['products'];
+      $page = $this->query('{ products(limit: 3, offset: ' . $offset . ') { items { id } } }')['products']['items'];
       $ids = array_merge($ids, array_map(static fn (array $row): int => (int) $row['id'], $page));
     }
     $this->assertSame(range(1, 7), $ids);
   }
 
   /**
+   * The explorer's introspection query is accepted by the depth limit.
+   */
+  public function testIntrospectionQueryIsAllowed(): void {
+    $data = $this->query(Introspection::getIntrospectionQuery());
+
+    $names = array_column($data['__schema']['types'], 'name');
+    foreach (['Query', 'Customer', 'Product', 'ProductPrice', 'Money'] as $type) {
+      $this->assertContains($type, $names);
+    }
+  }
+
+  /**
    * The cyclic schema cannot be used to build arbitrarily deep queries.
    */
   public function testQueryDepthIsLimited(): void {
-    $deep = '{ products { prices { customer { prices { product { prices { customer { id } } } } } } } }';
-    $content = $this->rawQuery($deep);
+    // Products -> items -> (prices -> items -> customer -> prices -> items ->
+    // product)* -> id.
+    $query = '{ products { items ' . str_repeat('{ prices { items { customer { prices { items { product ', 3) . '{ id }' . str_repeat(' } } } } } }', 3) . ' } }';
+    $content = $this->rawQuery($query);
+
     $this->assertArrayHasKey('errors', $content);
     $this->assertStringContainsString('depth', strtolower(json_encode($content, JSON_THROW_ON_ERROR)));
   }

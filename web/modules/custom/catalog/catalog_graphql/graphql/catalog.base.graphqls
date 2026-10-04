@@ -10,7 +10,11 @@ type Customer {
   customerNumber: String
   status: Boolean
   description: String
-  prices(limit: Int! = 50): [ProductPrice!]!
+  """
+  Prices for this item: `limit` defaults to 50 and is clamped to 1..100. The
+  total counts all prices the current user may view.
+  """
+  prices(limit: Int! = 50): ProductPriceList!
 }
 
 type Product {
@@ -20,7 +24,11 @@ type Product {
   status: Boolean
   description: String
   basePrice: Money
-  prices(limit: Int! = 50): [ProductPrice!]!
+  """
+  Prices for this item: `limit` defaults to 50 and is clamped to 1..100. The
+  total counts all prices the current user may view.
+  """
+  prices(limit: Int! = 50): ProductPriceList!
 }
 
 type ProductPrice {
@@ -29,4 +37,25 @@ type ProductPrice {
   product: Product
   customer: Customer
   price: Money
+}
+
+"""
+Lists share one shape: a page of `items` and the number of matches in total,
+so clients know when to stop paging. At the top level the total counts every
+match before the per-item view access filter; for `prices` it counts only what
+the current user may view.
+"""
+type CustomerList {
+  items: [Customer!]!
+  totalCount: Int!
+}
+
+type ProductList {
+  items: [Product!]!
+  totalCount: Int!
+}
+
+type ProductPriceList {
+  items: [ProductPrice!]!
+  totalCount: Int!
 }

@@ -85,17 +85,10 @@ class CatalogSchemaExtension extends SdlSchemaExtensionPluginBase {
       ->map('type', $builder->fromValue($entity_type))
       ->map('id', $builder->fromArgument('id')));
 
-    $registry->addFieldResolver('Query', $list_field, $builder->compose(
-      $builder->produce('entity_query')
-        ->map('type', $builder->fromValue($entity_type))
-        ->map('limit', $this->limitResolver($builder))
-        ->map('offset', $this->offsetResolver($builder))
-        // Offset paging needs a deterministic order.
-        ->map('sorts', $builder->fromValue([['field' => 'id', 'direction' => 'ASC']])),
-      $builder->produce('entity_load_multiple')
-        ->map('type', $builder->fromValue($entity_type))
-        ->map('ids', $builder->fromParent()),
-    ));
+    $registry->addFieldResolver('Query', $list_field, $builder->produce('catalog_entity_list')
+      ->map('type', $builder->fromValue($entity_type))
+      ->map('limit', $this->limitResolver($builder))
+      ->map('offset', $this->offsetResolver($builder)));
   }
 
   /**
