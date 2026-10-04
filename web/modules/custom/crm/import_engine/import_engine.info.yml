@@ -1,0 +1,5 @@
+name: 'Import engine'
+type: module
+description: 'Configurable import engine: pluggable sources, mappers and targets, with runs, retries and a dead letter queue.'
+package: Custom
+core_version_requirement: ^11.2

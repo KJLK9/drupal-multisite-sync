@@ -1,0 +1,141 @@
+import_engine.import_definition.*:
+  type: config_entity
+  label: 'Import definition'
+  constraints:
+    FullyValidatable: ~
+  mapping:
+    id:
+      type: machine_name
+      label: 'ID'
+    label:
+      type: required_label
+      label: 'Label'
+    description:
+      type: text
+      label: 'Description'
+      constraints:
+        NotNull: ~
+    source:
+      type: import_engine.plugin_reference
+      label: 'Source'
+    pagination:
+      type: import_engine.plugin_reference
+      label: 'Pagination'
+    authentication:
+      type: import_engine.plugin_reference
+      label: 'Authentication'
+    target:
+      type: mapping
+      label: 'Target'
+      mapping:
+        entity_type:
+          type: string
+          label: 'Entity type'
+          constraints:
+            NotBlank: ~
+            Regex:
+              pattern: '/^[a-z][a-z0-9_]*$/'
+              message: 'The entity type must be a machine name.'
+        bundle:
+          type: string
+          label: 'Bundle'
+          constraints:
+            NotBlank: ~
+            Regex:
+              pattern: '/^[a-z][a-z0-9_]*$/'
+              message: 'The bundle must be a machine name.'
+    mapping:
+      type: sequence
+      label: 'Field mapping'
+      sequence:
+        type: import_engine.mapping_row
+    delete_policy:
+      type: string
+      label: 'Delete policy'
+      constraints:
+        Choice:
+          callback: 'Drupal\import_engine\DeletePolicy::values'
+    resilience:
+      type: mapping
+      label: 'Resilience'
+      mapping:
+        max_attempts:
+          type: integer
+          label: 'Maximum attempts per item'
+          constraints:
+            Range:
+              min: 1
+              max: 20
+        backoff:
+          type: string
+          label: 'Backoff strategy'
+          constraints:
+            Choice:
+              callback: 'Drupal\import_engine\BackoffStrategy::values'
+        dlq_enabled:
+          type: boolean
+          label: 'Keep failed items in the dead letter queue'
+    pool:
+      type: string
+      label: 'Worker pool'
+      constraints:
+        Regex:
+          pattern: '/^[a-z][a-z0-9_]*$/'
+          message: 'The pool must be a machine name.'
+
+# A plugin and its configuration. The plugin id and the shape of its
+# configuration are checked against the plugin once the plugin types exist.
+import_engine.plugin_reference:
+  type: mapping
+  label: 'Plugin'
+  mapping:
+    plugin:
+      type: string
+      label: 'Plugin ID'
+      constraints:
+        Regex:
+          pattern: '/^[a-z][a-z0-9_]*$/'
+          message: 'The plugin ID must be a machine name.'
+    configuration:
+      type: ignore
+      label: 'Plugin configuration'
+
+# One row of the field mapping: a mapper fills one target field from named
+# source values. Each mapper declares which sources it needs.
+import_engine.mapping_row:
+  type: mapping
+  label: 'Mapping row'
+  mapping:
+    target_field:
+      type: string
+      label: 'Target field'
+      constraints:
+        NotBlank: ~
+        Regex:
+          pattern: '/^[a-z][a-z0-9_]*$/'
+          message: 'The target field must be a machine name.'
+    mapper:
+      type: mapping
+      label: 'Mapper'
+      mapping:
+        plugin:
+          type: string
+          label: 'Mapper plugin ID'
+          constraints:
+            Regex:
+              pattern: '/^[a-z][a-z0-9_]*$/'
+              message: 'The plugin ID must be a machine name.'
+        sources:
+          type: sequence
+          label: 'Source values'
+          sequence:
+            type: string
+            label: 'Dotted path in the source item'
+            constraints:
+              NotBlank: ~
+              Regex:
+                pattern: '/^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$/'
+                message: 'A source path is dotted names, for example price.customer.customer_code.'
+        settings:
+          type: ignore
+          label: 'Mapper settings'
