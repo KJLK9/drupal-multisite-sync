@@ -1,0 +1,5 @@
+services:
+  catalog_jsonapi.resource_type_subscriber:
+    class: Drupal\catalog_jsonapi\EventSubscriber\HideAuthorSubscriber
+    tags:
+      - { name: event_subscriber }

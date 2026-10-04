@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a6562fe71221beaf3d3063710a1421e6",
+    "content-hash": "553514b133ad09cb3c9dc7b7e534e9c5",
     "packages": [
         {
             "name": "asm89/stack-cors",
@@ -1494,6 +1494,72 @@
             "support": {
                 "source": "https://git.drupalcode.org/project/jsonapi_include",
                 "issues": "https://www.drupal.org/project/issues/jsonapi_include"
+            }
+        },
+        {
+            "name": "drupal/key_auth",
+            "version": "2.2.4",
+            "source": {
+                "type": "git",
+                "url": "https://git.drupalcode.org/project/key_auth.git",
+                "reference": "2.2.4"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://ftp.drupal.org/files/projects/key_auth-2.2.4.zip",
+                "reference": "2.2.4",
+                "shasum": "ae8ea1d231791008db8638e1d79b8c5ba7445f28"
+            },
+            "require": {
+                "drupal/core": "^9.5 || ^10 || ^11"
+            },
+            "type": "drupal-module",
+            "extra": {
+                "drupal": {
+                    "version": "2.2.4",
+                    "datestamp": "1788975746",
+                    "security-coverage": {
+                        "status": "covered",
+                        "message": "Covered by Drupal's security advisory policy"
+                    }
+                }
+            },
+            "notification-url": "https://packages.drupal.org/8/downloads",
+            "license": [
+                "GPL-2.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "Rajeshreeputra Pravin Dhondiba Gaikwad",
+                    "homepage": "https://www.drupal.org/u/Rajeshreeputra",
+                    "role": "Maintainer"
+                },
+                {
+                    "name": "Mike Stefanello",
+                    "homepage": "https://www.drupal.org/u/mstef",
+                    "role": "Maintainer"
+                },
+                {
+                    "name": "Dan Bryant",
+                    "homepage": "https://www.drupal.org/u/perfectcube",
+                    "role": "Maintainer"
+                },
+                {
+                    "name": "Ganesh Suryawanshi",
+                    "homepage": "https://www.drupal.org/u/ganeshsurya11",
+                    "role": "Maintainer"
+                },
+                {
+                    "name": "solideogloria",
+                    "homepage": "https://www.drupal.org/u/solideogloria",
+                    "role": "Maintainer"
+                }
+            ],
+            "description": "Provides simple key-based authentication on a per-user basis similar to basic_auth but without requiring usernames or passwords.",
+            "homepage": "https://www.drupal.org/project/key_auth",
+            "support": {
+                "source": "https://git.drupalcode.org/project/key_auth",
+                "issues": "https://www.drupal.org/project/issues/key_auth"
             }
         },
         {

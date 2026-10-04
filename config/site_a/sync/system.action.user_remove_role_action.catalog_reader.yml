@@ -1,0 +1,14 @@
+uuid: 17f72346-860a-418f-b297-c895d0bd839f
+langcode: en
+status: true
+dependencies:
+  config:
+    - user.role.catalog_reader
+  module:
+    - user
+id: user_remove_role_action.catalog_reader
+label: 'Remove the Catalog reader role from the selected user(s)'
+type: user
+plugin: user_remove_role_action
+configuration:
+  rid: catalog_reader

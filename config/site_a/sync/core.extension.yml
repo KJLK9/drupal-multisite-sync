@@ -8,6 +8,7 @@ module:
   block_content: 0
   breakpoint: 0
   catalog_graphql: 0
+  catalog_jsonapi: 0
   ckeditor5: 0
   config: 0
   contextual: 0
@@ -24,6 +25,8 @@ module:
   help: 0
   image: 0
   jsonapi: 0
+  jsonapi_include: 0
+  key_auth: 0
   layout_builder: 0
   layout_discovery: 0
   link: 0
@@ -39,6 +42,7 @@ module:
   path_alias: 0
   product_prices: 0
   products: 0
+  published_access: 0
   serialization: 0
   system: 0
   taxonomy: 0

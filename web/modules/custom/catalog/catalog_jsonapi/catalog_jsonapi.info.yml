@@ -1,0 +1,11 @@
+name: 'Catalog JSON:API'
+type: module
+description: 'Shapes the JSON:API output of customers, products and product prices.'
+package: Custom
+core_version_requirement: ^11.2
+dependencies:
+  - drupal:jsonapi
+  - jsonapi_include:jsonapi_include
+  - customers:customers
+  - products:products
+  - product_prices:product_prices

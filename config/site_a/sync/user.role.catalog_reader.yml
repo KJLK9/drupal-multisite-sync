@@ -1,0 +1,18 @@
+uuid: 476e23e2-3689-4e52-8a4b-f5410fc6a498
+langcode: en
+status: true
+dependencies:
+  module:
+    - customers
+    - graphql
+    - key_auth
+    - products
+id: catalog_reader
+label: 'Catalog reader'
+weight: 4
+is_admin: false
+permissions:
+  - 'execute catalog arbitrary graphql requests'
+  - 'use key authentication'
+  - 'view customer'
+  - 'view product'

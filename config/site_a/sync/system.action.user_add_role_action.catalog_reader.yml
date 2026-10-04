@@ -1,0 +1,14 @@
+uuid: 44cf7211-3bbf-40b3-a05b-b893e47c84f6
+langcode: en
+status: true
+dependencies:
+  config:
+    - user.role.catalog_reader
+  module:
+    - user
+id: user_add_role_action.catalog_reader
+label: 'Add the Catalog reader role to the selected user(s)'
+type: user
+plugin: user_add_role_action
+configuration:
+  rid: catalog_reader

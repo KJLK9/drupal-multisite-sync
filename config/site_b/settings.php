@@ -13,3 +13,6 @@ $settings['config_sync_directory'] = __DIR__ . '/sync';
 
 // Database connection and hash salt come from .env (see .env.example).
 require dirname(__DIR__) . '/settings.env.php';
+
+// Settings shared by all sites (trusted hosts).
+require dirname(__DIR__) . '/settings.common.php';
