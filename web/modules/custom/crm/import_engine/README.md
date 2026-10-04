@@ -191,3 +191,23 @@ call it after a batch; it waits while items are pending or retrying. See ADR
 - **Reporters** (`log`, `mail`) are listed on the import and get a report of the
   run. Each has `only_on_problems`; a mail reporter has `recipients`. A reporter
   that fails does not change the run.
+
+## Running
+
+The `RunDriver` chains the stages for as long as its `RunBudget` (time, memory,
+a stop request) allows, and the next call continues where it stopped. Drush,
+cron and later the interface only decide the budget. See ADR 0012.
+
+- `drush import:run <import> [--full] [--max-time=N] [--batch=N]` starts a run
+  or continues the unfinished one. Exit code 0: completed. 1: failed or
+  completed with errors. 2: not over yet (budget spent, waiting for retries,
+  source interrupted).
+- `drush import:work [--pool=default] [--max-time=N] [--batch=N] [--once]` is a
+  worker: it takes items of a pool, of any run, and finishes the runs that are
+  done. Run several, per pool. SIGTERM finishes the item in hand and stops
+  cleanly.
+- `drush import:status [<import>]` shows the latest run, `drush import:retry
+  <import>` makes dead items pending again and `drush import:cancel <run>`
+  cancels a run.
+- Cron continues runs that are not over only when `cron_resume_seconds` in
+  `import_engine.settings` is above 0. It never starts one.

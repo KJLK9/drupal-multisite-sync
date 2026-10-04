@@ -620,6 +620,13 @@ import_engine.settings:
         Range:
           min: 0
           max: 3650
+    cron_resume_seconds:
+      type: integer
+      label: 'Seconds per cron run to continue runs that are not over'
+      constraints:
+        Range:
+          min: 0
+          max: 3600
 
 # A reporter plugin; its configuration is typed per plugin.
 import_engine.reporter_reference:

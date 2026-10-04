@@ -122,6 +122,7 @@ class RetentionTest extends StorageTestBase {
       'retention_dead_days' => 90,
       'retention_events_days' => 99999,
       'retention_runs_days' => 90,
+      'cron_resume_seconds' => 0,
     ]);
 
     $paths = [];
@@ -129,6 +130,16 @@ class RetentionTest extends StorageTestBase {
       $paths[] = $violation->getPropertyPath();
     }
     $this->assertEqualsCanonicalizing(['retention_items_days', 'retention_events_days'], $paths);
+
+    // The cron setting has a range too.
+    $typed = $this->container->get('config.typed')->createFromNameAndData('import_engine.settings', [
+      'retention_items_days' => 7,
+      'retention_dead_days' => 90,
+      'retention_events_days' => 365,
+      'retention_runs_days' => 90,
+      'cron_resume_seconds' => 99999,
+    ]);
+    $this->assertSame('cron_resume_seconds', $typed->validate()->get(0)->getPropertyPath());
   }
 
 }

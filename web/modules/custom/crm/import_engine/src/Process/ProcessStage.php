@@ -71,18 +71,24 @@ final class ProcessStage {
    * @param int|null $now
    *   The time, for tests; the current time by default.
    * @param int|null $deadline
-   *   A timestamp after which no new item is started; the claimed items that
-   *   are left go back after their lease runs out.
+   *   A timestamp after which no new item is started.
+   * @param callable|null $shouldStop
+   *   Asked before every item; when it returns TRUE no new item is started.
+   *   The claimed items that are left are given back at once, without costing
+   *   an attempt.
    */
-  public function process(string $worker, int $limit = 50, string $pool = 'default', int $leaseSeconds = 300, ?int $now = NULL, ?int $deadline = NULL): ProcessResult {
+  public function process(string $worker, int $limit = 50, string $pool = 'default', int $leaseSeconds = 300, ?int $now = NULL, ?int $deadline = NULL, ?callable $shouldStop = NULL): ProcessResult {
     $now ??= $this->time->getCurrentTime();
     $claimed = $this->items->claim($worker, $limit, $leaseSeconds, $pool, $now);
 
     $counts = ['created' => 0, 'updated' => 0, 'unchanged' => 0, 'retried' => 0, 'failed' => 0, 'lost' => 0];
     $runs = [];
     $cache = ['runs' => [], 'definitions' => [], 'plans' => []];
-    foreach ($claimed as $item) {
-      if ($deadline !== NULL && $this->time->getCurrentTime() >= $deadline) {
+    foreach ($claimed as $index => $item) {
+      if (($deadline !== NULL && $this->time->getCurrentTime() >= $deadline) || ($shouldStop !== NULL && $shouldStop())) {
+        foreach (array_slice($claimed, $index) as $left) {
+          $this->items->defer($left, $now, $now);
+        }
         break;
       }
       $runs[$item->runId] = $item->runId;

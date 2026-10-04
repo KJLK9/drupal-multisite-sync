@@ -133,3 +133,21 @@ services:
       - '@entity_type.manager'
       - '@lock.persistent'
       - '@datetime.time'
+
+  import_engine.run_driver:
+    class: Drupal\import_engine\Drive\RunDriver
+    arguments:
+      - '@import_engine.extract_stage'
+      - '@import_engine.process_stage'
+      - '@import_engine.finish_stage'
+      - '@import_engine.source_factory'
+      - '@entity_type.manager'
+      - '@datetime.time'
+
+  import_engine.worker:
+    class: Drupal\import_engine\Drive\Worker
+    arguments: ['@import_engine.process_stage', '@import_engine.finish_stage', '@entity_type.manager', '@datetime.time']
+
+  import_engine.run_manager:
+    class: Drupal\import_engine\Run\RunManager
+    arguments: ['@entity_type.manager', '@import_engine.item_storage', '@lock.persistent', '@datetime.time']

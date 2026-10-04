@@ -251,6 +251,52 @@ final class ItemStorage {
   }
 
   /**
+   * Ends the items of a run that nobody is working on, as skipped.
+   *
+   * For a cancelled run: items that wait or are due for a retry are done and
+   * lose their payload. Items a worker has claimed are left to that worker.
+   *
+   * @return int
+   *   How many items were skipped.
+   */
+  public function skipWaiting(int $runId, ?int $now = NULL): int {
+    return (int) $this->database->update('import_item')
+      ->fields([
+        'state' => ItemState::Done->value,
+        'outcome' => Outcome::Skipped->value,
+        'payload' => NULL,
+        'changed' => $now ?? $this->time->getRequestTime(),
+      ])
+      ->condition('run_id', $runId)
+      ->condition('state', [ItemState::Pending->value, ItemState::Retrying->value], 'IN')
+      ->execute();
+  }
+
+  /**
+   * Returns the IDs of dead items of runs, oldest first.
+   *
+   * @param list<int> $runIds
+   *   The runs.
+   * @param int $limit
+   *   The most IDs to return.
+   *
+   * @return list<int>
+   *   The item IDs.
+   */
+  public function deadIds(array $runIds, int $limit): array {
+    if ($runIds === []) {
+      return [];
+    }
+    $ids = $this->column($this->database->select('import_item', 'i')
+      ->fields('i', ['id'])
+      ->condition('run_id', $runIds, 'IN')
+      ->condition('state', ItemState::Dead->value)
+      ->orderBy('id')
+      ->range(0, $limit));
+    return array_map(intval(...), $ids);
+  }
+
+  /**
    * Makes items that are retrying or dead pending again, with fresh attempts.
    *
    * @param list<int> $ids
