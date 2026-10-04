@@ -44,6 +44,36 @@ final class PathResolver {
   }
 
   /**
+   * Returns a copy of the data with a value set at the path.
+   *
+   * Missing levels are created as arrays. A non-empty path is required.
+   *
+   * @param array<mixed> $data
+   *   The data to start from; it is not changed.
+   * @param string $path
+   *   The dotted path to set.
+   * @param mixed $value
+   *   The value to put there.
+   *
+   * @return array<mixed>
+   *   The changed copy.
+   */
+  public function with(array $data, string $path, mixed $value): array {
+    if ($path === '') {
+      throw new \InvalidArgumentException('A value cannot be set at an empty path.');
+    }
+    $segments = explode('.', $path);
+    $key = array_shift($segments);
+    if ($segments === []) {
+      $data[$key] = $value;
+      return $data;
+    }
+    $child = isset($data[$key]) && is_array($data[$key]) ? $data[$key] : [];
+    $data[$key] = $this->with($child, implode('.', $segments), $value);
+    return $data;
+  }
+
+  /**
    * Turns the value at an items path into a list of items.
    *
    * A list stays as it is. A single object becomes a list of one, because

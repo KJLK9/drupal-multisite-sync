@@ -52,6 +52,16 @@ final class RequestSpec {
   }
 
   /**
+   * Returns a copy with all query parameters replaced.
+   *
+   * @param array<string, string|int> $query
+   *   The query parameters.
+   */
+  public function withQuery(array $query): self {
+    return new self($this->method, $this->url, $query, $this->headers, $this->body);
+  }
+
+  /**
    * Returns a copy with a header set.
    */
   public function withHeader(string $name, string $value): self {

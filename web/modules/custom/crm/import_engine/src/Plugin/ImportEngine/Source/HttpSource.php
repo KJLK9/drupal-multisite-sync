@@ -13,6 +13,9 @@ use Drupal\import_engine\Authentication\AuthenticationPluginManager;
 use Drupal\import_engine\Decoder\DecodeException;
 use Drupal\import_engine\Decoder\ResponseDecoder;
 use Drupal\import_engine\Http\RequestSpec;
+use Drupal\import_engine\Page\PageFingerprint;
+use Drupal\import_engine\Pagination\PaginationInterface;
+use Drupal\import_engine\Pagination\PaginationPluginManager;
 use Drupal\import_engine\Path\PathResolver;
 use Drupal\import_engine\Secret\MissingSecretException;
 use Drupal\import_engine\Source\Severity;
@@ -38,15 +41,15 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
  * - format and csv_delimiter: how to read the response, see ResponseDecoder.
  * - timeout: seconds, for connecting and for the whole request.
  *
- * The authentication plugin is added by the source factory under the key
- * "authentication".
+ * The authentication and pagination plugins of the definition are added by the
+ * source factory under the keys "authentication" and "pagination".
  */
 #[ImportSource(
   id: 'http',
   label: new TranslatableMarkup('HTTP'),
   description: new TranslatableMarkup('Reads items from an HTTP endpoint returning JSON, XML or CSV.'),
 )]
-final class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInterface {
+class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInterface {
 
   /**
    * How many items a check returns as samples.
@@ -54,9 +57,19 @@ final class HttpSource extends SourcePluginBase implements ContainerFactoryPlugi
   public const SAMPLE_SIZE = 5;
 
   /**
+   * How many pages a check reads to see whether the paging works.
+   */
+  public const CHECK_PAGES = 3;
+
+  /**
    * The authentication plugin of the definition.
    */
   private readonly AuthenticationInterface $authentication;
+
+  /**
+   * The pagination plugin of the definition.
+   */
+  private readonly PaginationInterface $pagination;
 
   /**
    * Constructs the plugin.
@@ -73,23 +86,33 @@ final class HttpSource extends SourcePluginBase implements ContainerFactoryPlugi
    *   The response decoder.
    * @param \Drupal\import_engine\Path\PathResolver $paths
    *   The path resolver.
+   * @param \Drupal\import_engine\Page\PageFingerprint $fingerprint
+   *   The page fingerprint.
    * @param \Drupal\import_engine\Authentication\AuthenticationPluginManager $authenticationManager
    *   The authentication plugin manager.
+   * @param \Drupal\import_engine\Pagination\PaginationPluginManager $paginationManager
+   *   The pagination plugin manager.
    */
-  public function __construct(
+  final public function __construct(
     array $configuration,
     $plugin_id,
     $plugin_definition,
     private readonly ClientInterface $httpClient,
     private readonly ResponseDecoder $decoder,
-    private readonly PathResolver $paths,
+    protected readonly PathResolver $paths,
+    private readonly PageFingerprint $fingerprint,
     AuthenticationPluginManager $authenticationManager,
+    PaginationPluginManager $paginationManager,
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $authentication = $this->configuration['authentication'] ?? ['plugin' => 'none', 'configuration' => []];
     $instance = $authenticationManager->createInstance($authentication['plugin'], $authentication['configuration']);
     assert($instance instanceof AuthenticationInterface);
     $this->authentication = $instance;
+    $pagination = $this->configuration['pagination'] ?? ['plugin' => 'none', 'configuration' => []];
+    $instance = $paginationManager->createInstance($pagination['plugin'], $pagination['configuration']);
+    assert($instance instanceof PaginationInterface);
+    $this->pagination = $instance;
   }
 
   /**
@@ -104,15 +127,17 @@ final class HttpSource extends SourcePluginBase implements ContainerFactoryPlugi
    * @param mixed $plugin_definition
    *   The plugin definition.
    */
-  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition): self {
-    return new self(
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition): static {
+    return new static(
       $configuration,
       $plugin_id,
       $plugin_definition,
       $container->get('http_client'),
       $container->get('import_engine.response_decoder'),
       $container->get('import_engine.path_resolver'),
+      $container->get('import_engine.page_fingerprint'),
       $container->get('plugin.manager.import_engine_authentication'),
+      $container->get('plugin.manager.import_engine_pagination'),
     );
   }
 
@@ -152,15 +177,10 @@ final class HttpSource extends SourcePluginBase implements ContainerFactoryPlugi
 
   /**
    * {@inheritdoc}
-   *
-   * Paging is added with the pagination plugins; until then a source returns
-   * everything in one page and a cursor is refused.
    */
   public function fetchPage(?string $cursor = NULL): SourcePage {
-    if ($cursor !== NULL) {
-      throw SourceException::permanent('This source does not support paging yet.');
-    }
-    $request = $this->buildRequest();
+    $request = $this->pagination->applyCursor($this->baseRequest(), $cursor);
+    $request = $this->authenticate($request);
     $label = $request->method . ' ' . $this->describe($request);
     $response = $this->send($request, $label);
 
@@ -168,62 +188,142 @@ final class HttpSource extends SourcePluginBase implements ContainerFactoryPlugi
       $data = $this->decoder->decode(
         (string) $response->getBody(),
         $response->getHeaderLine('Content-Type'),
-        (string) $this->configuration['format'],
-        (string) $this->configuration['csv_delimiter'],
+        $this->responseFormat(),
+        $this->csvDelimiter(),
       );
     }
     catch (DecodeException $exception) {
       throw SourceException::permanent($label . ': ' . $exception->getMessage(), $exception);
     }
+    $this->assertValidResponse($data, $label);
 
     $items = $this->paths->items($data, (string) $this->configuration['items_path']);
     if ($items === NULL) {
       throw SourceException::permanent(sprintf('%s: there is no list of items at "%s".', $label, $this->configuration['items_path']));
     }
-    return new SourcePage($items);
+    return new SourcePage(
+      $items,
+      $this->pagination->nextCursor($cursor, $data, $items),
+      $this->pagination->total($data),
+    );
   }
 
   /**
    * {@inheritdoc}
+   *
+   * Reads up to CHECK_PAGES pages, following the paging settings, and reports
+   * a page that holds the same data as an earlier one: the usual sign of a
+   * paging parameter the server ignores.
    */
   public function check(): SourceCheck {
     $check = new SourceCheck();
-    try {
-      $page = $this->fetchPage();
-    }
-    catch (SourceException $exception) {
-      $prefix = $exception->retryable ? 'Temporary problem, try again: ' : '';
-      return $check->add(Severity::Error, $prefix . $exception->getMessage());
-    }
+    $cursor = NULL;
+    $fingerprints = [];
+    $seen_ids = [];
+    $overlap = 0;
+    $items_read = 0;
 
-    $check->sampleItems = array_slice($page->items, 0, self::SAMPLE_SIZE);
-    $check->add(Severity::Info, sprintf('Connected: the first page holds %d items.', count($page->items)));
-    if ($page->items === []) {
-      return $check->add(Severity::Warning, 'The source returned no items, so the field mapping cannot be built from a sample.');
-    }
-
-    $ids = [];
-    foreach ($check->sampleItems as $index => $item) {
-      $id_path = (string) $this->configuration['id_path'];
-      if (!$this->paths->has($item, $id_path) || $this->paths->get($item, $id_path) === NULL || $this->paths->get($item, $id_path) === '') {
-        $check->add(Severity::Error, sprintf('Item %d has no id at "%s".', $index + 1, $id_path));
-        continue;
+    for ($number = 1; $number <= self::CHECK_PAGES; $number++) {
+      try {
+        $page = $this->fetchPage($cursor);
       }
-      $ids[] = json_encode($this->paths->get($item, $id_path));
+      catch (SourceException $exception) {
+        $prefix = ($number > 1 ? sprintf('Page %d: ', $number) : '') . ($exception->retryable ? 'Temporary problem, try again: ' : '');
+        return $check->add(Severity::Error, $prefix . $exception->getMessage());
+      }
+
+      if ($number === 1) {
+        $check->sampleItems = array_slice($page->items, 0, self::SAMPLE_SIZE);
+        $check->add(Severity::Info, sprintf('Connected: the first page holds %d items.', count($page->items)));
+        if ($page->items === []) {
+          return $check->add(Severity::Warning, 'The source returned no items, so the field mapping cannot be built from a sample.');
+        }
+        if ($page->total !== NULL) {
+          $check->add(Severity::Info, sprintf('The source reports %d items in total.', $page->total));
+        }
+      }
+      elseif ($page->items === []) {
+        break;
+      }
+
+      $fingerprint = $this->fingerprint->fingerprint($page->items);
+      if (isset($fingerprints[$fingerprint])) {
+        return $check->add(Severity::Error, sprintf(
+          'Page %d holds exactly the same data as page %d: the server ignores the paging settings. Check the names of the paging parameters and where they are sent (query or body).',
+          $number,
+          $fingerprints[$fingerprint],
+        ));
+      }
+      $fingerprints[$fingerprint] = $number;
+      $items_read += count($page->items);
+      $overlap += $this->checkIds($check, $page->items, $number, $seen_ids);
+
+      if ($page->nextCursor === NULL) {
+        break;
+      }
+      $cursor = $page->nextCursor;
     }
-    if (count($ids) !== count(array_unique($ids))) {
-      $check->add(Severity::Error, sprintf('The ids at "%s" are not unique.', $this->configuration['id_path']));
+
+    if ($overlap > 0) {
+      $check->add(Severity::Warning, sprintf('%d items appeared on more than one page; the source may shift while paging.', $overlap));
+    }
+    if (count($fingerprints) > 1) {
+      $check->add(Severity::Info, sprintf('Read %d pages with %d items and no page repeated.', count($fingerprints), $items_read));
     }
     return $check;
   }
 
   /**
+   * Checks that the items of a page have a unique id; returns the overlap.
+   *
+   * @param \Drupal\import_engine\Source\SourceCheck $check
+   *   The check to add messages to.
+   * @param list<array<string, mixed>> $items
+   *   The items of the page.
+   * @param int $number
+   *   The number of the page, counting from 1.
+   * @param array<string, true> $seen_ids
+   *   The ids on earlier pages; updated.
+   *
+   * @return int
+   *   How many items were already on an earlier page.
+   */
+  private function checkIds(SourceCheck $check, array $items, int $number, array &$seen_ids): int {
+    $id_path = (string) $this->configuration['id_path'];
+    $on_this_page = [];
+    $overlap = 0;
+    foreach ($number === 1 ? array_slice($items, 0, self::SAMPLE_SIZE) : $items as $index => $item) {
+      $id = $this->paths->has($item, $id_path) ? $this->paths->get($item, $id_path) : NULL;
+      if ($id === NULL || $id === '') {
+        $check->add(Severity::Error, $number === 1
+          ? sprintf('Item %d has no id at "%s".', $index + 1, $id_path)
+          : sprintf('Page %d, item %d has no id at "%s".', $number, $index + 1, $id_path));
+        continue;
+      }
+      $key = json_encode($id, JSON_THROW_ON_ERROR);
+      if (isset($on_this_page[$key])) {
+        $check->add(Severity::Error, sprintf('The ids at "%s" are not unique.', $id_path));
+        return $overlap;
+      }
+      $on_this_page[$key] = TRUE;
+      if (isset($seen_ids[$key])) {
+        $overlap++;
+      }
+    }
+    $seen_ids += $on_this_page;
+    return $overlap;
+  }
+
+  /**
    * Builds the request for the first page from the configuration.
+   *
+   * Subclasses replace this to describe their own kind of request. Paging and
+   * authentication are applied to it afterwards.
    *
    * @throws \Drupal\import_engine\Source\SourceException
    *   When the configuration cannot make a valid request.
    */
-  private function buildRequest(): RequestSpec {
+  protected function baseRequest(): RequestSpec {
     $headers = $this->configuration['headers'];
     if (!isset($headers['Accept']) && in_array($this->configuration['format'], ['auto', 'json'], TRUE)) {
       $headers['Accept'] = 'application/json';
@@ -236,13 +336,50 @@ final class HttpSource extends SourcePluginBase implements ContainerFactoryPlugi
       }
     }
 
-    $request = new RequestSpec(
+    return new RequestSpec(
       strtoupper((string) $this->configuration['method']),
       (string) $this->configuration['url'],
       $this->configuration['query'],
       $headers,
       $body,
     );
+  }
+
+  /**
+   * Returns the format of the response; "auto" detects it.
+   */
+  protected function responseFormat(): string {
+    return (string) $this->configuration['format'];
+  }
+
+  /**
+   * Returns the CSV delimiter.
+   */
+  protected function csvDelimiter(): string {
+    return (string) $this->configuration['csv_delimiter'];
+  }
+
+  /**
+   * Lets a subclass reject a decoded response that is an error in disguise.
+   *
+   * @param array<mixed> $data
+   *   The decoded response.
+   * @param string $label
+   *   A description of the request for messages.
+   *
+   * @throws \Drupal\import_engine\Source\SourceException
+   *   When the response reports a failure.
+   */
+  protected function assertValidResponse(array $data, string $label): void {
+  }
+
+  /**
+   * Applies the authentication to a request.
+   *
+   * @throws \Drupal\import_engine\Source\SourceException
+   *   When a secret is missing.
+   */
+  private function authenticate(RequestSpec $request): RequestSpec {
     try {
       return $this->authentication->apply($request);
     }
@@ -287,13 +424,12 @@ final class HttpSource extends SourcePluginBase implements ContainerFactoryPlugi
   }
 
   /**
-   * Describes a request for messages.
+   * Describes a request for messages: its URL without query and fragment.
    *
-   * It is the URL, which the schema keeps free of a query string and so of
-   * secrets.
+   * A next-page link can carry tokens in its query, so it is never printed.
    */
   private function describe(RequestSpec $request): string {
-    return $request->url;
+    return (string) strtok($request->url, '?#');
   }
 
 }

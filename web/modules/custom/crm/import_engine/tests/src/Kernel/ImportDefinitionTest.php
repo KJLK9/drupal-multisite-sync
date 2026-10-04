@@ -52,7 +52,14 @@ class ImportDefinitionTest extends KernelTestBase {
       ],
       'pagination' => [
         'plugin' => 'offset_limit',
-        'configuration' => ['limit_param' => 'limit', 'offset_param' => 'offset'],
+        'configuration' => [
+          'target' => 'body',
+          'offset_param' => 'variables.offset',
+          'limit_param' => 'variables.limit',
+          'page_size' => 50,
+          'total_path' => 'data.customers.totalCount',
+          'stop_on_short_page' => FALSE,
+        ],
       ],
       'authentication' => [
         'plugin' => 'api_key_header',

@@ -63,7 +63,37 @@ $check = $source->check();             // SourceCheck: messages and sample items
 decoded into the same JSON-shaped data by `ResponseDecoder`, so the rest of the
 engine only deals with one structure. The URL has no query string, parameters
 go in `query`, so secrets and paging values never appear in messages.
-GraphQL is a POST whose `body` holds the query.
+The `graphql` source shares everything with `http` but describes the request
+as a query with variables, and treats a 200 response with an `errors` list as a
+failure, which an HTTP source would not notice.
+
+## Pagination
+
+A pagination plugin keeps no state: where it is, is the cursor. It sets the
+paging values on the request (`applyCursor`) and reads the next cursor from the
+response (`nextCursor`).
+
+| Plugin | Cursor | Stops when |
+|---|---|---|
+| `offset_limit` | offset | an empty page, or the total is reached |
+| `page` | next page number | an empty page, or the last page was read |
+| `next_url` | the link from the response | the response has no link |
+| `none` | none | always after one page |
+
+- Paging values go in the query (`target: query`) or in the JSON body
+  (`target: body`, name as a dotted path such as `variables.offset`), so one
+  plugin serves REST and GraphQL.
+- `offset_limit` advances by the items that came back, not by the page size
+  asked for, and does not take a short page for the last one unless
+  `stop_on_short_page` is on: a server that caps the page size would otherwise
+  end the import after one page without an error.
+- `next_url` only follows links on the same scheme, host and port as the
+  configured URL, so the API key is never sent elsewhere.
+
+`PageFingerprint` hashes the decoded items of a page (xxh128, keys sorted, the
+whole page, never a sample). A check reads up to three pages and reports a page
+that holds the same data as an earlier one: the server ignores the paging
+settings. See ADR 0008.
 
 ## Authentication
 

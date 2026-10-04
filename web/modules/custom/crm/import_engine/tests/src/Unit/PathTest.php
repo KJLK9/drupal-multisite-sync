@@ -109,4 +109,30 @@ class PathTest extends UnitTestCase {
     }
   }
 
+  /**
+   * A value is set at a path in a copy; missing levels are created.
+   */
+  public function testWith(): void {
+    $paths = new PathResolver();
+    $original = ['variables' => ['keep' => 'me']];
+
+    $changed = $paths->with($original, 'variables.offset', 20);
+    $this->assertSame(['variables' => ['keep' => 'me', 'offset' => 20]], $changed);
+    // The original is left alone.
+    $this->assertCount(1, $original['variables']);
+
+    $this->assertSame(['a' => ['b' => ['c' => 1]]], $paths->with([], 'a.b.c', 1));
+    $this->assertSame(['variables' => ['offset' => 2]], $paths->with(['variables' => ['offset' => 1]], 'variables.offset', 2));
+    // A scalar in the way is replaced by a level.
+    $this->assertSame(['a' => ['b' => 1]], $paths->with(['a' => 'text'], 'a.b', 1));
+  }
+
+  /**
+   * An empty path cannot be set.
+   */
+  public function testWithRejectsAnEmptyPath(): void {
+    $this->expectException(\InvalidArgumentException::class);
+    (new PathResolver())->with([], '', 1);
+  }
+
 }

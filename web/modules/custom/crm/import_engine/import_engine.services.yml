@@ -7,6 +7,13 @@ services:
     class: Drupal\import_engine\Authentication\AuthenticationPluginManager
     parent: default_plugin_manager
 
+  plugin.manager.import_engine_pagination:
+    class: Drupal\import_engine\Pagination\PaginationPluginManager
+    parent: default_plugin_manager
+
+  import_engine.page_fingerprint:
+    class: Drupal\import_engine\Page\PageFingerprint
+
   import_engine.response_decoder:
     class: Drupal\import_engine\Decoder\ResponseDecoder
 

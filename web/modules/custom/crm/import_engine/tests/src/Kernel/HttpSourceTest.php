@@ -4,126 +4,21 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\import_engine\Kernel;
 
-use Drupal\import_engine\Entity\ImportDefinition;
 use Drupal\import_engine\Source\Severity;
 use Drupal\import_engine\Source\SourceException;
-use Drupal\import_engine\Source\SourceInterface;
-use Drupal\KernelTests\KernelTestBase;
-use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ConnectException;
-use GuzzleHttp\Handler\MockHandler;
-use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
-use Psr\Http\Message\RequestInterface;
 
 /**
  * Tests the HTTP source and its authentication with a mocked HTTP client.
  */
 #[Group('import_engine')]
 #[RunTestsInSeparateProcesses]
-class HttpSourceTest extends KernelTestBase {
-
-  /**
-   * The name of the environment variable that holds the test API key.
-   */
-  private const ENV_VAR = 'IMPORT_ENGINE_TEST_API_KEY';
-
-  /**
-   * The test API key; checked never to appear in messages.
-   */
-  private const KEY = 'k3y-that-must-stay-secret';
-
-  /**
-   * {@inheritdoc}
-   */
-  protected static $modules = ['system', 'import_engine'];
-
-  /**
-   * The requests the source sent.
-   *
-   * @var list<array{request: \Psr\Http\Message\RequestInterface, options: array<string, mixed>}>
-   */
-  protected array $history = [];
-
-  /**
-   * {@inheritdoc}
-   */
-  protected function tearDown(): void {
-    putenv(self::ENV_VAR);
-    parent::tearDown();
-  }
-
-  /**
-   * Returns a request the source sent.
-   */
-  protected function request(int $index): RequestInterface {
-    return $this->history[$index]['request'];
-  }
-
-  /**
-   * Replaces the HTTP client with one that answers from a queue.
-   *
-   * @param array<\Psr\Http\Message\ResponseInterface|\Throwable> $queue
-   *   The responses, or exceptions to throw, in order.
-   */
-  protected function mockResponses(array $queue): void {
-    $stack = HandlerStack::create(new MockHandler($queue));
-    // Record every request the source sends, with the options it used.
-    $stack->push(function (callable $handler): callable {
-      return function (RequestInterface $request, array $options) use ($handler) {
-        $this->history[] = ['request' => $request, 'options' => $options];
-        return $handler($request, $options);
-      };
-    });
-    $this->container->set('http_client', new Client(['handler' => $stack]));
-  }
-
-  /**
-   * Creates the source of a definition with the given source settings.
-   *
-   * @param array<string, mixed> $source
-   *   Settings that replace the defaults of the HTTP source.
-   * @param array<string, mixed> $authentication
-   *   The authentication plugin and its configuration.
-   */
-  protected function source(array $source = [], ?array $authentication = NULL): SourceInterface {
-    $definition = ImportDefinition::create([
-      'id' => 'customers',
-      'label' => 'Customers',
-      'source' => [
-        'plugin' => 'http',
-        'configuration' => $source + [
-          'url' => 'https://site-a.test/graphql/catalog',
-          'method' => 'POST',
-          'headers' => [],
-          'query' => [],
-          'body' => '{"query": "{ customers { items { id } } }"}',
-          'items_path' => 'data.customers.items',
-          'id_path' => 'id',
-          'timeout' => 10,
-          'format' => 'auto',
-          'csv_delimiter' => ',',
-        ],
-      ],
-      'authentication' => $authentication ?? [
-        'plugin' => 'api_key_header',
-        'configuration' => ['header' => 'api-key', 'env_var' => self::ENV_VAR],
-      ],
-      'target' => ['entity_type' => 'node', 'bundle' => 'account'],
-    ]);
-    return $this->container->get('import_engine.source_factory')->create($definition);
-  }
-
-  /**
-   * Returns the recorded response of site A as a response object.
-   */
-  protected function fixtureResponse(): Response {
-    return new Response(200, ['Content-Type' => 'application/json'], (string) file_get_contents(__DIR__ . '/../../fixtures/site_a_customers.json'));
-  }
+class HttpSourceTest extends HttpSourceTestBase {
 
   /**
    * The plugins are discovered.
@@ -132,8 +27,11 @@ class HttpSourceTest extends KernelTestBase {
     $sources = array_keys($this->container->get('plugin.manager.import_engine_source')->getDefinitions());
     $authentication = array_keys($this->container->get('plugin.manager.import_engine_authentication')->getDefinitions());
 
-    $this->assertContains('http', $sources);
+    $pagination = array_keys($this->container->get('plugin.manager.import_engine_pagination')->getDefinitions());
+
+    $this->assertEqualsCanonicalizing(['http', 'graphql'], $sources);
     $this->assertEqualsCanonicalizing(['none', 'api_key_header'], $authentication);
+    $this->assertEqualsCanonicalizing(['none', 'offset_limit', 'page', 'next_url'], $pagination);
   }
 
   /**
@@ -363,9 +261,9 @@ class HttpSourceTest extends KernelTestBase {
   }
 
   /**
-   * A cursor is refused until paging exists.
+   * Without paging there is no second page to ask for.
    */
-  public function testCursorIsRefusedForNow(): void {
+  public function testNoSecondPageWithoutPaging(): void {
     putenv(self::ENV_VAR . '=' . self::KEY);
     $this->mockResponses([]);
 

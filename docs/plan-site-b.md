@@ -72,9 +72,20 @@ Standard Drupal admin pages: import definitions (config entity forms), runs (pro
 ### Target content model on site B
 Own, deliberately different from site A so the mapping shows something: for example `Account` (from customer), `Item` (from product) and `Agreement` (from price), as content types in config. Differences worth showing: renamed fields, a money value split or converted, `status` to published, a reference resolved by external id, a text field with a format.
 
+## Storage budget (a design rule for every table)
+
+Table growth must be **O(size of the dataset), not O(runs x dataset)**. An import that reads 10 MB must not add 10 GB a day.
+
+- **Upsert, never append.** One row per source item in the mapping table and one row per page position in the page store, overwritten on every run. History is never stored per item per run.
+- **Items keep their payload only while it is needed.** Pending, retrying and dead items keep it (to process, edit and retry); an item that is done keeps its id, hash, outcome and timestamps, and its payload is dropped. Done items are purged after a configurable number of days, in batches.
+- **Compact hashes.** A fast non-cryptographic 128-bit hash (xxh128), stored as 16 bytes; collisions are not a security matter here and the chance is negligible.
+- **Runs are small and purged**: one row per run with counters, kept for a configurable number of days or runs. Counters come from aggregates, not from per-event rows.
+- **Index only what a query needs**, and keep wide text and JSON columns out of indexed or frequently scanned tables.
+- **Measure it.** A test imports a dataset several times and asserts that row counts stay constant after the first run.
+
 ## Milestones (each ends in something demonstrable)
 
-Progress on milestone 1: step 1 (module, config schema and the import definition) and step 2 (source plugin type, HTTP source, authentication, decoder, path resolver) are done; steps 3-7 follow.
+Progress on milestone 1: step 1 (module, config schema and the import definition) step 2 (source plugin type, HTTP source, authentication, decoder, path resolver) and step 3 (pagination plugins, GraphQL source, page fingerprint, multi-page check) are done. Step 4 (item table, extract) also builds the page store, the repeat stop and the skip described in ADR 0008; steps 5-7 follow.
 
 1. **Engine core, headless.** Definition entity, `Http` source and the four pagination plugins (unit-tested with mocked HTTP), item table, `Entity` target, run and counters, `import:run` and `import:work`. Demo: import customers from site A.
 2. **Idempotency and references.** Mapping table, hashes, products then prices with references, mark and sweep with a delete policy.

@@ -19,7 +19,7 @@ import_engine.import_definition.*:
       type: import_engine.source_reference
       label: 'Source'
     pagination:
-      type: import_engine.plugin_reference
+      type: import_engine.pagination_reference
       label: 'Pagination'
     authentication:
       type: import_engine.authentication_reference
@@ -223,21 +223,186 @@ import_engine.authentication.api_key_header:
           pattern: '/^[A-Z][A-Z0-9_]*$/'
           message: 'An environment variable name is upper case letters, digits and underscores.'
 
-# A plugin and its configuration, not yet typed per plugin (pagination).
-import_engine.plugin_reference:
+# A pagination plugin; its configuration is typed per plugin.
+import_engine.pagination_reference:
   type: mapping
-  label: 'Plugin'
+  label: 'Pagination'
   mapping:
     plugin:
       type: string
       label: 'Plugin ID'
       constraints:
-        Regex:
-          pattern: '/^[a-z][a-z0-9_]*$/'
-          message: 'The plugin ID must be a machine name.'
+        PluginExists:
+          manager: plugin.manager.import_engine_pagination
+          interface: 'Drupal\import_engine\Pagination\PaginationInterface'
     configuration:
-      type: ignore
+      type: 'import_engine.pagination.[%parent.plugin]'
       label: 'Plugin configuration'
+
+import_engine.pagination.none:
+  type: mapping
+  label: 'No pagination'
+  mapping: {}
+
+# Where a paging value is sent: as a query parameter, or in the JSON body (a
+# GraphQL variable, named with a dotted path such as variables.offset).
+import_engine.paging_target:
+  type: string
+  label: 'Send paging values in'
+  constraints:
+    Choice: [query, body]
+
+import_engine.paging_name:
+  type: string
+  label: 'Parameter name'
+  constraints:
+    NotBlank: ~
+    Regex:
+      pattern: '/^[A-Za-z0-9_@#.\[\]-]+$/'
+      message: 'A parameter name is letters, digits and the characters _ - . [ ].'
+
+import_engine.optional_path:
+  type: string
+  label: 'Dotted path in the response'
+  constraints:
+    NotNull: ~
+    Regex:
+      pattern: '/^$|^[A-Za-z0-9_@#-]+(\.[A-Za-z0-9_@#-]+)*$/'
+      message: 'A path is dotted names, for example meta.total, or empty.'
+
+import_engine.pagination.offset_limit:
+  type: mapping
+  label: 'Offset and limit'
+  mapping:
+    target:
+      type: import_engine.paging_target
+    offset_param:
+      type: import_engine.paging_name
+      label: 'Offset parameter'
+    limit_param:
+      type: import_engine.paging_name
+      label: 'Limit parameter'
+    page_size:
+      type: integer
+      label: 'Items per page'
+      constraints:
+        Range:
+          min: 1
+          max: 1000
+    total_path:
+      type: import_engine.optional_path
+      label: 'Path of the total number of items'
+    stop_on_short_page:
+      type: boolean
+      label: 'Treat a page shorter than the page size as the last page'
+
+import_engine.pagination.page:
+  type: mapping
+  label: 'Page number'
+  mapping:
+    target:
+      type: import_engine.paging_target
+    page_param:
+      type: import_engine.paging_name
+      label: 'Page parameter'
+    size_param:
+      type: string
+      label: 'Page size parameter (empty: not sent)'
+      constraints:
+        NotNull: ~
+        Regex:
+          pattern: '/^$|^[A-Za-z0-9_@#.\[\]-]+$/'
+          message: 'A parameter name is letters, digits and the characters _ - . [ ], or empty.'
+    page_size:
+      type: integer
+      label: 'Items per page'
+      constraints:
+        Range:
+          min: 1
+          max: 1000
+    first_page:
+      type: integer
+      label: 'Number of the first page'
+      constraints:
+        Range:
+          min: 0
+          max: 1
+    total_path:
+      type: import_engine.optional_path
+      label: 'Path of the total number of items'
+    last_page_path:
+      type: import_engine.optional_path
+      label: 'Path of the number of the last page'
+
+import_engine.pagination.next_url:
+  type: mapping
+  label: 'Next URL in the response'
+  mapping:
+    next_path:
+      type: string
+      label: 'Path of the link to the next page'
+      constraints:
+        NotBlank: ~
+        Regex:
+          pattern: '/^[A-Za-z0-9_@#-]+(\.[A-Za-z0-9_@#-]+)*$/'
+          message: 'A path is dotted names, for example links.next.href.'
+    total_path:
+      type: import_engine.optional_path
+      label: 'Path of the total number of items'
+
+import_engine.source.graphql:
+  type: mapping
+  label: 'GraphQL source'
+  mapping:
+    url:
+      type: string
+      label: 'URL'
+      constraints:
+        NotBlank: ~
+        Regex:
+          pattern: '/^https?:\/\/[^?#\s]+$/'
+          message: 'The URL must start with http:// or https:// and have no query string.'
+    query:
+      type: string
+      label: 'GraphQL query'
+      constraints:
+        NotBlank: ~
+    variables:
+      type: string
+      label: 'Variables (JSON object)'
+      constraints:
+        NotNull: ~
+        Callback:
+          callback: ['Drupal\import_engine\Plugin\ImportEngine\Source\HttpSource', 'validateJsonBody']
+    headers:
+      type: sequence
+      label: 'Headers'
+      sequence:
+        type: string
+        label: 'Header value'
+        constraints:
+          NotNull: ~
+          Regex:
+            pattern: '/^[^\r\n]*$/'
+            message: 'A header value cannot contain line breaks.'
+    items_path:
+      type: import_engine.optional_path
+      label: 'Path of the list of items'
+    id_path:
+      type: string
+      label: 'Path of the id in an item'
+      constraints:
+        NotBlank: ~
+        Regex:
+          pattern: '/^[A-Za-z0-9_@#-]+(\.[A-Za-z0-9_@#-]+)*$/'
+          message: 'A path is dotted names, for example customer.id.'
+    timeout:
+      type: integer
+      label: 'Timeout in seconds'
+      constraints:
+        Range:
+          min: 1
+          max: 300
 
 # One row of the field mapping: a mapper fills one target field from named
 # source values. Each mapper declares which sources it needs.
