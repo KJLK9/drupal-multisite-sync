@@ -79,8 +79,42 @@ final class ProcessStage {
    */
   public function process(string $worker, int $limit = 50, string $pool = 'default', int $leaseSeconds = 300, ?int $now = NULL, ?int $deadline = NULL, ?callable $shouldStop = NULL): ProcessResult {
     $now ??= $this->time->getCurrentTime();
-    $claimed = $this->items->claim($worker, $limit, $leaseSeconds, $pool, $now);
+    return $this->handleClaimed($this->items->claim($worker, $limit, $leaseSeconds, $pool, $now), $now, $deadline, $shouldStop);
+  }
 
+  /**
+   * Claims and handles specific items, whatever their pool, right now.
+   *
+   * For "process now" in the interface. Only pending and retrying items are
+   * taken; requeue dead items first.
+   *
+   * @param string $worker
+   *   The name of the worker.
+   * @param list<int> $ids
+   *   The item IDs.
+   * @param int $leaseSeconds
+   *   How long the claim lasts.
+   * @param int|null $now
+   *   The time, for tests; the current time by default.
+   */
+  public function processItems(string $worker, array $ids, int $leaseSeconds = 300, ?int $now = NULL): ProcessResult {
+    $now ??= $this->time->getCurrentTime();
+    return $this->handleClaimed($this->items->claimIds($worker, $ids, $leaseSeconds, $now), $now);
+  }
+
+  /**
+   * Handles claimed items, until a stop is asked for.
+   *
+   * @param list<\Drupal\import_engine\Storage\ImportItem> $claimed
+   *   The claimed items.
+   * @param int $now
+   *   The current time.
+   * @param int|null $deadline
+   *   A timestamp after which no new item is started.
+   * @param callable|null $shouldStop
+   *   Asked before every item; when it returns TRUE no new item is started.
+   */
+  private function handleClaimed(array $claimed, int $now, ?int $deadline = NULL, ?callable $shouldStop = NULL): ProcessResult {
     $counts = ['created' => 0, 'updated' => 0, 'unchanged' => 0, 'retried' => 0, 'failed' => 0, 'lost' => 0];
     $runs = [];
     $cache = ['runs' => [], 'definitions' => [], 'plans' => []];

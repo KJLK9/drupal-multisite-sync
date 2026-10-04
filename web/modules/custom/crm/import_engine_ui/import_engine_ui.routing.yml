@@ -29,3 +29,38 @@ import_engine_ui.run_cancel:
     parameters:
       import_run:
         type: 'entity:import_run'
+
+import_engine_ui.dead_letter:
+  path: '/admin/config/system/import-engine/dead-letter'
+  defaults:
+    _form: 'Drupal\import_engine_ui\Form\DeadLetterForm'
+    _title: 'Dead letter queue'
+  requirements:
+    _permission: 'view import runs'
+
+import_engine_ui.dead_letter_edit:
+  path: '/admin/config/system/import-engine/dead-letter/{item_id}/edit'
+  defaults:
+    _form: 'Drupal\import_engine_ui\Form\DeadLetterEditForm'
+    _title: 'Edit payload'
+  requirements:
+    _permission: 'administer import runs'
+    item_id: '\d+'
+
+import_engine_ui.breakers:
+  path: '/admin/config/system/import-engine/breakers'
+  defaults:
+    _controller: 'Drupal\import_engine_ui\Controller\BreakerController::list'
+    _title: 'Circuit breakers'
+  requirements:
+    _permission: 'view import runs'
+
+import_engine_ui.breaker_action:
+  path: '/admin/config/system/import-engine/breakers/{action}/{endpoint}'
+  defaults:
+    _form: 'Drupal\import_engine_ui\Form\BreakerActionForm'
+    _title: 'Circuit breaker'
+  requirements:
+    _permission: 'administer import runs'
+    action: 'trip|reset'
+    endpoint: '[^/]+'

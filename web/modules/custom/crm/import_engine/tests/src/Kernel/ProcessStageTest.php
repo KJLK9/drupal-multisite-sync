@@ -225,4 +225,22 @@ class ProcessStageTest extends NodeTestBase {
     $this->assertSame(1, $this->process->process('w', 2, 'default', 600, 1000)->claimed);
   }
 
+  /**
+   * Chosen items are handled at once, whatever their pool or due time.
+   */
+  public function testProcessItems(): void {
+    $this->extractRows([
+      ['id' => 1, 'name' => 'A', 'code' => 'A'],
+      ['id' => 2, 'name' => 'B', 'code' => 'B'],
+      ['id' => 3, 'name' => 'C', 'code' => 'C'],
+    ], ['pool' => 'heavy']);
+    $ids = array_map(static fn ($item): int => $item->id, $this->items->listItems(NULL, NULL, 10));
+
+    $result = $this->process->processItems('ui', [$ids[0], $ids[2]], 600, 1000);
+
+    $this->assertProcessed($result, created: 2);
+    $this->assertSame(1, $this->items->countByState(1)['pending']);
+    $this->assertCount(2, Node::loadMultiple());
+  }
+
 }

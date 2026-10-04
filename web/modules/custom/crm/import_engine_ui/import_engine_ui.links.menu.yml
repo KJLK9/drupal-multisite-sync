@@ -3,3 +3,15 @@ import_engine_ui.runs:
   description: 'See the runs of the imports, their items and events.'
   parent: system.admin_config_system
   route_name: import_engine_ui.runs
+
+import_engine_ui.dead_letter:
+  title: 'Dead letter queue'
+  description: 'Items that ran out of attempts: retry, edit or discard them.'
+  parent: system.admin_config_system
+  route_name: import_engine_ui.dead_letter
+
+import_engine_ui.breakers:
+  title: 'Circuit breakers'
+  description: 'The servers the imports are sparing, and a way to open or close them by hand.'
+  parent: system.admin_config_system
+  route_name: import_engine_ui.breakers

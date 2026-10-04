@@ -252,6 +252,53 @@ final class ItemStorage {
   }
 
   /**
+   * Claims specific items, for "process now" in the interface.
+   *
+   * Only items that are pending or retrying are claimed, whatever their pool
+   * and whenever they are due; dead items must be requeued first.
+   *
+   * @param string $worker
+   *   The name of the worker.
+   * @param list<int> $ids
+   *   The item IDs.
+   * @param int $leaseSeconds
+   *   How long the claim lasts.
+   * @param int|null $now
+   *   The time, for tests.
+   *
+   * @return list<\Drupal\import_engine\Storage\ImportItem>
+   *   The claimed items.
+   */
+  public function claimIds(string $worker, array $ids, int $leaseSeconds, ?int $now = NULL): array {
+    if (!preg_match('/^[A-Za-z0-9_.-]{1,40}$/', $worker)) {
+      throw new \InvalidArgumentException('A worker name is up to 40 letters, digits, dots, dashes and underscores.');
+    }
+    if ($ids === []) {
+      return [];
+    }
+    $now ??= $this->time->getRequestTime();
+    $token = $worker . ':' . bin2hex(random_bytes(6));
+    $this->database->update('import_item')
+      ->fields([
+        'state' => ItemState::Processing->value,
+        'claimed_by' => $token,
+        'claimed_until' => $now + $leaseSeconds,
+        'changed' => $now,
+      ])
+      ->expression('attempts', 'attempts + 1')
+      ->condition('id', $ids, 'IN')
+      ->condition('state', [ItemState::Pending->value, ItemState::Retrying->value], 'IN')
+      ->execute();
+
+    $rows = $this->rows($this->database->select('import_item', 'i')
+      ->fields('i')
+      ->condition('claimed_by', $token)
+      ->condition('state', ItemState::Processing->value)
+      ->orderBy('id'));
+    return array_map($this->hydrate(...), $rows);
+  }
+
+  /**
    * Ends the items of a run that nobody is working on, as skipped.
    *
    * For a cancelled run: items that wait or are due for a retry are done and

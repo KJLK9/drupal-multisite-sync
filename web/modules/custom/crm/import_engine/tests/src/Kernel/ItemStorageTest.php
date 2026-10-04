@@ -67,6 +67,49 @@ class ItemStorageTest extends StorageTestBase {
   }
 
   /**
+   * Specific items are claimed, whatever their pool, when they are waiting.
+   */
+  public function testClaimIds(): void {
+    $this->items->enqueue(1, 'default', $this->makeItems(3), now: 100);
+    $this->items->enqueue(1, 'heavy', [['key' => 'heavy', 'payload' => ['id' => 9]]], now: 100);
+    $all = $this->items->listItems([1], NULL, 10);
+    $ids = array_map(static fn ($item): int => $item->id, $all);
+    // One is retrying, due far in the future; one is already claimed.
+    $first = $this->items->claim('a', 1, 600, 'default', 100)[0];
+    $second = $this->items->claim('a', 1, 600, 'default', 100)[0];
+    $this->items->retry($second, 'later', 99999, 100);
+
+    $claimed = $this->items->claimIds('ui', $ids, 600, 200);
+
+    $this->assertCount(3, $claimed, 'The claimed item is left alone.');
+    $this->assertNotContains($first->id, array_map(static fn ($item): int => $item->id, $claimed));
+    $this->assertContains('heavy', array_map(static fn ($item): string => $item->key, $claimed));
+    $this->assertSame(['ui'], array_values(array_unique(array_map(static fn ($item): string => explode(':', (string) $item->claimToken)[0], $claimed))));
+    $this->assertSame([], $this->items->claimIds('ui', [], 600, 200));
+    $this->assertSame([], $this->items->claimIds('ui', $ids, 600, 200), 'Nothing is left to claim.');
+  }
+
+  /**
+   * Items can be listed and counted by run and state, without their payload.
+   */
+  public function testListAndCount(): void {
+    $this->items->enqueue(1, 'default', $this->makeItems(3), now: 100);
+    $this->items->enqueue(2, 'default', $this->makeItems(2), now: 100);
+    $this->items->complete($this->items->claim('a', 1, 600, 'default', 100)[0], Outcome::Created, NULL, 100);
+
+    $this->assertSame(5, $this->items->countItems(NULL, NULL));
+    $this->assertSame(3, $this->items->countItems([1], NULL));
+    $this->assertSame(0, $this->items->countItems([], NULL));
+    $this->assertSame(1, $this->items->countItems(NULL, ItemState::Done));
+    $listed = $this->items->listItems([2], ItemState::Pending, 10);
+    $this->assertCount(2, $listed);
+    $this->assertNull($listed[0]->payload);
+    // Newest first, and paged.
+    $this->assertGreaterThan($listed[1]->id, $listed[0]->id);
+    $this->assertCount(1, $this->items->listItems([2], NULL, 1, 1));
+  }
+
+  /**
    * Pools are separate queues.
    */
   public function testPoolsAreSeparate(): void {

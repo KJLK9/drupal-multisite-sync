@@ -1,0 +1,10 @@
+services:
+  import_engine_ui.dead_letter:
+    class: Drupal\import_engine_ui\DeadLetter\DeadLetterOperations
+    arguments:
+      - '@import_engine.item_storage'
+      - '@import_engine.process_stage'
+      - '@import_engine.event_log'
+      - '@entity_type.manager'
+      - '@current_user'
+      - '@messenger'
