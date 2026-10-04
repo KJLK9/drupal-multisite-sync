@@ -18,7 +18,9 @@ products, product prices) exposed through a read-only GraphQL API.
 - `web/modules/custom/catalog/`: domain modules (`customers`, `products`,
   `product_prices`) and `catalog_graphql` (API layer, depends on the others,
   never the other way round).
-- `web/modules/custom/util/`: reusable helpers (`money_field`).
+- `web/modules/custom/util/`: reusable helpers (`money_field`, `published_access`).
+- `web/modules/custom/crm/`: everything for site B (the import engine and its
+  site-specific configuration); see `docs/plan-site-b.md`.
 - `config/<site>/sync`: exported config per site (`site_a`, `site_b`), set by
   `config_sync_directory` in each `web/sites/<site>/settings.php`. Committed.
   Contrib lives in `web/modules/contrib` (ignored).
