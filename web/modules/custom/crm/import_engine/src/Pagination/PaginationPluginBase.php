@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine\Pagination;
 
+use Drupal\import_engine\Form\PluginFormTrait;
 use Drupal\Component\Plugin\PluginBase;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\import_engine\Http\RequestSpec;
@@ -18,6 +19,8 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * GraphQL variable), depending on the "target" setting.
  */
 abstract class PaginationPluginBase extends PluginBase implements PaginationInterface, ContainerFactoryPluginInterface {
+
+  use PluginFormTrait;
 
   /**
    * Constructs the plugin.

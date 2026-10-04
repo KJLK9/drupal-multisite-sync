@@ -228,3 +228,11 @@ and probes it to find out when it is back. See ADR 0013.
 - `drush import:breaker` shows the breakers, `import:breaker-trip <server>`
   opens one by hand and `import:breaker-reset <server>` closes it. Switch it off
   per import with `breaker.enabled`.
+
+## Settings forms
+
+Every plugin describes its own settings form (Drupal's `PluginFormInterface`),
+so a new plugin is complete on its own and shows up in the interface without a
+line there. A plugin without settings needs nothing: the base classes give an
+empty form. Lists and maps are text in a form field (one value, or one `name:
+value`, per line). See ADR 0014.

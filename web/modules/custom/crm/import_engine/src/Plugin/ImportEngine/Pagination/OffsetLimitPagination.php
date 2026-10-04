@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine\Plugin\ImportEngine\Pagination;
 
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\import_engine\Attribute\ImportPagination;
 use Drupal\import_engine\Http\RequestSpec;
@@ -86,6 +87,61 @@ final class OffsetLimitPagination extends PaginationPluginBase {
       throw SourceException::permanent('The paging position is not a number.');
     }
     return (int) $cursor;
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return array<string, mixed>
+   *   The form.
+   */
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state): array {
+    $form['target'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Send paging values in'),
+      '#options' => ['query' => $this->t('the query string'), 'body' => $this->t('the JSON body (a GraphQL variable)')],
+      '#default_value' => $this->configuration['target'],
+    ];
+    $form['offset_param'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Offset parameter'),
+      '#description' => $this->t('The name of the parameter that holds the offset, for example offset.'),
+      '#default_value' => $this->configuration['offset_param'],
+      '#required' => TRUE,
+    ];
+    $form['limit_param'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Limit parameter'),
+      '#description' => $this->t('The name of the parameter that holds the number of items.'),
+      '#default_value' => $this->configuration['limit_param'],
+      '#required' => TRUE,
+    ];
+    $form['page_size'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Items per page'),
+      '#description' => $this->t('Sent as the limit.'),
+      '#default_value' => $this->configuration['page_size'],
+      '#min' => 1,
+      '#max' => 1000,
+    ];
+    $form['total_path'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Path of the total'),
+      '#description' => $this->t('Dotted path in the response of the total number of items, if it has one. Lets the import stop exactly.'),
+      '#default_value' => $this->configuration['total_path'],
+    ];
+    $form['stop_on_short_page'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('A short page is the last page'),
+      '#description' => $this->t('Only switch this on when the server never returns fewer items than asked for before the end.'),
+      '#default_value' => $this->configuration['stop_on_short_page'],
+    ];
+    return $form;
   }
 
 }

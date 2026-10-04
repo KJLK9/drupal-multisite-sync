@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine\Authentication;
 
+use Drupal\import_engine\Form\PluginFormTrait;
 use Drupal\Component\Plugin\PluginBase;
 
 /**
  * Base class for authentication plugins: configuration with defaults.
  */
 abstract class AuthenticationPluginBase extends PluginBase implements AuthenticationInterface {
+
+  use PluginFormTrait;
 
   /**
    * {@inheritdoc}

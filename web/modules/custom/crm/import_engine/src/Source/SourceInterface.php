@@ -6,6 +6,7 @@ namespace Drupal\import_engine\Source;
 
 use Drupal\Component\Plugin\ConfigurableInterface;
 use Drupal\Component\Plugin\PluginInspectionInterface;
+use Drupal\Core\Plugin\PluginFormInterface;
 
 /**
  * A place the items of an import come from.
@@ -15,7 +16,7 @@ use Drupal\Component\Plugin\PluginInspectionInterface;
  * extraction resumable, and works for sources with pages (an API) and without
  * (a file).
  */
-interface SourceInterface extends PluginInspectionInterface, ConfigurableInterface {
+interface SourceInterface extends PluginInspectionInterface, ConfigurableInterface, PluginFormInterface {
 
   /**
    * Fetches one page of items during a run.

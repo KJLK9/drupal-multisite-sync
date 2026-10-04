@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine\Mapper;
 
+use Drupal\import_engine\Form\PluginFormTrait;
 use Drupal\Component\Plugin\PluginBase;
 
 /**
  * Base class for mapper plugins: settings with defaults, and text helpers.
  */
 abstract class MapperPluginBase extends PluginBase implements MapperInterface {
+
+  use PluginFormTrait;
 
   /**
    * {@inheritdoc}

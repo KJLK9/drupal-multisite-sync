@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine\Target;
 
+use Drupal\import_engine\Form\PluginFormTrait;
 use Drupal\Component\Plugin\PluginBase;
 
 /**
  * Base class for target plugins: configuration with defaults.
  */
 abstract class TargetPluginBase extends PluginBase implements TargetInterface {
+
+  use PluginFormTrait;
 
   /**
    * {@inheritdoc}

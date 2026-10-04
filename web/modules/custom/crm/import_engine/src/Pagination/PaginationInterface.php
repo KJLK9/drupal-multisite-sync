@@ -6,6 +6,7 @@ namespace Drupal\import_engine\Pagination;
 
 use Drupal\Component\Plugin\ConfigurableInterface;
 use Drupal\Component\Plugin\PluginInspectionInterface;
+use Drupal\Core\Plugin\PluginFormInterface;
 use Drupal\import_engine\Http\RequestSpec;
 
 /**
@@ -14,7 +15,7 @@ use Drupal\import_engine\Http\RequestSpec;
  * A pagination plugin keeps no state. Where it is, is the cursor: NULL for the
  * first page, otherwise the value an earlier call returned from nextCursor().
  */
-interface PaginationInterface extends PluginInspectionInterface, ConfigurableInterface {
+interface PaginationInterface extends PluginInspectionInterface, ConfigurableInterface, PluginFormInterface {
 
   /**
    * Returns a copy of the request that asks for the page at the cursor.

@@ -6,6 +6,7 @@ namespace Drupal\import_engine\Target;
 
 use Drupal\Component\Plugin\ConfigurableInterface;
 use Drupal\Component\Plugin\PluginInspectionInterface;
+use Drupal\Core\Plugin\PluginFormInterface;
 
 /**
  * Where the items of an import are written.
@@ -13,7 +14,7 @@ use Drupal\Component\Plugin\PluginInspectionInterface;
  * The first target writes content entities. Others (a file, an external
  * system) can be added without changing the stages that use this interface.
  */
-interface TargetInterface extends PluginInspectionInterface, ConfigurableInterface {
+interface TargetInterface extends PluginInspectionInterface, ConfigurableInterface, PluginFormInterface {
 
   /**
    * Returns the fields a field mapping can fill, keyed by name.

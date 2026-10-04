@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine\Plugin\ImportEngine\Mapper;
 
+use Drupal\import_engine\Form\TextLists;
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\import_engine\Attribute\ImportMapper;
 use Drupal\import_engine\Mapper\MapperPluginBase;
@@ -60,6 +62,57 @@ final class BooleanMapper extends MapperPluginBase {
       return FALSE;
     }
     throw new MappingException(sprintf('"%s" is neither a yes nor a no value.', $text));
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return array<string, mixed>
+   *   The form.
+   */
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state): array {
+    $form['true_values'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Texts that mean yes'),
+      '#description' => $this->t('One per line; upper or lower case does not matter.'),
+      '#default_value' => TextLists::formatLines($this->configuration['true_values']),
+      '#rows' => 4,
+    ];
+    $form['false_values'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Texts that mean no'),
+      '#description' => $this->t('One per line.'),
+      '#default_value' => TextLists::formatLines($this->configuration['false_values']),
+      '#rows' => 4,
+    ];
+    $form['when_empty'] = [
+      '#type' => 'select',
+      '#title' => $this->t('A missing value means'),
+      '#options' => ['false' => $this->t('no'), 'true' => $this->t('yes'), 'fail' => $this->t('an error')],
+      '#default_value' => $this->configuration['when_empty'],
+    ];
+    return $form;
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $values
+   *   The submitted values.
+   *
+   * @return array<string, mixed>
+   *   The values with the lists read from their text.
+   */
+  protected function normalizeFormValues(array $values): array {
+    foreach (['true_values', 'false_values'] as $field) {
+      $values[$field] = TextLists::lines((string) ($values[$field] ?? ''));
+    }
+    return $values;
   }
 
 }

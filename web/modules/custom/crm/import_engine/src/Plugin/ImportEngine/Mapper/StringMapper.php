@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine\Plugin\ImportEngine\Mapper;
 
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\import_engine\Attribute\ImportMapper;
 use Drupal\import_engine\Mapper\MapperPluginBase;
@@ -43,6 +44,32 @@ final class StringMapper extends MapperPluginBase {
       $text = trim($text);
     }
     return $text === '' && $this->configuration['empty_as_null'] ? NULL : $text;
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return array<string, mixed>
+   *   The form.
+   */
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state): array {
+    $form['trim'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Trim spaces around the text'),
+      '#default_value' => $this->configuration['trim'],
+    ];
+    $form['empty_as_null'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('An empty text is no value'),
+      '#description' => $this->t('Leave the field empty instead of storing an empty string.'),
+      '#default_value' => $this->configuration['empty_as_null'],
+    ];
+    return $form;
   }
 
 }

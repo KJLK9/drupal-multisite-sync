@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine\Plugin\ImportEngine\Authentication;
 
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\import_engine\Attribute\ImportAuthentication;
@@ -80,6 +81,35 @@ final class ApiKeyHeaderAuthentication extends AuthenticationPluginBase implemen
       (string) $this->configuration['header'],
       $this->secrets->get((string) $this->configuration['env_var']),
     );
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return array<string, mixed>
+   *   The form.
+   */
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state): array {
+    $form['header'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Header name'),
+      '#description' => $this->t('The header the key is sent in, for example api-key.'),
+      '#default_value' => $this->configuration['header'],
+      '#required' => TRUE,
+    ];
+    $form['env_var'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Environment variable'),
+      '#description' => $this->t('The NAME of the environment variable that holds the key, for example SITE_A_API_KEY. The key itself is never stored in the configuration.'),
+      '#default_value' => $this->configuration['env_var'],
+      '#required' => TRUE,
+    ];
+    return $form;
   }
 
 }

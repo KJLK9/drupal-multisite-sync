@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine\Plugin\ImportEngine\Target;
 
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Entity\ContentEntityTypeInterface;
 use Drupal\Core\Entity\EntityFieldManagerInterface;
 use Drupal\Core\Entity\EntityPublishedInterface;
@@ -276,6 +277,77 @@ final class EntityTarget extends TargetPluginBase implements ContainerFactoryPlu
       throw new TargetException(sprintf('The bundle "%s" of the entity type "%s" does not exist.', $bundle, $this->entityType()));
     }
     return $bundle;
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return array<string, mixed>
+   *   The form.
+   */
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state): array {
+    $options = [];
+    foreach ($this->entityTypeManager->getDefinitions() as $id => $definition) {
+      if (!$definition instanceof ContentEntityTypeInterface || $id === 'import_run') {
+        continue;
+      }
+      foreach ($this->bundleInfo->getBundleInfo($id) as $bundle => $info) {
+        $options[(string) $definition->getLabel()][$id . ':' . $bundle] = (string) $info['label'];
+      }
+    }
+    ksort($options);
+    $form['content'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Content type'),
+      '#description' => $this->t('The type and bundle of the entities that are written.'),
+      '#options' => $options,
+      '#empty_option' => $this->t('- Select -'),
+      '#default_value' => $this->configuration['entity_type'] !== '' ? $this->configuration['entity_type'] . ':' . $this->configuration['bundle'] : '',
+      '#required' => TRUE,
+    ];
+    $owner = (int) $this->configuration['owner'];
+    $form['owner'] = [
+      '#type' => 'entity_autocomplete',
+      '#target_type' => 'user',
+      '#title' => $this->t('Owner'),
+      '#description' => $this->t('The user that owns the entities and that they are saved as. Choose a user who may refer to what the import refers to; empty keeps the current user.'),
+      '#default_value' => $owner > 0 ? $this->entityTypeManager->getStorage('user')->load($owner) : NULL,
+    ];
+    return $form;
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   */
+  public function validateConfigurationForm(array &$form, FormStateInterface $form_state): void {
+    if (!str_contains((string) $form_state->getValue('content'), ':')) {
+      $form_state->setErrorByName('content', $this->t('Choose a content type.'));
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $values
+   *   The submitted values.
+   *
+   * @return array<string, mixed>
+   *   The values with the type and the bundle split out.
+   */
+  protected function normalizeFormValues(array $values): array {
+    [$values['entity_type'], $values['bundle']] = array_pad(explode(':', (string) ($values['content'] ?? ''), 2), 2, '');
+    $values['owner'] = (int) ($values['owner'] ?? 0);
+    return $values;
   }
 
 }

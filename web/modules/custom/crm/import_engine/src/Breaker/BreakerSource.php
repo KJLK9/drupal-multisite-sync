@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine\Breaker;
 
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\import_engine\Source\SourceCheck;
 use Drupal\import_engine\Source\SourceException;
 use Drupal\import_engine\Source\SourceInterface;
@@ -129,6 +130,45 @@ final class BreakerSource implements SourceInterface {
    */
   private function now(): int {
     return (int) ($this->clock)();
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return array<string, mixed>
+   *   The form.
+   */
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state): array {
+    return $this->inner->buildConfigurationForm($form, $form_state);
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   */
+  public function validateConfigurationForm(array &$form, FormStateInterface $form_state): void {
+    $this->inner->validateConfigurationForm($form, $form_state);
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   */
+  public function submitConfigurationForm(array &$form, FormStateInterface $form_state): void {
+    $this->inner->submitConfigurationForm($form, $form_state);
   }
 
 }

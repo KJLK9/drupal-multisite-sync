@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine\Plugin\ImportEngine\Source;
 
+use Drupal\import_engine\Form\TextLists;
+use Drupal\Core\Form\FormStateInterface;
 use Psr\Http\Message\ResponseInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
@@ -449,6 +451,117 @@ class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInter
    */
   private function describe(RequestSpec $request): string {
     return (string) strtok($request->url, '?#');
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return array<string, mixed>
+   *   The form.
+   */
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state): array {
+    $form['url'] = [
+      '#type' => 'url',
+      '#title' => $this->t('URL'),
+      '#description' => $this->t('Without a query string: use the query parameters below.'),
+      '#default_value' => $this->configuration['url'],
+      '#required' => TRUE,
+    ];
+    $form['method'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Method'),
+      '#options' => ['GET' => 'GET', 'POST' => 'POST'],
+      '#default_value' => $this->configuration['method'],
+    ];
+    $form['headers'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Headers'),
+      '#description' => $this->t('One per line, as <code>Name: value</code>. Keys and tokens do not belong here: use the authentication step.'),
+      '#default_value' => TextLists::formatPairs($this->configuration['headers'], ': '),
+      '#rows' => 3,
+    ];
+    $form['query'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Query parameters'),
+      '#description' => $this->t('One per line, as <code>name=value</code>.'),
+      '#default_value' => TextLists::formatPairs($this->configuration['query'], '='),
+      '#rows' => 3,
+    ];
+    $form['body'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Body (JSON)'),
+      '#description' => $this->t('For POST: a JSON object, for example a GraphQL query with its variables.'),
+      '#default_value' => $this->configuration['body'],
+      '#rows' => 5,
+    ];
+    $form['items_path'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Path of the list of items'),
+      '#description' => $this->t('Dotted path in the response, for example <code>data.customers.items</code>. Empty when the response is the list.'),
+      '#default_value' => $this->configuration['items_path'],
+    ];
+    $form['format'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Format of the response'),
+      '#options' => array_combine(ResponseDecoder::FORMATS, ResponseDecoder::FORMATS),
+      '#default_value' => $this->configuration['format'],
+    ];
+    $form['csv_delimiter'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('CSV delimiter'),
+      '#description' => $this->t('One character; only for CSV.'),
+      '#default_value' => $this->configuration['csv_delimiter'],
+      '#maxlength' => 1,
+      '#size' => 2,
+    ];
+    $form['timeout'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Timeout in seconds'),
+      '#default_value' => $this->configuration['timeout'],
+      '#min' => 1,
+      '#max' => 300,
+    ];
+    return $form;
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   */
+  public function validateConfigurationForm(array &$form, FormStateInterface $form_state): void {
+    foreach (['headers' => ': ', 'query' => '='] as $field => $separator) {
+      try {
+        TextLists::pairs((string) $form_state->getValue($field), $separator);
+      }
+      catch (\InvalidArgumentException $exception) {
+        $form_state->setErrorByName($field, $exception->getMessage());
+      }
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $values
+   *   The submitted values.
+   *
+   * @return array<string, mixed>
+   *   The values with the maps read from their text.
+   */
+  protected function normalizeFormValues(array $values): array {
+    foreach (['headers' => ': ', 'query' => '='] as $field => $separator) {
+      $values[$field] = TextLists::pairs((string) ($values[$field] ?? ''), $separator);
+    }
+    return $values;
   }
 
 }

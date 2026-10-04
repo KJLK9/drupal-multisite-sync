@@ -6,6 +6,7 @@ namespace Drupal\import_engine\Reporter;
 
 use Drupal\Component\Plugin\ConfigurableInterface;
 use Drupal\Component\Plugin\PluginInspectionInterface;
+use Drupal\Core\Plugin\PluginFormInterface;
 
 /**
  * A reporter is told how a run went, once it is over.
@@ -13,7 +14,7 @@ use Drupal\Component\Plugin\PluginInspectionInterface;
  * Every reporter has the setting only_on_problems: when it is on, the reporter
  * is only called for runs that did not end as completed.
  */
-interface ReporterInterface extends PluginInspectionInterface, ConfigurableInterface {
+interface ReporterInterface extends PluginInspectionInterface, ConfigurableInterface, PluginFormInterface {
 
   /**
    * Reports a finished run.

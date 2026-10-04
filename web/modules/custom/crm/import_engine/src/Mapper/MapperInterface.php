@@ -6,6 +6,7 @@ namespace Drupal\import_engine\Mapper;
 
 use Drupal\Component\Plugin\ConfigurableInterface;
 use Drupal\Component\Plugin\PluginInspectionInterface;
+use Drupal\Core\Plugin\PluginFormInterface;
 use Drupal\import_engine\Target\TargetField;
 
 /**
@@ -15,7 +16,7 @@ use Drupal\import_engine\Target\TargetField;
  * mapper reads are named in its plugin definition, so a mapping row can say
  * for each name where in the source item the value is.
  */
-interface MapperInterface extends PluginInspectionInterface, ConfigurableInterface {
+interface MapperInterface extends PluginInspectionInterface, ConfigurableInterface, PluginFormInterface {
 
   /**
    * Maps source values to a field value.

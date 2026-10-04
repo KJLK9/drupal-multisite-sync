@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine\Plugin\ImportEngine\Pagination;
 
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\import_engine\Attribute\ImportPagination;
 use Drupal\import_engine\Http\RequestSpec;
@@ -82,6 +83,68 @@ final class PagePagination extends PaginationPluginBase {
       throw SourceException::permanent('The paging position is not a number.');
     }
     return (int) $cursor;
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return array<string, mixed>
+   *   The form.
+   */
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state): array {
+    $form['target'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Send paging values in'),
+      '#options' => ['query' => $this->t('the query string'), 'body' => $this->t('the JSON body (a GraphQL variable)')],
+      '#default_value' => $this->configuration['target'],
+    ];
+    $form['page_param'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Page parameter'),
+      '#description' => $this->t('The name of the parameter that holds the page number.'),
+      '#default_value' => $this->configuration['page_param'],
+      '#required' => TRUE,
+    ];
+    $form['size_param'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Page size parameter'),
+      '#description' => $this->t('The name of the parameter for the number of items per page; empty when the server decides.'),
+      '#default_value' => $this->configuration['size_param'],
+    ];
+    $form['page_size'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Items per page'),
+      '#description' => $this->t('Sent as the page size, when there is a parameter for it.'),
+      '#default_value' => $this->configuration['page_size'],
+      '#min' => 1,
+      '#max' => 1000,
+    ];
+    $form['first_page'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Number of the first page'),
+      '#description' => $this->t('Most servers start at 1, some at 0.'),
+      '#default_value' => $this->configuration['first_page'],
+      '#min' => 0,
+      '#max' => 1,
+    ];
+    $form['total_path'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Path of the total'),
+      '#description' => $this->t('Dotted path in the response of the total number of items, if it has one.'),
+      '#default_value' => $this->configuration['total_path'],
+    ];
+    $form['last_page_path'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Path of the last page number'),
+      '#description' => $this->t('Dotted path in the response of the number of the last page, if it has one.'),
+      '#default_value' => $this->configuration['last_page_path'],
+    ];
+    return $form;
   }
 
 }

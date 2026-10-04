@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine\Plugin\ImportEngine\Reporter;
 
+use Drupal\import_engine\Form\TextLists;
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\Core\Mail\MailManagerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
@@ -94,6 +96,59 @@ final class MailReporter extends ReporterPluginBase implements ContainerFactoryP
         throw new \RuntimeException(sprintf('The mail to %s could not be sent.', $recipient));
       }
     }
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return array<string, mixed>
+   *   The form.
+   */
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state): array {
+    $form['recipients'] = [
+      '#type' => 'textarea',
+      '#title' => $this->t('Recipients'),
+      '#description' => $this->t('One email address per line.'),
+      '#default_value' => TextLists::formatLines((array) $this->configuration['recipients']),
+      '#rows' => 3,
+      '#required' => TRUE,
+    ];
+    return parent::buildConfigurationForm($form, $form_state);
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   */
+  public function validateConfigurationForm(array &$form, FormStateInterface $form_state): void {
+    foreach (TextLists::lines((string) $form_state->getValue('recipients')) as $address) {
+      if (!filter_var($address, FILTER_VALIDATE_EMAIL)) {
+        $form_state->setErrorByName('recipients', $this->t('"@address" is not an email address.', ['@address' => $address]));
+      }
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $values
+   *   The submitted values.
+   *
+   * @return array<string, mixed>
+   *   The values with the recipients read from their text.
+   */
+  protected function normalizeFormValues(array $values): array {
+    $values['recipients'] = TextLists::lines((string) ($values['recipients'] ?? ''));
+    return $values;
   }
 
 }

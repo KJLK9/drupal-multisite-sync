@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine\Source;
 
+use Drupal\import_engine\Form\PluginFormTrait;
 use Drupal\Component\Plugin\PluginBase;
 
 /**
  * Base class for source plugins: configuration with defaults.
  */
 abstract class SourcePluginBase extends PluginBase implements SourceInterface {
+
+  use PluginFormTrait;
 
   /**
    * {@inheritdoc}

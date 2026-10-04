@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine\Plugin\ImportEngine\Mapper;
 
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\import_engine\Attribute\ImportMapper;
@@ -47,6 +49,8 @@ final class ReferenceMapper extends MapperPluginBase implements ContainerFactory
    *   The mapping store.
    * @param \Drupal\import_engine\Key\ItemKey $keys
    *   The item key builder.
+   * @param \Drupal\Core\Entity\EntityTypeManagerInterface $entityTypeManager
+   *   The entity type manager, to list the imports.
    */
   public function __construct(
     array $configuration,
@@ -54,6 +58,7 @@ final class ReferenceMapper extends MapperPluginBase implements ContainerFactory
     $plugin_definition,
     private readonly MappingStore $mapping,
     private readonly ItemKey $keys,
+    private readonly EntityTypeManagerInterface $entityTypeManager,
   ) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
   }
@@ -77,6 +82,7 @@ final class ReferenceMapper extends MapperPluginBase implements ContainerFactory
       $plugin_definition,
       $container->get('import_engine.mapping_store'),
       $container->get('import_engine.item_key'),
+      $container->get('entity_type.manager'),
     );
   }
 
@@ -112,6 +118,40 @@ final class ReferenceMapper extends MapperPluginBase implements ContainerFactory
       return NULL;
     }
     return ['target_id' => $record->targetId];
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return array<string, mixed>
+   *   The form.
+   */
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state): array {
+    $options = [];
+    foreach ($this->entityTypeManager->getStorage('import_definition')->loadMultiple() as $id => $definition) {
+      $options[$id] = (string) $definition->label();
+    }
+    $form['definition'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Import that wrote the referenced items'),
+      '#description' => $this->t('The value of the source item is the key of an item of that import.'),
+      '#options' => $options,
+      '#empty_option' => $this->t('- Select -'),
+      '#default_value' => $this->configuration['definition'],
+      '#required' => TRUE,
+    ];
+    $form['required'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Required'),
+      '#description' => $this->t('A missing value is an error, and an item that is not imported yet is tried again later. Otherwise the field stays empty.'),
+      '#default_value' => $this->configuration['required'],
+    ];
+    return $form;
   }
 
 }

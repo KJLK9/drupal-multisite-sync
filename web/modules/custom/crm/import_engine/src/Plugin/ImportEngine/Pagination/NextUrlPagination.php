@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine\Plugin\ImportEngine\Pagination;
 
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\import_engine\Attribute\ImportPagination;
 use Drupal\import_engine\Http\RequestSpec;
@@ -88,6 +89,34 @@ final class NextUrlPagination extends PaginationPluginBase {
   private function origin(UriInterface $uri): string {
     $port = $uri->getPort() ?? ($uri->getScheme() === 'https' ? 443 : 80);
     return strtolower($uri->getScheme()) . '://' . strtolower($uri->getHost()) . ':' . $port;
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return array<string, mixed>
+   *   The form.
+   */
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state): array {
+    $form['next_path'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Path of the next page link'),
+      '#description' => $this->t('Dotted path in the response of the URL of the next page, for example links.next. It must be on the same server as the source.'),
+      '#default_value' => $this->configuration['next_path'],
+      '#required' => TRUE,
+    ];
+    $form['total_path'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Path of the total'),
+      '#description' => $this->t('Dotted path in the response of the total number of items, if it has one.'),
+      '#default_value' => $this->configuration['total_path'],
+    ];
+    return $form;
   }
 
 }

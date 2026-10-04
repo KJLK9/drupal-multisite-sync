@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine\Plugin\ImportEngine\Mapper;
 
+use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\import_engine\Attribute\ImportMapper;
 use Drupal\import_engine\Mapper\MapperPluginBase;
@@ -59,6 +60,27 @@ final class TimestampMapper extends MapperPluginBase {
       throw new MappingException(sprintf('"%s" does not follow the format "%s".', $text, $this->configuration['format']));
     }
     return $date->getTimestamp();
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return array<string, mixed>
+   *   The form.
+   */
+  public function buildConfigurationForm(array $form, FormStateInterface $form_state): array {
+    $form['format'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('Date format'),
+      '#description' => $this->t('A PHP date format the text follows, for example Y-m-d H:i. Leave empty to accept anything PHP understands.'),
+      '#default_value' => $this->configuration['format'],
+    ];
+    return $form;
   }
 
 }
