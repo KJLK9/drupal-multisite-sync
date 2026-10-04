@@ -93,11 +93,14 @@ class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInter
   protected array $authentication = ['plugin' => 'none', 'configuration' => []];
 
   /**
-   * The target entity type and bundle.
+   * The target plugin and its configuration.
    *
-   * @var array{entity_type: string, bundle: string}
+   * @var array{plugin: string, configuration: array<string, mixed>}
    */
-  protected array $target = ['entity_type' => '', 'bundle' => ''];
+  protected array $target = [
+    'plugin' => 'entity',
+    'configuration' => ['entity_type' => '', 'bundle' => '', 'owner' => 0],
+  ];
 
   /**
    * The field mapping.
@@ -114,11 +117,12 @@ class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInter
   /**
    * Retry settings.
    *
-   * @var array{max_attempts: int, backoff: string, dlq_enabled: bool, max_repeated_pages: int}
+   * @var array{max_attempts: int, backoff: string, retry_delay: int, dlq_enabled: bool, max_repeated_pages: int}
    */
   protected array $resilience = [
     'max_attempts' => 5,
     'backoff' => 'exponential',
+    'retry_delay' => 60,
     'dlq_enabled' => TRUE,
     'max_repeated_pages' => 3,
   ];
@@ -166,15 +170,8 @@ class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInter
   /**
    * {@inheritdoc}
    */
-  public function getTargetEntityType(): string {
-    return $this->target['entity_type'];
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function getTargetBundle(): string {
-    return $this->target['bundle'];
+  public function getTarget(): array {
+    return $this->target;
   }
 
   /**
@@ -203,6 +200,13 @@ class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInter
    */
   public function getBackoff(): BackoffStrategy {
     return BackoffStrategy::from($this->resilience['backoff']);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getRetryDelay(): int {
+    return $this->resilience['retry_delay'];
   }
 
   /**

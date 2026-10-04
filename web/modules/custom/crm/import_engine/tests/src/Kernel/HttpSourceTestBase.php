@@ -116,7 +116,10 @@ abstract class HttpSourceTestBase extends KernelTestBase {
         'plugin' => 'api_key_header',
         'configuration' => ['header' => 'api-key', 'env_var' => self::ENV_VAR],
       ],
-      'target' => ['entity_type' => 'node', 'bundle' => 'account'],
+      'target' => [
+        'plugin' => 'entity',
+        'configuration' => ['entity_type' => 'node', 'bundle' => 'account', 'owner' => 0],
+      ],
     ]);
     return $this->container->get('import_engine.source_factory')->create($definition);
   }

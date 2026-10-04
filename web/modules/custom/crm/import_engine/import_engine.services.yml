@@ -7,6 +7,14 @@ services:
     class: Drupal\import_engine\Authentication\AuthenticationPluginManager
     parent: default_plugin_manager
 
+  plugin.manager.import_engine_target:
+    class: Drupal\import_engine\Target\TargetPluginManager
+    parent: default_plugin_manager
+
+  plugin.manager.import_engine_mapper:
+    class: Drupal\import_engine\Mapper\MapperPluginManager
+    parent: default_plugin_manager
+
   plugin.manager.import_engine_pagination:
     class: Drupal\import_engine\Pagination\PaginationPluginManager
     parent: default_plugin_manager
@@ -76,4 +84,23 @@ services:
       - '@import_engine.page_fingerprint'
       - '@import_engine.processing_fingerprint'
       - '@lock.persistent'
+      - '@datetime.time'
+
+  import_engine.retry_policy:
+    class: Drupal\import_engine\Retry\RetryPolicy
+
+  import_engine.plan_factory:
+    class: Drupal\import_engine\Process\PlanFactory
+    arguments: ['@plugin.manager.import_engine_target', '@plugin.manager.import_engine_mapper', '@import_engine.path_resolver']
+
+  import_engine.process_stage:
+    class: Drupal\import_engine\Process\ProcessStage
+    arguments:
+      - '@import_engine.item_storage'
+      - '@import_engine.mapping_store'
+      - '@import_engine.event_log'
+      - '@import_engine.plan_factory'
+      - '@import_engine.page_fingerprint'
+      - '@import_engine.retry_policy'
+      - '@entity_type.manager'
       - '@datetime.time'

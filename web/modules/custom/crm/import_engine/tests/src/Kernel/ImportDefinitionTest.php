@@ -65,7 +65,10 @@ class ImportDefinitionTest extends KernelTestBase {
         'plugin' => 'api_key_header',
         'configuration' => ['header' => 'api-key', 'env_var' => 'SITE_A_API_KEY'],
       ],
-      'target' => ['entity_type' => 'node', 'bundle' => 'account'],
+      'target' => [
+        'plugin' => 'entity',
+        'configuration' => ['entity_type' => 'node', 'bundle' => 'account', 'owner' => 0],
+      ],
       'mapping' => [
         [
           'target_field' => 'title',
@@ -96,8 +99,9 @@ class ImportDefinitionTest extends KernelTestBase {
     $this->assertSame(['customer_code', 'site.code'], $definition->getSourceKey());
     $this->assertSame('offset_limit', $definition->getPagination()['plugin']);
     $this->assertSame('api_key_header', $definition->getAuthentication()['plugin']);
-    $this->assertSame('node', $definition->getTargetEntityType());
-    $this->assertSame('account', $definition->getTargetBundle());
+    $this->assertSame('entity', $definition->getTarget()['plugin']);
+    $this->assertSame('node', $definition->getTarget()['configuration']['entity_type']);
+    $this->assertSame('account', $definition->getTarget()['configuration']['bundle']);
     $this->assertCount(2, $definition->getMapping());
     $this->assertSame(
       ['amount' => 'price.number', 'currency' => 'price.currency_code'],
@@ -116,6 +120,7 @@ class ImportDefinitionTest extends KernelTestBase {
     $this->assertSame(BackoffStrategy::Exponential, $definition->getBackoff());
     $this->assertTrue($definition->isDlqEnabled());
     $this->assertSame(3, $definition->getMaxRepeatedPages());
+    $this->assertSame(60, $definition->getRetryDelay());
     $this->assertSame('default', $definition->getPool());
     $this->assertTrue($definition->status());
   }
@@ -126,7 +131,13 @@ class ImportDefinitionTest extends KernelTestBase {
   public function testValidDefinitionPassesValidation(): void {
     $definition = ImportDefinition::create(self::validValues() + [
       'delete_policy' => 'delete',
-      'resilience' => ['max_attempts' => 3, 'backoff' => 'linear', 'dlq_enabled' => FALSE, 'max_repeated_pages' => 5],
+      'resilience' => [
+        'max_attempts' => 3,
+        'backoff' => 'linear',
+        'retry_delay' => 30,
+        'dlq_enabled' => FALSE,
+        'max_repeated_pages' => 5,
+      ],
       'pool' => 'heavy',
     ]);
 
@@ -137,6 +148,7 @@ class ImportDefinitionTest extends KernelTestBase {
     $this->assertSame(BackoffStrategy::Linear, $loaded->getBackoff());
     $this->assertFalse($loaded->isDlqEnabled());
     $this->assertSame(5, $loaded->getMaxRepeatedPages());
+    $this->assertSame(30, $loaded->getRetryDelay());
     $this->assertSame('heavy', $loaded->getPool());
   }
 
@@ -170,6 +182,7 @@ class ImportDefinitionTest extends KernelTestBase {
       'resilience' => [
         'max_attempts' => $attempts,
         'backoff' => $backoff,
+        'retry_delay' => 60,
         'dlq_enabled' => TRUE,
         'max_repeated_pages' => $repeats,
       ],
@@ -196,12 +209,26 @@ class ImportDefinitionTest extends KernelTestBase {
       'unknown backoff' => [$resilience(3, 'random'), 'resilience.backoff'],
       'pool is not a machine name' => [['pool' => 'Heavy Pool'], 'pool'],
       'missing target entity type' => [
-        ['target' => ['entity_type' => '', 'bundle' => 'account']],
-        'target.entity_type',
+        [
+          'target' => [
+            'plugin' => 'entity',
+            'configuration' => ['entity_type' => '', 'bundle' => 'account', 'owner' => 0],
+          ],
+        ],
+        'target.configuration.entity_type',
       ],
       'target bundle is not a machine name' => [
-        ['target' => ['entity_type' => 'node', 'bundle' => 'My Bundle']],
-        'target.bundle',
+        [
+          'target' => [
+            'plugin' => 'entity',
+            'configuration' => ['entity_type' => 'node', 'bundle' => 'My Bundle', 'owner' => 0],
+          ],
+        ],
+        'target.configuration.bundle',
+      ],
+      'unknown target plugin' => [
+        ['target' => ['plugin' => 'carrier_pigeon', 'configuration' => []]],
+        'target.plugin',
       ],
       'unknown source plugin' => [
         ['source' => ['plugin' => 'carrier_pigeon', 'configuration' => []]],

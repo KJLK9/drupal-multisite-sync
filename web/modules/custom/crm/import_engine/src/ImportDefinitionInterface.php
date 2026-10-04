@@ -54,14 +54,12 @@ interface ImportDefinitionInterface extends ConfigEntityInterface {
   public function getSourceKey(): array;
 
   /**
-   * Returns the target entity type ID.
+   * Returns the target plugin ID and its configuration.
+   *
+   * @return array{plugin: string, configuration: array<string, mixed>}
+   *   The target: where the items are written.
    */
-  public function getTargetEntityType(): string;
-
-  /**
-   * Returns the target bundle.
-   */
-  public function getTargetBundle(): string;
+  public function getTarget(): array;
 
   /**
    * Returns the field mapping.
@@ -85,6 +83,11 @@ interface ImportDefinitionInterface extends ConfigEntityInterface {
    * Returns how the delay between attempts grows.
    */
   public function getBackoff(): BackoffStrategy;
+
+  /**
+   * Returns the delay before the first retry of a failed item, in seconds.
+   */
+  public function getRetryDelay(): int;
 
   /**
    * Returns after how many repeated pages in a row extraction stops.

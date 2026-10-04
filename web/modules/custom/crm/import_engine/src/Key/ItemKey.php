@@ -71,6 +71,19 @@ final class ItemKey {
       $values[] = $text;
     }
 
+    return $this->fromValues($values);
+  }
+
+  /**
+   * Builds a key from values that are already text.
+   *
+   * Used where an item refers to another by the values of its key, for example
+   * a price that names its product.
+   *
+   * @param list<string> $values
+   *   The values of the key, in the order of the key paths.
+   */
+  public function fromValues(array $values): string {
     $key = json_encode($values, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     if (strlen($key) <= self::MAX_LENGTH) {
       return $key;

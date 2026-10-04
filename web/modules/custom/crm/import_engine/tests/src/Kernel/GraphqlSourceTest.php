@@ -221,7 +221,10 @@ class GraphqlSourceTest extends HttpSourceTestBase {
         'plugin' => 'api_key_header',
         'configuration' => ['header' => 'api-key', 'env_var' => 'SITE_A_API_KEY'],
       ],
-      'target' => ['entity_type' => 'node', 'bundle' => 'account'],
+      'target' => [
+        'plugin' => 'entity',
+        'configuration' => ['entity_type' => 'node', 'bundle' => 'account', 'owner' => 0],
+      ],
     ];
     $this->assertCount(0, ImportDefinition::create($values)->getTypedData()->validate());
 

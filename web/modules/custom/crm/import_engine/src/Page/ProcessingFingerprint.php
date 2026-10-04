@@ -28,7 +28,7 @@ final class ProcessingFingerprint {
   public function of(ImportDefinitionInterface $definition): string {
     return $this->fingerprints->fingerprint([
       'key' => $definition->getSourceKey(),
-      'target' => [$definition->getTargetEntityType(), $definition->getTargetBundle()],
+      'target' => $definition->getTarget(),
       'mapping' => $definition->getMapping(),
     ]);
   }

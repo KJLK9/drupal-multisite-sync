@@ -49,7 +49,10 @@ abstract class ExtractTestBase extends StorageTestBase {
       'label' => 'Customers',
       'source' => ['plugin' => 'http', 'configuration' => []],
       'source_key' => ['id'],
-      'target' => ['entity_type' => 'node', 'bundle' => 'account'],
+      'target' => [
+        'plugin' => 'entity',
+        'configuration' => ['entity_type' => 'node', 'bundle' => 'account', 'owner' => 0],
+      ],
       'mapping' => [
         [
           'target_field' => 'title',

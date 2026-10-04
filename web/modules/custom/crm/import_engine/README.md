@@ -153,3 +153,21 @@ portions that can be continued (a page budget and a time budget per call):
 `RunStarter` allows one unfinished run per import; a persistent lock allows one
 extractor per import. `MappingStore` remembers which target entity a source item
 became and when it was last seen.
+
+## Processing
+
+Workers claim items from the work queue (`ProcessStage::process()`), map them
+and write them to the target. See ADR 0010.
+
+- **Target plugin** (`entity`): writes content entities of a type and bundle as
+  a configured owner. It lists its writable fields and validates before saving.
+- **Mapper plugins**, chosen by field type: `string`, `text`, `number`,
+  `boolean`, `timestamp`, `money` and `reference`. A mapping row gives the
+  target field, the mapper, named source paths and the settings of that mapper.
+- **Change detection**: the mapped values are hashed. When the hash equals the
+  one in the mapping store nothing is saved.
+- **Failures**: data that cannot be mapped or validated ends the item at once. A
+  reference that is not imported yet, or an unexpected error, is retried with
+  the backoff of the import (`fixed`, `linear` or `exponential`, capped at 6
+  hours) until the attempts run out. An ended item goes to the dead letter queue
+  with its payload, or is done as failed when the queue is switched off.

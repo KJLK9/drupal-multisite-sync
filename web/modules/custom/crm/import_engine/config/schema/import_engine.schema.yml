@@ -40,25 +40,8 @@ import_engine.import_definition.*:
       type: import_engine.authentication_reference
       label: 'Authentication'
     target:
-      type: mapping
+      type: import_engine.target_reference
       label: 'Target'
-      mapping:
-        entity_type:
-          type: string
-          label: 'Entity type'
-          constraints:
-            NotBlank: ~
-            Regex:
-              pattern: '/^[a-z][a-z0-9_]*$/'
-              message: 'The entity type must be a machine name.'
-        bundle:
-          type: string
-          label: 'Bundle'
-          constraints:
-            NotBlank: ~
-            Regex:
-              pattern: '/^[a-z][a-z0-9_]*$/'
-              message: 'The bundle must be a machine name.'
     mapping:
       type: sequence
       label: 'Field mapping'
@@ -87,6 +70,13 @@ import_engine.import_definition.*:
           constraints:
             Choice:
               callback: 'Drupal\import_engine\BackoffStrategy::values'
+        retry_delay:
+          type: integer
+          label: 'Seconds before the first retry of a failed item'
+          constraints:
+            Range:
+              min: 1
+              max: 86400
         dlq_enabled:
           type: boolean
           label: 'Keep failed items in the dead letter queue'
@@ -236,6 +226,49 @@ import_engine.authentication.api_key_header:
         Regex:
           pattern: '/^[A-Z][A-Z0-9_]*$/'
           message: 'An environment variable name is upper case letters, digits and underscores.'
+
+# A target plugin; its configuration is typed per plugin.
+import_engine.target_reference:
+  type: mapping
+  label: 'Target'
+  mapping:
+    plugin:
+      type: string
+      label: 'Plugin ID'
+      constraints:
+        PluginExists:
+          manager: plugin.manager.import_engine_target
+          interface: 'Drupal\import_engine\Target\TargetInterface'
+    configuration:
+      type: 'import_engine.target.[%parent.plugin]'
+      label: 'Plugin configuration'
+
+import_engine.target.entity:
+  type: mapping
+  label: 'Entity target'
+  mapping:
+    entity_type:
+      type: string
+      label: 'Entity type'
+      constraints:
+        NotBlank: ~
+        Regex:
+          pattern: '/^[a-z][a-z0-9_]*$/'
+          message: 'The entity type must be a machine name.'
+    bundle:
+      type: string
+      label: 'Bundle'
+      constraints:
+        NotBlank: ~
+        Regex:
+          pattern: '/^[a-z][a-z0-9_]*$/'
+          message: 'The bundle must be a machine name.'
+    owner:
+      type: integer
+      label: 'User ID that owns created entities (0: leave the default)'
+      constraints:
+        Range:
+          min: 0
 
 # A pagination plugin; its configuration is typed per plugin.
 import_engine.pagination_reference:
@@ -432,9 +465,9 @@ import_engine.mapping_row:
           type: string
           label: 'Mapper plugin ID'
           constraints:
-            Regex:
-              pattern: '/^[a-z][a-z0-9_]*$/'
-              message: 'The plugin ID must be a machine name.'
+            PluginExists:
+              manager: plugin.manager.import_engine_mapper
+              interface: 'Drupal\import_engine\Mapper\MapperInterface'
         sources:
           type: sequence
           label: 'Source values'
@@ -447,8 +480,99 @@ import_engine.mapping_row:
                 pattern: '/^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)*$/'
                 message: 'A source path is dotted names, for example price.customer.customer_code.'
         settings:
-          type: ignore
+          type: 'import_engine.mapper.[%parent.plugin]'
           label: 'Mapper settings'
+
+import_engine.mapper.string:
+  type: mapping
+  label: 'Text mapper'
+  mapping:
+    trim:
+      type: boolean
+      label: 'Remove surrounding white space'
+    empty_as_null:
+      type: boolean
+      label: 'Treat an empty text as no value'
+
+import_engine.mapper.text:
+  type: mapping
+  label: 'Formatted text mapper'
+  mapping:
+    format:
+      type: string
+      label: 'Text format'
+      constraints:
+        NotBlank: ~
+        Regex:
+          pattern: '/^[a-z][a-z0-9_]*$/'
+          message: 'A text format is a machine name.'
+
+import_engine.mapper.number:
+  type: mapping
+  label: 'Number mapper'
+  mapping: {}
+
+import_engine.mapper.boolean:
+  type: mapping
+  label: 'Yes or no mapper'
+  mapping:
+    true_values:
+      type: sequence
+      label: 'Texts that mean yes'
+      sequence:
+        type: string
+        constraints:
+          NotNull: ~
+    false_values:
+      type: sequence
+      label: 'Texts that mean no'
+      sequence:
+        type: string
+        constraints:
+          NotNull: ~
+    when_empty:
+      type: string
+      label: 'What a missing value means'
+      constraints:
+        Choice: [true, false, fail]
+
+import_engine.mapper.timestamp:
+  type: mapping
+  label: 'Date and time mapper'
+  mapping:
+    format:
+      type: string
+      label: 'PHP date format the text follows (empty: anything PHP understands)'
+      constraints:
+        NotNull: ~
+
+import_engine.mapper.money:
+  type: mapping
+  label: 'Amount and currency mapper'
+  mapping:
+    default_currency:
+      type: string
+      label: 'Currency when the item has none'
+      constraints:
+        Regex:
+          pattern: '/^[A-Z]{3}$/'
+          message: 'A currency code is three capital letters.'
+
+import_engine.mapper.reference:
+  type: mapping
+  label: 'Reference mapper'
+  mapping:
+    definition:
+      type: string
+      label: 'Import that wrote the referenced entities'
+      constraints:
+        NotBlank: ~
+        Regex:
+          pattern: '/^[a-z][a-z0-9_]*$/'
+          message: 'An import ID is a machine name.'
+    required:
+      type: boolean
+      label: 'A missing value or an item not yet imported is a problem'
 
 import_engine.settings:
   type: config_object
