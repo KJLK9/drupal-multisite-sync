@@ -44,6 +44,10 @@ final class DefinitionController extends ControllerBase {
                 'title' => $this->t('Edit'),
                 'url' => Url::fromRoute('import_engine_ui.definition_edit', ['import_definition' => $definition->id()]),
               ],
+              'run' => [
+                'title' => $this->t('Run now'),
+                'url' => Url::fromRoute('import_engine_ui.definition_run', ['import_definition' => $definition->id()]),
+              ],
               'runs' => [
                 'title' => $this->t('Dead letter queue'),
                 'url' => Url::fromRoute('import_engine_ui.dead_letter', [], [

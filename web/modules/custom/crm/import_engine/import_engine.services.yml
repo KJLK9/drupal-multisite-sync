@@ -165,3 +165,7 @@ services:
   import_engine.run_counters:
     class: Drupal\import_engine\Run\RunCounters
     arguments: ['@import_engine.item_storage']
+
+  import_engine.source_sampler:
+    class: Drupal\import_engine\Source\SourceSampler
+    arguments: ['@import_engine.source_factory', '@import_engine.path_discovery', '@import_engine.path_resolver']

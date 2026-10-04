@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\import_engine_ui\Form;
 
 use Drupal\Component\Plugin\ConfigurableInterface;
+use Drupal\Component\Utility\Html;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\DependencyInjection\AutowireTrait;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
@@ -20,6 +21,8 @@ use Drupal\import_engine\Entity\ImportDefinition;
 use Drupal\import_engine\Form\TextLists;
 use Drupal\import_engine\ImportDefinitionInterface;
 use Drupal\import_engine\Mapper\MapperPluginManager;
+use Drupal\import_engine\Source\SourceSampler;
+use Drupal\import_engine\Target\TargetField;
 use Drupal\import_engine\Target\TargetInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
@@ -87,6 +90,8 @@ final class DefinitionWizardForm extends FormBase {
     protected MapperPluginManager $mappers,
     #[Autowire(service: 'plugin.manager.import_engine_reporter')]
     protected DefaultPluginManager $reporters,
+    #[Autowire(service: 'import_engine.source_sampler')]
+    protected SourceSampler $sampler,
   ) {
   }
 
@@ -135,6 +140,9 @@ final class DefinitionWizardForm extends FormBase {
       4 => $this->stepMapping($form, $form_state),
       default => $this->stepBehaviour($form, $form_state),
     };
+    if ($step >= 2 && $step <= 4) {
+      $this->sourceTestPanel($form, $form_state, $step);
+    }
 
     $form['actions'] = ['#type' => 'actions', '#weight' => 100];
     if ($step > 1) {
@@ -211,7 +219,7 @@ final class DefinitionWizardForm extends FormBase {
     $form['source_key'] = [
       '#type' => 'textarea',
       '#title' => $this->t('Key of an item'),
-      '#description' => $this->t('The dotted paths of the values that together identify an item, one per line, at most five. A single path, such as <code>customer_code</code>, is the usual case.'),
+      '#description' => $this->t('The dotted paths of the values that together identify an item, one per line, at most five. A single path, such as <code>customer_code</code>, is the usual case.') . $this->pathHint($form_state),
       '#default_value' => TextLists::formatLines($values['source_key']),
       '#rows' => 2,
       '#required' => TRUE,
@@ -238,6 +246,15 @@ final class DefinitionWizardForm extends FormBase {
     $form['intro'] = [
       '#markup' => '<p>' . $this->t('Each row fills one field of the target. The mapper is chosen by the type of the field; a source is the dotted path of a value in the source item, for example <code>price.amount</code>.') . '</p>',
     ];
+    $paths = $this->samplePaths($form_state);
+    if ($paths !== []) {
+      // The paths found in the sample, offered while typing a source.
+      $form['path_list'] = [
+        '#type' => 'inline_template',
+        '#template' => '<datalist id="import-wizard-paths">{% for path in paths %}<option value="{{ path }}">{% endfor %}</datalist>',
+        '#context' => ['paths' => array_keys($paths)],
+      ];
+    }
     $form['rows'] = ['#type' => 'container', '#tree' => TRUE];
     foreach ($this->rowIds($form_state, 'mapping_row_ids', count($values['mapping'])) as $id) {
       $form['rows'][$id] = $this->mappingRow($id, $values['mapping'][$id] ?? NULL, $fields, $form, $form_state);
@@ -405,7 +422,7 @@ final class DefinitionWizardForm extends FormBase {
     foreach ($fields as $name => $field) {
       $options[$name] = $field->label . ($field->required ? ' *' : '') . ' (' . $field->type . ')';
     }
-    $field_name = (string) ($form_state->getValue([...$parents, 'target_field']) ?? $row['target_field'] ?? '');
+    $field_name = (string) ($this->input($form_state, [...$parents, 'target_field']) ?? $row['target_field'] ?? '');
     $field = $fields[$field_name] ?? NULL;
 
     $element = [
@@ -426,7 +443,8 @@ final class DefinitionWizardForm extends FormBase {
       $mapper_ids = $this->mappers->idsForFieldType($field->type);
       $current = $row['mapper'] ?? ['plugin' => '', 'configuration' => []];
       $current['configuration'] = $current['settings'] ?? [];
-      $element['mapper'] = $this->pluginSection([...$parents, 'mapper'], $this->mappers, $current, $form, $form_state, $this->t('Mapper'), $mapper_ids, $row['mapper']['sources'] ?? []);
+      $suggestion = $this->suggestPath($field, $this->samplePaths($form_state));
+      $element['mapper'] = $this->pluginSection([...$parents, 'mapper'], $this->mappers, $current, $form, $form_state, $this->t('Mapper'), $mapper_ids, $row['mapper']['sources'] ?? [], $suggestion);
     }
     $element['remove'] = [
       '#type' => 'submit',
@@ -461,18 +479,21 @@ final class DefinitionWizardForm extends FormBase {
    *   The plugins to choose from; all by default.
    * @param array<string, string>|null $sources
    *   For a mapper: the saved paths of its sources. NULL for other plugins.
+   * @param string|null $suggestion
+   *   For a mapper: a path found in the sample that probably is its first
+   *   source, used when no path is saved.
    *
    * @return array<string, mixed>
    *   The section.
    */
-  private function pluginSection(array $parents, DefaultPluginManager $manager, array $current, array &$form, FormStateInterface $form_state, mixed $title, ?array $only = NULL, ?array $sources = NULL): array {
+  private function pluginSection(array $parents, DefaultPluginManager $manager, array $current, array &$form, FormStateInterface $form_state, mixed $title, ?array $only = NULL, ?array $sources = NULL, ?string $suggestion = NULL): array {
     $options = [];
     foreach ($manager->getDefinitions() as $id => $definition) {
       if ($only === NULL || in_array((string) $id, $only, TRUE)) {
         $options[(string) $id] = (string) ($definition['label'] ?? $id);
       }
     }
-    $selected = (string) ($form_state->getValue([...$parents, 'plugin']) ?? $current['plugin'] ?? '');
+    $selected = (string) ($this->input($form_state, [...$parents, 'plugin']) ?? $current['plugin'] ?? '');
     if (!isset($options[$selected])) {
       $selected = (string) array_key_first($options);
     }
@@ -500,14 +521,17 @@ final class DefinitionWizardForm extends FormBase {
     }
     if ($sources !== NULL) {
       $section['sources'] = ['#type' => 'container'];
+      $first = TRUE;
       foreach ((array) ($definition['sources'] ?? []) as $name => $required) {
         $section['sources'][$name] = [
           '#type' => 'textfield',
           '#title' => $this->t('Source: @name', ['@name' => (string) $name]),
           '#description' => $this->t('Dotted path in the source item, for example <code>price.amount</code>.') . ($required ? '' : ' ' . $this->t('Optional.')),
-          '#default_value' => $sources[$name] ?? '',
+          '#default_value' => $sources[$name] ?? ($first && $suggestion !== NULL ? $suggestion : ''),
           '#required' => (bool) $required,
+          '#attributes' => ['list' => 'import-wizard-paths'],
         ];
+        $first = FALSE;
       }
     }
 
@@ -521,6 +545,141 @@ final class DefinitionWizardForm extends FormBase {
       $section['settings'] = $plugin->buildConfigurationForm($section['settings'], $subform_state);
     }
     return $section;
+  }
+
+  /**
+   * Builds the part of the form where the source is tried.
+   *
+   * @param array<mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   * @param int $step
+   *   The current step.
+   */
+  private function sourceTestPanel(array &$form, FormStateInterface $form_state, int $step): void {
+    $form['source_test'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Try the source'),
+      '#description' => $this->t('Reads a few pages with the settings so far, and shows what came back and the paths of the values in its items. Those paths are offered in the next steps.'),
+      '#open' => $form_state->get('source_sample') !== NULL,
+      '#weight' => 50,
+    ];
+    $form['source_test']['test'] = [
+      '#type' => 'submit',
+      '#value' => $this->t('Try the source'),
+      '#name' => 'test_source',
+      // A person who has not filled in this step yet may still try.
+      '#limit_validation_errors' => match ($step) {
+        2 => [['pagination'], ['authentication']],
+        3 => [['source_key']],
+        default => [],
+      },
+      '#submit' => ['::testSource'],
+    ];
+
+    $sample = $form_state->get('source_sample');
+    if (!is_array($sample)) {
+      return;
+    }
+    $items = [];
+    foreach ($sample['messages'] as $message) {
+      $items[] = ['#markup' => '<strong>' . ucfirst((string) $message['severity']) . ':</strong> ' . Html::escape((string) $message['message'])];
+    }
+    $form['source_test']['messages'] = ['#theme' => 'item_list', '#items' => $items];
+    if ($sample['paths'] !== []) {
+      $rows = [];
+      foreach (array_slice($sample['paths'], 0, 100, TRUE) as $path => $info) {
+        $rows[] = [$path, $info['type'], $info['example']];
+      }
+      $form['source_test']['paths'] = [
+        '#type' => 'table',
+        '#caption' => $this->t('Paths in @count sample items', ['@count' => (string) $sample['items']]),
+        '#header' => [$this->t('Path'), $this->t('Type'), $this->t('Example')],
+        '#rows' => $rows,
+      ];
+    }
+  }
+
+  /**
+   * Tries the source with what has been filled in so far.
+   *
+   * @param array<mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   */
+  public function testSource(array &$form, FormStateInterface $form_state): void {
+    $step = (int) $form_state->get('step');
+    if ($step === 2) {
+      $this->storeStep(2, $form, $form_state);
+    }
+    $values = $this->values($form_state);
+    if ($step === 3) {
+      $values['source_key'] = TextLists::lines((string) $form_state->getValue('source_key'));
+      $form_state->set('definition', $values);
+    }
+    $sample = $this->sampler->sample(ImportDefinition::create($values + ['id' => 'draft', 'label' => 'draft']));
+    $form_state->set('source_sample', [
+      'messages' => $sample->messages,
+      'paths' => $sample->paths,
+      'items' => $sample->items,
+    ]);
+    $form_state->setRebuild();
+  }
+
+  /**
+   * Returns the paths found in the last try of the source.
+   *
+   * @return array<string, array{type: string, example: string}>
+   *   The paths with their type and an example.
+   */
+  private function samplePaths(FormStateInterface $form_state): array {
+    $sample = $form_state->get('source_sample');
+    return is_array($sample) ? $sample['paths'] : [];
+  }
+
+  /**
+   * Returns a sentence that names some of the paths found in the sample.
+   */
+  private function pathHint(FormStateInterface $form_state): string {
+    $paths = array_keys($this->samplePaths($form_state));
+    if ($paths === []) {
+      return '';
+    }
+    $shown = array_slice($paths, 0, 12);
+    return ' ' . $this->t('Found in the sample: @paths.', ['@paths' => implode(', ', $shown) . (count($paths) > 12 ? ', …' : '')]);
+  }
+
+  /**
+   * Finds the path in the sample that most likely holds a field's value.
+   *
+   * A path matches when its name, or its last part, is the name of the field
+   * without the prefix of a field and the characters that differ in style: a
+   * field "field_customer_code" and a path "customer.code" or "customerCode".
+   *
+   * @param \Drupal\import_engine\Target\TargetField $field
+   *   The field.
+   * @param array<string, array{type: string, example: string}> $paths
+   *   The paths of the sample.
+   */
+  private function suggestPath(TargetField $field, array $paths): ?string {
+    $normalize = static fn (string $text): string => strtolower((string) preg_replace('/[^A-Za-z0-9]/', '', $text));
+    $wanted = $normalize(preg_replace('/^field_/', '', $field->name) ?? $field->name);
+    if ($wanted === '') {
+      return NULL;
+    }
+    foreach (array_keys($paths) as $path) {
+      if ($normalize((string) $path) === $wanted) {
+        return (string) $path;
+      }
+    }
+    foreach (array_keys($paths) as $path) {
+      if ($normalize((string) substr((string) strrchr('.' . $path, '.'), 1)) === $wanted) {
+        return (string) $path;
+      }
+    }
+    return NULL;
   }
 
   /**
@@ -590,6 +749,22 @@ final class DefinitionWizardForm extends FormBase {
   }
 
   /**
+   * Returns what a person chose in an element, also while values are limited.
+   *
+   * A button that skips validation (adding or removing a row) drops the
+   * values of the other elements, but what was typed is still in the input;
+   * the sections that depend on a choice must not vanish because of that.
+   *
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   * @param array<int, string> $parents
+   *   The parents of the element.
+   */
+  private function input(FormStateInterface $form_state, array $parents): mixed {
+    return $form_state->getValue($parents) ?? NestedArray::getValue($form_state->getUserInput(), $parents);
+  }
+
+  /**
    * Returns the IDs of the rows of a list on this step.
    *
    * @return list<int>
@@ -633,7 +808,9 @@ final class DefinitionWizardForm extends FormBase {
    *   The form state.
    */
   public function validateForm(array &$form, FormStateInterface $form_state): void {
-    if (in_array($form_state->getTriggeringElement()['#name'] ?? '', ['add_mapping_row', 'add_reporter'], TRUE) || str_starts_with((string) ($form_state->getTriggeringElement()['#name'] ?? ''), 'remove_')) {
+    $button = (string) ($form_state->getTriggeringElement()['#name'] ?? '');
+    $step = (int) $form_state->get('step');
+    if (in_array($button, ['add_mapping_row', 'add_reporter'], TRUE) || str_starts_with($button, 'remove_') || ($button === 'test_source' && $step !== 2)) {
       return;
     }
     foreach ($this->sectionsOfStep($form_state) as $path => $manager) {
@@ -662,6 +839,10 @@ final class DefinitionWizardForm extends FormBase {
       $field = (string) ($row['target_field'] ?? '');
       if ($field === '') {
         $form_state->setErrorByName('rows][' . $id . '][target_field', $this->t('Choose the field this row fills, or remove the row.'));
+        continue;
+      }
+      if (($row['mapper']['plugin'] ?? '') === '') {
+        $form_state->setErrorByName('rows][' . $id . '][target_field', $this->t('Choose a mapper for the field "@field", or remove the row.', ['@field' => $field]));
         continue;
       }
       if (isset($seen[$field])) {

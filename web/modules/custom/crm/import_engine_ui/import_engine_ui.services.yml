@@ -8,3 +8,13 @@ services:
       - '@entity_type.manager'
       - '@current_user'
       - '@messenger'
+
+  import_engine_ui.run_batch:
+    class: Drupal\import_engine_ui\Run\RunBatch
+    arguments:
+      - '@import_engine.run_driver'
+      - '@import_engine.item_storage'
+      - '@entity_type.manager'
+      - '@current_user'
+      - '@messenger'
+      - '@datetime.time'

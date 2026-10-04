@@ -310,6 +310,13 @@ class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInter
    */
   private function checkKeys(SourceCheck $check, array $items, int $number, array &$seen_keys): int {
     $key_paths = $this->configuration['source_key'] ?? [];
+    if ($key_paths === []) {
+      // While an import is being set up the key may not be chosen yet.
+      if ($number === 1) {
+        $check->add(Severity::Info, 'No key is chosen yet, so the keys of the items were not checked.');
+      }
+      return 0;
+    }
     $on_this_page = [];
     $overlap = 0;
     foreach ($number === 1 ? array_slice($items, 0, self::SAMPLE_SIZE) : $items as $index => $item) {

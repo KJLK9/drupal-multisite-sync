@@ -6,6 +6,10 @@ namespace Drupal\Tests\import_engine_ui\Kernel;
 
 use Drupal\import_engine\Run\RunStatus;
 use Drupal\Core\Form\FormState;
+use GuzzleHttp\Client;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Psr7\Response;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\import_engine\Entity\ImportDefinition;
 use Drupal\import_engine\Run\Trigger;
@@ -70,6 +74,7 @@ class DefinitionWizardTest extends NodeTestBase {
       'save' => 'Save',
       'add_mapping_row' => 'Add a field',
       'add_reporter' => 'Add a report',
+      'test_source' => 'Try the source',
     ];
     $state = new FormState();
     if ($previous !== NULL) {
@@ -445,6 +450,7 @@ class DefinitionWizardTest extends NodeTestBase {
     $this->assertCount(1, $rows);
     $row = $rows[0];
     $this->assertSame(['Accounts', 'accounts', 'http', 'entity: node/account'], array_slice($row, 0, 4));
+    $this->assertSame(['edit', 'run', 'runs', 'delete'], array_keys($row[5]['data']['#links']));
 
     $manager = $this->container->get('access_manager');
     $this->assertTrue($manager->checkNamedRoute('import_engine_ui.definitions', [], $this->createUser(['administer import definitions'])));
@@ -531,6 +537,158 @@ class DefinitionWizardTest extends NodeTestBase {
     $this->assertStringContainsString('value="customer_code"', $html);
     $this->assertSame('title', $form['rows'][0]['target_field']['#default_value']);
     $this->assertSame('string', $form['rows'][1]['mapper']['plugin']['#default_value']);
+  }
+
+  /**
+   * Lets the source answer with the given items, for the next try.
+   *
+   * @param list<array<string, mixed>> $items
+   *   The items the source returns.
+   */
+  protected function sourceReturns(array $items): void {
+    $response = new Response(200, ['Content-Type' => 'application/json'], json_encode(['data' => $items], JSON_THROW_ON_ERROR));
+    $this->container->set('http_client', new Client(['handler' => HandlerStack::create(new MockHandler([$response]))]));
+  }
+
+  /**
+   * The values of step 2 without paging and without authentication.
+   *
+   * @return array<string, mixed>
+   *   The values.
+   */
+  protected function plainStep2(): array {
+    return [
+      'pagination' => ['plugin' => 'none', 'settings' => []],
+      'authentication' => ['plugin' => 'none', 'settings' => []],
+    ];
+  }
+
+  /**
+   * Trying the source shows what came back and the paths of its items.
+   */
+  public function testTryTheSource(): void {
+    $this->sourceReturns([
+      ['code' => 'C-1', 'name' => 'Acme', 'extra' => ['title' => 'T']],
+      ['code' => 'C-2', 'name' => 'Globex'],
+    ]);
+    $state = $this->press(NULL, $this->step1(), 'next');
+
+    $state = $this->press($state, $this->plainStep2(), 'test_source');
+
+    $this->assertSame(2, $state->get('step'), 'Trying the source does not leave the step.');
+    $sample = $state->get('source_sample');
+    $this->assertSame(['code', 'name', 'extra.title'], array_keys($sample['paths']));
+    $this->assertSame(2, $sample['items']);
+    $this->assertSame('none', $state->get('definition')['pagination']['plugin'], 'What was filled in is kept.');
+    $render_state = new FormState();
+    $render_state->setStorage($state->getStorage());
+    $form = $this->container->get('form_builder')->buildForm(DefinitionWizardForm::class, $render_state);
+    $html = (string) $this->container->get('renderer')->renderRoot($form);
+    $this->assertStringContainsString('Paths in 2 sample items', $html);
+    $this->assertStringContainsString('Connected: the first page holds 2 items.', $html);
+    $this->assertStringContainsString('extra.title', $html);
+  }
+
+  /**
+   * A source that does not answer is shown as a message on the step.
+   */
+  public function testTryTheSourceThatFails(): void {
+    $this->container->set('http_client', new Client(['handler' => HandlerStack::create(new MockHandler([new Response(403)]))]));
+    $state = $this->press(NULL, $this->step1(), 'next');
+
+    $state = $this->press($state, $this->plainStep2(), 'test_source');
+
+    $sample = $state->get('source_sample');
+    $this->assertSame([], $sample['paths']);
+    $this->assertSame('error', $sample['messages'][0]['severity']);
+    $this->assertStringContainsString('HTTP 403', $sample['messages'][0]['message']);
+  }
+
+  /**
+   * The key can be tried too, before the step is left.
+   */
+  public function testTryTheKey(): void {
+    $this->sourceReturns([['code' => 'C-1'], ['code' => 'C-2']]);
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $state = $this->press($state, $this->plainStep2(), 'next');
+
+    $state = $this->press($state, ['source_key' => 'missing'], 'test_source');
+
+    $this->assertSame(3, $state->get('step'));
+    $severities = array_column($state->get('source_sample')['messages'], 'severity');
+    $this->assertContains('error', $severities, 'The items have no such key.');
+    $this->assertSame(['missing'], $state->get('definition')['source_key']);
+    // The paths found are named on the step, to choose from.
+    $render_state = new FormState();
+    $render_state->setStorage($state->getStorage());
+    $form = $this->container->get('form_builder')->buildForm(DefinitionWizardForm::class, $render_state);
+    $this->assertStringContainsString('Found in the sample: code.', (string) $form['source_key']['#description']);
+  }
+
+  /**
+   * The mapping offers the paths found, and fills in the one that fits.
+   */
+  public function testMappingSuggestsPaths(): void {
+    $this->sourceReturns([['code' => 'C-1', 'name' => 'Acme', 'extra' => ['title' => 'T']]]);
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $state = $this->press($state, $this->plainStep2(), 'test_source');
+    $state = $this->press($state, $this->plainStep2(), 'next');
+    $state = $this->press($state, ['source_key' => 'code', 'target' => $this->step3()['target']], 'next');
+    $state = $this->press($state, [], 'add_mapping_row');
+    $state = $this->press($state, [], 'add_mapping_row');
+
+    $render_state = new FormState();
+    $render_state->setStorage($state->getStorage());
+    $render_state->setUserInput(['rows' => [0 => ['target_field' => 'field_code'], 1 => ['target_field' => 'title']]]);
+    $form = $this->container->get('form_builder')->buildForm(DefinitionWizardForm::class, $render_state);
+    $html = (string) $this->container->get('renderer')->renderRoot($form);
+
+    // A path that is the field, and one whose last part is the field.
+    $this->assertSame('code', $form['rows'][0]['mapper']['sources']['value']['#default_value']);
+    $this->assertSame('extra.title', $form['rows'][1]['mapper']['sources']['value']['#default_value']);
+    $this->assertStringContainsString('<datalist id="import-wizard-paths">', $html);
+    $this->assertStringContainsString('<option value="extra.title">', $html);
+    $this->assertSame('import-wizard-paths', $form['rows'][0]['mapper']['sources']['value']['#attributes']['list']);
+  }
+
+  /**
+   * A row whose field was chosen keeps its mapper when another row is added.
+   */
+  public function testRowKeepsItsMapperWhileRowsChange(): void {
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $state = $this->press($state, $this->plainStep2(), 'next');
+    $state = $this->press($state, $this->step3(), 'next');
+    $state = $this->press($state, [], 'add_mapping_row');
+
+    // The button drops the values; the input of the browser is still there.
+    $render_state = new FormState();
+    $render_state->setStorage($state->getStorage());
+    $render_state->setUserInput(['rows' => [0 => ['target_field' => 'field_code']]]);
+    $form = $this->container->get('form_builder')->buildForm(DefinitionWizardForm::class, $render_state);
+
+    $this->assertArrayHasKey('mapper', $form['rows'][0]);
+    $this->assertSame('field_code', $form['rows'][0]['target_field']['#default_value']);
+  }
+
+  /**
+   * A row whose source path is missing is an error, not a dropped row.
+   */
+  public function testRowWithoutSourceIsAnError(): void {
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $state = $this->press($state, $this->plainStep2(), 'next');
+    $state = $this->press($state, $this->step3(), 'next');
+    $state = $this->press($state, [], 'add_mapping_row');
+
+    $rows = [
+      0 => [
+        'target_field' => 'title',
+        'mapper' => ['plugin' => 'string', 'sources' => ['value' => ''], 'settings' => []],
+      ],
+    ];
+    $next = $this->press($state, ['rows' => $rows], 'next');
+
+    $this->assertSame(['rows][0][mapper][sources][value'], array_keys($next->getErrors()));
+    $this->assertSame(4, $next->get('step'));
   }
 
 }

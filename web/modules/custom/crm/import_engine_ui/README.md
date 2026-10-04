@@ -25,6 +25,17 @@ separate module, so the engine runs without it (drush, cron, workers).
   (what happens to what disappears, retries, circuit breaker, reports). Nothing
   is saved before the last step, and the whole definition is checked against its
   schema first. See ADR 0015.
+- **Try the source** (steps 2 to 4 of the wizard): reads a few pages with the
+  settings so far and shows what came back and the dotted paths of the values in
+  the items, with their type and an example. The paths are named on the key step
+  and offered while typing the sources of the mapping, and a source is filled in
+  when a path matches the field (`field_customer_code` finds `customer_code` or
+  `customer.code`).
+- **Run now** (on the list of imports): starts a run, or continues the one that
+  is not over, with a progress bar. The run is driven in calls of 15 seconds
+  (`RunBatch`), so closing the browser leaves a run that can be continued here,
+  or by a worker. A run that waits for retries, for another process or for a
+  source that is down ends the batch with a message that says so.
 
 ## Testing
 

@@ -161,6 +161,7 @@ class RunPagesTest extends NodeTestBase {
     $build = $this->controller->view($run, new Request());
     $this->assertArrayHasKey('operations', $build);
     $this->assertSame('import_engine_ui.run_cancel', $build['operations']['#links']['cancel']['url']->getRouteName());
+    $this->assertSame('import_engine_ui.definition_run', $build['operations']['#links']['continue']['url']->getRouteName());
   }
 
   /**

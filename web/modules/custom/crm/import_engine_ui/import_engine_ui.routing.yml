@@ -104,3 +104,15 @@ import_engine_ui.definition_delete:
     parameters:
       import_definition:
         type: 'entity:import_definition'
+
+import_engine_ui.definition_run:
+  path: '/admin/config/system/import-engine/definitions/{import_definition}/run'
+  defaults:
+    _form: 'Drupal\import_engine_ui\Form\RunStartForm'
+    _title: 'Run import'
+  requirements:
+    _permission: 'administer import runs'
+  options:
+    parameters:
+      import_definition:
+        type: 'entity:import_definition'

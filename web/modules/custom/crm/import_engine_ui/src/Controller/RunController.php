@@ -149,6 +149,10 @@ final class RunController extends ControllerBase {
       $build['operations'] = [
         '#type' => 'operations',
         '#links' => [
+          'continue' => [
+            'title' => $this->t('Continue run'),
+            'url' => Url::fromRoute('import_engine_ui.definition_run', ['import_definition' => $import_run->getDefinitionId()]),
+          ],
           'cancel' => [
             'title' => $this->t('Cancel run'),
             'url' => Url::fromRoute('import_engine_ui.run_cancel', ['import_run' => $run_id]),
