@@ -12,7 +12,8 @@ Separate the lifetimes instead of keeping one table for everything.
 |---|---|---|---|
 | `import_item` | the work queue of a run | items per run | short (7 days once done) |
 | `import_event` | only changes and problems | what changes | long (a year, configurable) |
-| `import_page` | fingerprint and keys per page position | the dataset | overwritten each run |
+| `import_page` | fingerprint, keys and a verified flag per page position | the dataset | overwritten each run |
+| `import_mapping` | which target entity a source item became, and when it was last seen | the dataset | as long as the item exists |
 | `import_run` (entity) | status, times, counter snapshot | runs | long (90 days, configurable) |
 
 - **Items and pages are plain tables**, not entities: there can be millions of rows, written, claimed and purged in bulk. Runs are few and shown in the interface, so they are an entity.

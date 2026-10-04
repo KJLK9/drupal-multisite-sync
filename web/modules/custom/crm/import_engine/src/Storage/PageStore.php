@@ -61,7 +61,7 @@ final class PageStore {
     $row = $rows[0];
     /** @var list<string> $keys */
     $keys = $this->codec->decode((string) $row->item_keys);
-    return new PageRecord(bin2hex((string) $row->fingerprint), $keys, (int) $row->seen_run);
+    return new PageRecord(bin2hex((string) $row->fingerprint), $keys, (int) $row->seen_run, (bool) $row->verified);
   }
 
   /**
@@ -79,8 +79,11 @@ final class PageStore {
    *   The run that read the page.
    * @param int|null $now
    *   The time, for tests.
+   * @param bool $problem
+   *   Whether the page had items without a usable key. Such a page is never
+   *   verified, so that those items are reported again.
    */
-  public function put(string $definitionId, int $position, string $fingerprint, array $keys, int $runId, ?int $now = NULL): void {
+  public function put(string $definitionId, int $position, string $fingerprint, array $keys, int $runId, ?int $now = NULL, bool $problem = FALSE): void {
     if (!preg_match('/^[0-9a-f]{32}$/', $fingerprint)) {
       throw new \InvalidArgumentException('A fingerprint is 32 hex characters.');
     }
@@ -92,9 +95,69 @@ final class PageStore {
         'item_count' => count($keys),
         'item_keys' => $this->codec->encode($keys),
         'seen_run' => $runId,
+        // New data has to be handled before the page may be skipped again.
+        'verified' => 0,
+        'problem' => $problem ? 1 : 0,
         'changed' => $now ?? $this->time->getRequestTime(),
       ])
       ->execute();
+  }
+
+  /**
+   * Notes that a run read a page that did not change and skipped it.
+   */
+  public function touch(string $definitionId, int $position, int $runId, ?int $now = NULL): void {
+    $this->database->update('import_page')
+      ->fields(['seen_run' => $runId, 'changed' => $now ?? $this->time->getRequestTime()])
+      ->condition('definition_id', $definitionId)
+      ->condition('position', $position)
+      ->execute();
+  }
+
+  /**
+   * Verifies the pages a run read, except those that had failures.
+   *
+   * Called when the items of the run are handled. Only a verified page is
+   * skipped by a later run, so an item that failed is not left behind just
+   * because its page looks unchanged.
+   *
+   * @param string $definitionId
+   *   The import definition.
+   * @param int $runId
+   *   The run.
+   * @param list<int> $failedPositions
+   *   The positions of pages that had failed or dead items.
+   *
+   * @return int
+   *   How many pages were verified now.
+   */
+  public function verify(string $definitionId, int $runId, array $failedPositions): int {
+    $update = $this->database->update('import_page')
+      ->fields(['verified' => 1])
+      ->condition('definition_id', $definitionId)
+      ->condition('seen_run', $runId)
+      ->condition('problem', 0)
+      ->condition('verified', 0);
+    if ($failedPositions !== []) {
+      $update->condition('position', $failedPositions, 'NOT IN');
+    }
+    return (int) $update->execute();
+  }
+
+  /**
+   * Returns the fingerprints of the pages a run has read so far.
+   *
+   * Used to find repeated pages, also when a run resumes after an interruption.
+   *
+   * @return list<string>
+   *   Fingerprints as 32 hex characters.
+   */
+  public function fingerprintsOfRun(string $definitionId, int $runId): array {
+    $rows = $this->rows($this->database->select('import_page', 'p')
+      ->fields('p', ['fingerprint'])
+      ->condition('definition_id', $definitionId)
+      ->condition('seen_run', $runId));
+    return array_map(static fn (\stdClass $row): string => bin2hex((string) $row->fingerprint), $rows);
   }
 
   /**

@@ -114,12 +114,13 @@ class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInter
   /**
    * Retry settings.
    *
-   * @var array{max_attempts: int, backoff: string, dlq_enabled: bool}
+   * @var array{max_attempts: int, backoff: string, dlq_enabled: bool, max_repeated_pages: int}
    */
   protected array $resilience = [
     'max_attempts' => 5,
     'backoff' => 'exponential',
     'dlq_enabled' => TRUE,
+    'max_repeated_pages' => 3,
   ];
 
   /**
@@ -202,6 +203,13 @@ class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInter
    */
   public function getBackoff(): BackoffStrategy {
     return BackoffStrategy::from($this->resilience['backoff']);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getMaxRepeatedPages(): int {
+    return $this->resilience['max_repeated_pages'];
   }
 
   /**

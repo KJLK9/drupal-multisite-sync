@@ -282,4 +282,28 @@ class ItemStorageTest extends StorageTestBase {
     $this->items->claim('not a valid name!', 1, 60);
   }
 
+  /**
+   * Items remember the page they came from, and failures are found by page.
+   */
+  public function testPagesWithFailures(): void {
+    $this->items->enqueue(1, 'default', $this->makeItems(2, 1), now: 100, page: 0);
+    $this->items->enqueue(1, 'default', $this->makeItems(2, 3), now: 100, page: 1);
+    $this->items->enqueue(1, 'default', $this->makeItems(2, 5), now: 100, page: 2);
+    $this->items->enqueue(1, 'default', $this->makeItems(2, 7), now: 100, page: 3);
+    $claimed = $this->items->claim('w', 8, 60, now: 200);
+    $this->assertCount(8, $claimed);
+
+    foreach ($claimed as $item) {
+      match ($item->key) {
+        // Page 1 has a dead item, page 3 an item that failed without the DLQ.
+        'k3' => $this->items->fail($item, 'bad', TRUE, 210),
+        'k8' => $this->items->fail($item, 'bad', FALSE, 210),
+        default => $this->items->complete($item, Outcome::Created, now: 210),
+      };
+    }
+
+    $this->assertSame([1, 3], $this->items->pagesWithFailures(1));
+    $this->assertSame([], $this->items->pagesWithFailures(2));
+  }
+
 }

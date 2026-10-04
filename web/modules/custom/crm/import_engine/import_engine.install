@@ -10,16 +10,19 @@ declare(strict_types=1);
 /**
  * Implements hook_schema().
  *
- * @phpstan-return array<string, array<string, mixed>>
- *
- *   Three tables with three lifetimes (see docs/decisions/0009):
- *   - import_item: the work queue of a run; rows are short-lived and lose their
+ * Tables with different lifetimes (see docs/decisions/0009):
+ * - import_item: the work queue of a run; rows are short-lived and lose their
  *   payload once done. Every unique key includes run_id, so the table can be
  *   partitioned by run later without a code change.
- *   - import_page: one row per page position of an import, overwritten by each
+ * - import_page: one row per page position of an import, overwritten by each
  *   run, so it follows the size of the dataset and not the number of runs.
- *   - import_event: an append-only log of what changed or went wrong. The
+ * - import_mapping: one row per known source item: which target entity it
+ *   became, its hash and when it was last seen. It follows the size of the
+ *   dataset, never the number of runs.
+ * - import_event: an append-only log of what changed or went wrong. The
  *   primary key includes the time, so it can be partitioned by date.
+ *
+ * @phpstan-return array<string, array<string, mixed>>
  */
 function import_engine_schema(): array {
   // A hash is 16 bytes, stored as such and not as 32 hex characters.
@@ -36,6 +39,7 @@ function import_engine_schema(): array {
     'fields' => [
       'id' => ['type' => 'serial', 'size' => 'big', 'unsigned' => TRUE, 'not null' => TRUE],
       'run_id' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE],
+      'page' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
       'pool' => ['type' => 'varchar_ascii', 'length' => 32, 'not null' => TRUE, 'default' => 'default'],
       'source_key' => ['type' => 'varchar', 'length' => 190, 'not null' => TRUE],
       'state' => ['type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
@@ -58,6 +62,8 @@ function import_engine_schema(): array {
     'indexes' => [
       'claim' => ['pool', 'state', 'priority', 'id'],
       'state_changed' => ['state', 'changed'],
+      // Which pages of a run had items that did not go well.
+      'run_state_outcome' => ['run_id', 'state', 'outcome'],
     ],
   ];
 
@@ -70,9 +76,18 @@ function import_engine_schema(): array {
       'item_count' => ['type' => 'int', 'size' => 'small', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
       'item_keys' => ['type' => 'blob', 'size' => 'big', 'not null' => TRUE],
       'seen_run' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      // Whether the items of the page were all handled without failures, so
+      // the page may be skipped when it is unchanged.
+      'verified' => ['type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      // Whether the page had items without a usable key; then it is never
+      // verified, so those items are reported again.
+      'problem' => ['type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
       'changed' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
     ],
     'primary key' => ['definition_id', 'position'],
+    'indexes' => [
+      'run_pages' => ['definition_id', 'seen_run'],
+    ],
   ];
 
   $schema['import_event'] = [
@@ -93,6 +108,26 @@ function import_engine_schema(): array {
       'occurred' => ['occurred'],
       'run' => ['run_id', 'id'],
       'item_history' => ['item_hash', 'occurred'],
+    ],
+  ];
+
+  $schema['import_mapping'] = [
+    'description' => 'One row per source item that is known: which target entity it became, and when it was last seen.',
+    'fields' => [
+      'definition_id' => ['type' => 'varchar_ascii', 'length' => 64, 'not null' => TRUE],
+      'source_key' => ['type' => 'varchar', 'length' => 190, 'not null' => TRUE],
+      'target_type' => ['type' => 'varchar_ascii', 'length' => 32, 'not null' => FALSE],
+      'target_id' => ['type' => 'varchar_ascii', 'length' => 64, 'not null' => FALSE],
+      'hash' => $hash(FALSE),
+      'first_seen_run' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      'last_seen_run' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      'last_changed_run' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      'changed' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+    ],
+    'primary key' => ['definition_id', 'source_key'],
+    'indexes' => [
+      // The sweep: everything of an import not seen in the latest run.
+      'last_seen' => ['definition_id', 'last_seen_run'],
     ],
   ];
 

@@ -52,3 +52,28 @@ services:
   import_engine.retention_purger:
     class: Drupal\import_engine\Storage\RetentionPurger
     arguments: ['@config.factory', '@import_engine.item_storage', '@import_engine.event_log', '@database', '@entity_type.manager', '@datetime.time']
+
+  import_engine.mapping_store:
+    class: Drupal\import_engine\Storage\MappingStore
+    arguments: ['@database', '@datetime.time']
+
+  import_engine.processing_fingerprint:
+    class: Drupal\import_engine\Page\ProcessingFingerprint
+    arguments: ['@import_engine.page_fingerprint']
+
+  import_engine.run_starter:
+    class: Drupal\import_engine\Run\RunStarter
+    arguments: ['@entity_type.manager', '@lock.persistent']
+
+  import_engine.extract_stage:
+    class: Drupal\import_engine\Extract\ExtractStage
+    arguments:
+      - '@import_engine.item_storage'
+      - '@import_engine.page_store'
+      - '@import_engine.mapping_store'
+      - '@import_engine.event_log'
+      - '@import_engine.item_key'
+      - '@import_engine.page_fingerprint'
+      - '@import_engine.processing_fingerprint'
+      - '@lock.persistent'
+      - '@datetime.time'

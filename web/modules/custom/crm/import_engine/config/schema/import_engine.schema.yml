@@ -90,6 +90,13 @@ import_engine.import_definition.*:
         dlq_enabled:
           type: boolean
           label: 'Keep failed items in the dead letter queue'
+        max_repeated_pages:
+          type: integer
+          label: 'Stop extraction after this many repeated pages in a row'
+          constraints:
+            Range:
+              min: 1
+              max: 20
     pool:
       type: string
       label: 'Worker pool'

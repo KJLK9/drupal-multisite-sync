@@ -18,11 +18,15 @@ final class PageRecord {
    *   The keys of the items on the page.
    * @param int $seenRun
    *   The run that last read the page.
+   * @param bool $verified
+   *   Whether the items of the page were all handled without failures, which
+   *   is the condition for skipping the page when it did not change.
    */
   public function __construct(
     public readonly string $fingerprint,
     public readonly array $keys,
     public readonly int $seenRun,
+    public readonly bool $verified = FALSE,
   ) {
   }
 

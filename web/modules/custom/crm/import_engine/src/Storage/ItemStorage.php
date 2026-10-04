@@ -55,11 +55,13 @@ final class ItemStorage {
    *   Higher is claimed first.
    * @param int|null $now
    *   The time, for tests.
+   * @param int $page
+   *   The position of the page the items came from, counting from 0.
    *
    * @return array{inserted: int, duplicates: int}
    *   How many items were added and how many were already in the run.
    */
-  public function enqueue(int $runId, string $pool, array $items, int $priority = 0, ?int $now = NULL): array {
+  public function enqueue(int $runId, string $pool, array $items, int $priority = 0, ?int $now = NULL, int $page = 0): array {
     $now ??= $this->time->getRequestTime();
     $duplicates = 0;
     $new = [];
@@ -87,11 +89,12 @@ final class ItemStorage {
     $inserted = 0;
     foreach (array_chunk($new, self::INSERT_CHUNK, TRUE) as $chunk) {
       $insert = $this->database->insert('import_item')->fields([
-        'run_id', 'pool', 'source_key', 'state', 'priority', 'payload', 'created', 'changed',
+        'run_id', 'page', 'pool', 'source_key', 'state', 'priority', 'payload', 'created', 'changed',
       ]);
       foreach ($chunk as $key => $payload) {
         $insert->values([
           'run_id' => $runId,
+          'page' => $page,
           'pool' => $pool,
           'source_key' => (string) $key,
           'state' => ItemState::Pending->value,
@@ -319,6 +322,37 @@ final class ItemStorage {
   public function find(int $id): ?ImportItem {
     $rows = $this->rows($this->database->select('import_item', 'i')->fields('i')->condition('id', $id));
     return $rows === [] ? NULL : $this->hydrate($rows[0]);
+  }
+
+  /**
+   * Returns the positions of the pages that had items that did not go well.
+   *
+   * These are pages with a dead item or an item that ended as failed. A page
+   * with none of them was handled completely.
+   *
+   * @return list<int>
+   *   The page positions, in order.
+   */
+  public function pagesWithFailures(int $runId): array {
+    $pages = [];
+    $dead = $this->database->select('import_item', 'i')
+      ->fields('i', ['page'])
+      ->distinct()
+      ->condition('run_id', $runId)
+      ->condition('state', ItemState::Dead->value);
+    $failed = $this->database->select('import_item', 'i')
+      ->fields('i', ['page'])
+      ->distinct()
+      ->condition('run_id', $runId)
+      ->condition('state', ItemState::Done->value)
+      ->condition('outcome', Outcome::Failed->value);
+    foreach ([$dead, $failed] as $query) {
+      foreach ($this->column($query) as $page) {
+        $pages[(int) $page] = (int) $page;
+      }
+    }
+    sort($pages);
+    return $pages;
   }
 
   /**

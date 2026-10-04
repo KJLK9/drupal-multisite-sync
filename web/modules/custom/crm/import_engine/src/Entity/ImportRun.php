@@ -83,6 +83,11 @@ class ImportRun extends ContentEntityBase implements ImportRunInterface {
     $fields['finished'] = BaseFieldDefinition::create('timestamp')
       ->setLabel(new TranslatableMarkup('Finished'));
 
+    $fields['full_run'] = BaseFieldDefinition::create('boolean')
+      ->setLabel(new TranslatableMarkup('Process every page'))
+      ->setDescription(new TranslatableMarkup('Do not skip pages whose data did not change.'))
+      ->setDefaultValue(FALSE);
+
     $fields['extract_complete'] = BaseFieldDefinition::create('boolean')
       ->setLabel(new TranslatableMarkup('All pages fetched'))
       ->setDefaultValue(FALSE);
@@ -103,6 +108,7 @@ class ImportRun extends ContentEntityBase implements ImportRunInterface {
       'failed' => new TranslatableMarkup('Failed'),
       'dead' => new TranslatableMarkup('Dead'),
       'deleted' => new TranslatableMarkup('Deleted'),
+      'page_skipped' => new TranslatableMarkup('On unchanged pages'),
     ];
     foreach (self::COUNTERS as $counter) {
       $fields[$counter] = BaseFieldDefinition::create('integer')
@@ -154,6 +160,13 @@ class ImportRun extends ContentEntityBase implements ImportRunInterface {
    */
   public function getTrigger(): Trigger {
     return Trigger::from((string) $this->get('trigger')->value);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function isFullRun(): bool {
+    return (bool) $this->get('full_run')->value;
   }
 
   /**

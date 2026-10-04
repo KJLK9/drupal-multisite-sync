@@ -44,7 +44,7 @@ abstract class StorageTestBase extends KernelTestBase {
     parent::setUp();
     $this->installEntitySchema('user');
     $this->installEntitySchema('import_run');
-    $this->installSchema('import_engine', ['import_item', 'import_page', 'import_event']);
+    $this->installSchema('import_engine', ['import_item', 'import_page', 'import_event', 'import_mapping']);
     $this->installConfig('import_engine');
     $this->items = $this->container->get('import_engine.item_storage');
     $this->pages = $this->container->get('import_engine.page_store');

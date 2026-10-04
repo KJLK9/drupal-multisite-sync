@@ -87,6 +87,11 @@ interface ImportDefinitionInterface extends ConfigEntityInterface {
   public function getBackoff(): BackoffStrategy;
 
   /**
+   * Returns after how many repeated pages in a row extraction stops.
+   */
+  public function getMaxRepeatedPages(): int;
+
+  /**
    * Returns whether items that ran out of attempts are kept for inspection.
    */
   public function isDlqEnabled(): bool;

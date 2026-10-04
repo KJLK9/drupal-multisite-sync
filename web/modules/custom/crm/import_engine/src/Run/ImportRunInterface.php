@@ -26,6 +26,7 @@ interface ImportRunInterface extends ContentEntityInterface {
     'failed',
     'dead',
     'deleted',
+    'page_skipped',
   ];
 
   /**
@@ -58,6 +59,11 @@ interface ImportRunInterface extends ContentEntityInterface {
    * Returns what started the run.
    */
   public function getTrigger(): Trigger;
+
+  /**
+   * Returns whether every page is processed, even if it did not change.
+   */
+  public function isFullRun(): bool;
 
   /**
    * Returns whether every page of the source was fetched.

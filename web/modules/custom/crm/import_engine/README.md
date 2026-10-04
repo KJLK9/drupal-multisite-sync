@@ -133,3 +133,23 @@ has the same notion of identity.
 
 Retention is set in `import_engine.settings` (days; 0 keeps for ever) and the
 `RetentionPurger` runs from cron in bounded batches.
+
+## Extraction
+
+`ExtractStage::extract()` reads pages of a source into the work queue, in
+portions that can be continued (a page budget and a time budget per call):
+
+- A page already seen in this run is a repeat; after `max_repeated_pages` in a
+  row extraction ends abnormally. A page equal to one of an earlier run never
+  stops anything.
+- An unchanged page whose items all went well last time (a *verified* page) is
+  skipped, but its items are marked as seen so the sweep does not take them for
+  deleted.
+- An item without a usable key is logged as an event and counted as failed, not
+  queued.
+- A temporary source problem interrupts and keeps the position; a permanent one
+  ends extraction abnormally (the run is not complete and ends as failed).
+
+`RunStarter` allows one unfinished run per import; a persistent lock allows one
+extractor per import. `MappingStore` remembers which target entity a source item
+became and when it was last seen.

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\import_engine\Kernel;
 
+use Drupal\import_engine\Storage\PageRecord;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 
@@ -101,6 +102,56 @@ class PageStoreTest extends StorageTestBase {
     $this->assertTrue($this->pages->syncConfigFingerprint('customers', 'config-b'));
     $this->assertNull($this->pages->get('customers', 0));
     $this->assertNotNull($this->pages->get('orders', 0));
+  }
+
+  /**
+   * A page is only verified when its items went well, and only once.
+   */
+  public function testVerifyAndTouch(): void {
+    foreach (range(0, 3) as $position) {
+      $this->pages->put('customers', $position, hash('xxh128', (string) $position), ["k$position"], 5, 100, $position === 3);
+    }
+    $this->assertFalse($this->record(0)->verified, 'new data is not verified yet');
+
+    // Page 1 had a failed item and page 3 an item without a key.
+    $this->assertSame(2, $this->pages->verify('customers', 5, [1]));
+    $this->assertTrue($this->record(0)->verified);
+    $this->assertFalse($this->record(1)->verified);
+    $this->assertTrue($this->record(2)->verified);
+    $this->assertFalse($this->record(3)->verified, 'a page with a problem is never verified');
+    $this->assertSame(0, $this->pages->verify('customers', 5, [1]), 'nothing more to verify');
+
+    // A later run reads page 0 unchanged and skips it: it stays verified.
+    $this->pages->touch('customers', 0, 6, 200);
+    $this->assertSame(6, $this->record(0)->seenRun);
+    $this->assertTrue($this->record(0)->verified);
+
+    // New data on a page makes it unverified again.
+    $this->pages->put('customers', 0, hash('xxh128', 'changed'), ['k0'], 6, 200);
+    $this->assertFalse($this->record(0)->verified);
+  }
+
+  /**
+   * The fingerprints of a run come back, for finding repeats after a resume.
+   */
+  public function testFingerprintsOfRun(): void {
+    $this->pages->put('customers', 0, hash('xxh128', 'a'), ['a'], 5);
+    $this->pages->put('customers', 1, hash('xxh128', 'b'), ['b'], 5);
+    $this->pages->put('customers', 2, hash('xxh128', 'c'), ['c'], 4);
+    $this->pages->put('orders', 0, hash('xxh128', 'o'), ['o'], 5);
+
+    $fingerprints = $this->pages->fingerprintsOfRun('customers', 5);
+
+    $this->assertEqualsCanonicalizing([hash('xxh128', 'a'), hash('xxh128', 'b')], $fingerprints);
+  }
+
+  /**
+   * Returns the record of a page position of the "customers" import.
+   */
+  private function record(int $position): PageRecord {
+    $record = $this->pages->get('customers', $position);
+    $this->assertNotNull($record);
+    return $record;
   }
 
 }

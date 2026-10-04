@@ -115,6 +115,7 @@ class ImportDefinitionTest extends KernelTestBase {
     $this->assertSame(5, $definition->getMaxAttempts());
     $this->assertSame(BackoffStrategy::Exponential, $definition->getBackoff());
     $this->assertTrue($definition->isDlqEnabled());
+    $this->assertSame(3, $definition->getMaxRepeatedPages());
     $this->assertSame('default', $definition->getPool());
     $this->assertTrue($definition->status());
   }
@@ -125,7 +126,7 @@ class ImportDefinitionTest extends KernelTestBase {
   public function testValidDefinitionPassesValidation(): void {
     $definition = ImportDefinition::create(self::validValues() + [
       'delete_policy' => 'delete',
-      'resilience' => ['max_attempts' => 3, 'backoff' => 'linear', 'dlq_enabled' => FALSE],
+      'resilience' => ['max_attempts' => 3, 'backoff' => 'linear', 'dlq_enabled' => FALSE, 'max_repeated_pages' => 5],
       'pool' => 'heavy',
     ]);
 
@@ -135,6 +136,7 @@ class ImportDefinitionTest extends KernelTestBase {
     $this->assertSame(DeletePolicy::Delete, $loaded?->getDeletePolicy());
     $this->assertSame(BackoffStrategy::Linear, $loaded->getBackoff());
     $this->assertFalse($loaded->isDlqEnabled());
+    $this->assertSame(5, $loaded->getMaxRepeatedPages());
     $this->assertSame('heavy', $loaded->getPool());
   }
 
@@ -164,8 +166,13 @@ class ImportDefinitionTest extends KernelTestBase {
    *   The changed values and the property that must report them.
    */
   public static function invalidValuesProvider(): array {
-    $resilience = static fn (int $attempts, string $backoff): array => [
-      'resilience' => ['max_attempts' => $attempts, 'backoff' => $backoff, 'dlq_enabled' => TRUE],
+    $resilience = static fn (int $attempts, string $backoff, int $repeats = 3): array => [
+      'resilience' => [
+        'max_attempts' => $attempts,
+        'backoff' => $backoff,
+        'dlq_enabled' => TRUE,
+        'max_repeated_pages' => $repeats,
+      ],
     ];
     $row = static fn (string $field, string $path): array => [
       'mapping' => [
@@ -184,6 +191,8 @@ class ImportDefinitionTest extends KernelTestBase {
       'unknown delete policy' => [['delete_policy' => 'archive'], 'delete_policy'],
       'no attempts' => [$resilience(0, 'fixed'), 'resilience.max_attempts'],
       'too many attempts' => [$resilience(99, 'fixed'), 'resilience.max_attempts'],
+      'no repeated pages allowed' => [$resilience(3, 'fixed', 0), 'resilience.max_repeated_pages'],
+      'too many repeated pages' => [$resilience(3, 'fixed', 99), 'resilience.max_repeated_pages'],
       'unknown backoff' => [$resilience(3, 'random'), 'resilience.backoff'],
       'pool is not a machine name' => [['pool' => 'Heavy Pool'], 'pool'],
       'missing target entity type' => [
