@@ -32,7 +32,7 @@ class PaginationTest extends HttpSourceTestBase {
    *   Settings to pass to source().
    */
   protected function rest(): array {
-    return ['method' => 'GET', 'body' => '', 'items_path' => 'rows', 'id_path' => 'id'];
+    return ['method' => 'GET', 'body' => '', 'items_path' => 'rows'];
   }
 
   /**

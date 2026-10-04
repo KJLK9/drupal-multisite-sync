@@ -2,3 +2,12 @@ administer import definitions:
   title: 'Administer import definitions'
   description: 'Create, edit and delete import definitions.'
   restrict access: true
+
+administer import runs:
+  title: 'Administer import runs'
+  description: 'Start, cancel and delete import runs and work with items in the dead letter queue.'
+  restrict access: true
+
+view import runs:
+  title: 'View import runs'
+  description: 'See import runs, their items and events.'

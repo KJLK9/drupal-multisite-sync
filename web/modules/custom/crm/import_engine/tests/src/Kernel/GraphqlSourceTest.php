@@ -42,7 +42,6 @@ class GraphqlSourceTest extends HttpSourceTestBase {
       'variables' => '{"filter": "all"}',
       'headers' => [],
       'items_path' => 'data.customers.items',
-      'id_path' => 'id',
       'timeout' => 10,
     ];
   }
@@ -216,6 +215,7 @@ class GraphqlSourceTest extends HttpSourceTestBase {
       'id' => 'customers',
       'label' => 'Customers',
       'source' => ['plugin' => 'graphql', 'configuration' => $this->graphql()],
+      'source_key' => ['id'],
       'pagination' => $this->variablePaging(),
       'authentication' => [
         'plugin' => 'api_key_header',

@@ -20,6 +20,10 @@ services:
   import_engine.path_resolver:
     class: Drupal\import_engine\Path\PathResolver
 
+  import_engine.item_key:
+    class: Drupal\import_engine\Key\ItemKey
+    arguments: ['@import_engine.path_resolver']
+
   import_engine.path_discovery:
     class: Drupal\import_engine\Path\PathDiscovery
 
@@ -29,3 +33,22 @@ services:
   import_engine.source_factory:
     class: Drupal\import_engine\Source\SourceFactory
     arguments: ['@plugin.manager.import_engine_source']
+
+  import_engine.payload_codec:
+    class: Drupal\import_engine\Storage\PayloadCodec
+
+  import_engine.item_storage:
+    class: Drupal\import_engine\Storage\ItemStorage
+    arguments: ['@database', '@import_engine.payload_codec', '@datetime.time']
+
+  import_engine.page_store:
+    class: Drupal\import_engine\Storage\PageStore
+    arguments: ['@database', '@import_engine.payload_codec', '@datetime.time', '@keyvalue']
+
+  import_engine.event_log:
+    class: Drupal\import_engine\Storage\EventLog
+    arguments: ['@database', '@datetime.time']
+
+  import_engine.retention_purger:
+    class: Drupal\import_engine\Storage\RetentionPurger
+    arguments: ['@config.factory', '@import_engine.item_storage', '@import_engine.event_log', '@database', '@entity_type.manager', '@datetime.time']

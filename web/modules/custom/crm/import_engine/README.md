@@ -103,8 +103,8 @@ variable that holds the key (`env_var`), never the key.
 
 ## Paths
 
-`items_path` (where the list is in the response), `id_path` (where the id is in
-an item) and the mapping sources are dotted paths: `data.customers.items`,
+`items_path` (where the list is in the response), the key paths and the mapping
+sources are dotted paths: `data.customers.items`,
 `price.customer.customer_code`. `PathResolver` reads them, `PathDiscovery` lists
 the paths in a sample item for the mapping form.
 
@@ -112,3 +112,24 @@ the paths in a sample item for the mapping form.
 
 HTTP is mocked with Guzzle's `MockHandler`; the fixture
 `tests/fixtures/site_a_customers.json` is a recorded response of site A.
+
+## Storage
+
+Four stores with four lifetimes, so tables grow with the dataset and with what
+changes, not with the number of runs (ADR 0009):
+
+- `import_run` (entity): status, times and a snapshot of counters.
+- `import_item` (table): the work queue. Workers claim items with a token and a
+  lease (`ItemStorage::claim()`); a done item loses its payload.
+- `import_page` (table): the fingerprint and keys of each page position, one
+  row per position, overwritten by each run (`PageStore`).
+- `import_event` (table): an append-only log of changes and problems, never of
+  items that stayed the same (`EventLog`).
+
+An import names its **source key**: one or more dotted paths whose values
+together identify a source item (`ItemKey` builds the canonical key). It is set
+on the definition (`source_key`), not on the source, so every kind of source
+has the same notion of identity.
+
+Retention is set in `import_engine.settings` (days; 0 keeps for ever) and the
+`RetentionPurger` runs from cron in bounded batches.

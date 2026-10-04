@@ -44,6 +44,16 @@ interface ImportDefinitionInterface extends ConfigEntityInterface {
   public function getAuthentication(): array;
 
   /**
+   * Returns the key paths.
+   *
+   * These are the dotted paths whose values identify a source item.
+   *
+   * @return list<string>
+   *   One or more paths; the values together are the key of an item.
+   */
+  public function getSourceKey(): array;
+
+  /**
    * Returns the target entity type ID.
    */
   public function getTargetEntityType(): string;

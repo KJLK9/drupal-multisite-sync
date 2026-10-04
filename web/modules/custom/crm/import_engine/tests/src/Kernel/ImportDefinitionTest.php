@@ -44,12 +44,12 @@ class ImportDefinitionTest extends KernelTestBase {
           'query' => [],
           'body' => '{"query": "{ customers { items { id } } }"}',
           'items_path' => 'data.customers.items',
-          'id_path' => 'id',
           'timeout' => 30,
           'format' => 'auto',
           'csv_delimiter' => ',',
         ],
       ],
+      'source_key' => ['customer_code', 'site.code'],
       'pagination' => [
         'plugin' => 'offset_limit',
         'configuration' => [
@@ -93,6 +93,7 @@ class ImportDefinitionTest extends KernelTestBase {
     $this->assertInstanceOf(ImportDefinition::class, $definition);
     $this->assertSame('Customers', $definition->label());
     $this->assertSame('http', $definition->getSource()['plugin']);
+    $this->assertSame(['customer_code', 'site.code'], $definition->getSourceKey());
     $this->assertSame('offset_limit', $definition->getPagination()['plugin']);
     $this->assertSame('api_key_header', $definition->getAuthentication()['plugin']);
     $this->assertSame('node', $definition->getTargetEntityType());
@@ -177,6 +178,9 @@ class ImportDefinitionTest extends KernelTestBase {
     $source_path = 'mapping.0.mapper.sources.value';
 
     return [
+      'no key paths' => [['source_key' => []], 'source_key'],
+      'too many key paths' => [['source_key' => ['a', 'b', 'c', 'd', 'e', 'f']], 'source_key'],
+      'key path with an empty segment' => [['source_key' => ['a..b']], 'source_key.0'],
       'unknown delete policy' => [['delete_policy' => 'archive'], 'delete_policy'],
       'no attempts' => [$resilience(0, 'fixed'), 'resilience.max_attempts'],
       'too many attempts' => [$resilience(99, 'fixed'), 'resilience.max_attempts'],

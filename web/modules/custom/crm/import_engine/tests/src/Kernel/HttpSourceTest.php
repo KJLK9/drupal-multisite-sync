@@ -202,7 +202,7 @@ class HttpSourceTest extends HttpSourceTestBase {
     $missing = $this->source()->check();
     $this->assertFalse($missing->isOk());
     $this->assertSame(
-      ['Item 2 has no id at "id".', 'Item 3 has no id at "id".'],
+      ['Item 2: no value at "id".', 'Item 3: the value at "id" is empty.'],
       $missing->getMessagesBySeverity(Severity::Error),
     );
 
@@ -269,6 +269,28 @@ class HttpSourceTest extends HttpSourceTestBase {
 
     $this->expectException(SourceException::class);
     $this->source()->fetchPage('100');
+  }
+
+  /**
+   * A key made of several values is unique as a whole, not per value.
+   */
+  public function testCheckWithCompositeKey(): void {
+    putenv(self::ENV_VAR . '=' . self::KEY);
+    $json = ['Content-Type' => 'application/json'];
+    $this->sourceKey = ['code', 'site'];
+    $this->mockResponses([
+      new Response(200, $json, '{"data": {"customers": {"items": [{"code": "1", "site": "a"}, {"code": "1", "site": "b"}, {"code": 2, "site": "a"}]}}}'),
+      new Response(200, $json, '{"data": {"customers": {"items": [{"code": "1", "site": "a"}, {"code": "1", "site": "a"}]}}}'),
+      new Response(200, $json, '{"data": {"customers": {"items": [{"code": "1"}]}}}'),
+    ]);
+
+    $this->assertTrue($this->source()->check()->isOk());
+
+    $duplicate = $this->source()->check();
+    $this->assertStringContainsString('not unique', $duplicate->getMessagesBySeverity(Severity::Error)[0]);
+
+    $missing = $this->source()->check();
+    $this->assertSame(['Item 1: no value at "site".'], $missing->getMessagesBySeverity(Severity::Error));
   }
 
 }

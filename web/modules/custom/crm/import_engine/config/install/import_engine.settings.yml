@@ -1,0 +1,7 @@
+# Retention in days; 0 keeps for ever.
+# Items that are done are only the work queue and go quickly. Dead items are
+# the dead letter queue. Events are the history of what changed.
+retention_items_days: 7
+retention_dead_days: 90
+retention_events_days: 365
+retention_runs_days: 90

@@ -18,7 +18,7 @@ use Drupal\import_engine\Source\SourceException;
  * problem in an "errors" list.
  *
  * Configuration: url, query (the GraphQL document), variables (a JSON object
- * as text), headers, items_path, id_path and timeout. Paging plugins with
+ * as text), headers, items_path and timeout. Paging plugins with
  * target "body" set variables, for example "variables.offset".
  */
 #[ImportSource(
@@ -46,7 +46,6 @@ final class GraphqlSource extends HttpSource {
       'variables' => '',
       'headers' => [],
       'items_path' => 'data',
-      'id_path' => 'id',
       'timeout' => 30,
     ];
   }

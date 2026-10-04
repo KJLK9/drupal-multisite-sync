@@ -13,6 +13,8 @@ use Drupal\import_engine\Authentication\AuthenticationPluginManager;
 use Drupal\import_engine\Decoder\DecodeException;
 use Drupal\import_engine\Decoder\ResponseDecoder;
 use Drupal\import_engine\Http\RequestSpec;
+use Drupal\import_engine\Key\InvalidKeyException;
+use Drupal\import_engine\Key\ItemKey;
 use Drupal\import_engine\Page\PageFingerprint;
 use Drupal\import_engine\Pagination\PaginationInterface;
 use Drupal\import_engine\Pagination\PaginationPluginManager;
@@ -37,12 +39,12 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
  * - body: for POST, the JSON body as text (a GraphQL query goes here).
  * - items_path: where the list of items is in the decoded response; empty when
  *   the response is the list.
- * - id_path: where the unique id is in each item.
  * - format and csv_delimiter: how to read the response, see ResponseDecoder.
  * - timeout: seconds, for connecting and for the whole request.
  *
- * The authentication and pagination plugins of the definition are added by the
- * source factory under the keys "authentication" and "pagination".
+ * The authentication and pagination plugins and the key paths of the definition
+ * are added by the source factory under the keys "authentication",
+ * "pagination" and "source_key".
  */
 #[ImportSource(
   id: 'http',
@@ -88,6 +90,8 @@ class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInter
    *   The path resolver.
    * @param \Drupal\import_engine\Page\PageFingerprint $fingerprint
    *   The page fingerprint.
+   * @param \Drupal\import_engine\Key\ItemKey $itemKey
+   *   The item key builder.
    * @param \Drupal\import_engine\Authentication\AuthenticationPluginManager $authenticationManager
    *   The authentication plugin manager.
    * @param \Drupal\import_engine\Pagination\PaginationPluginManager $paginationManager
@@ -101,6 +105,7 @@ class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInter
     private readonly ResponseDecoder $decoder,
     protected readonly PathResolver $paths,
     private readonly PageFingerprint $fingerprint,
+    private readonly ItemKey $itemKey,
     AuthenticationPluginManager $authenticationManager,
     PaginationPluginManager $paginationManager,
   ) {
@@ -136,6 +141,7 @@ class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInter
       $container->get('import_engine.response_decoder'),
       $container->get('import_engine.path_resolver'),
       $container->get('import_engine.page_fingerprint'),
+      $container->get('import_engine.item_key'),
       $container->get('plugin.manager.import_engine_authentication'),
       $container->get('plugin.manager.import_engine_pagination'),
     );
@@ -155,7 +161,6 @@ class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInter
       'query' => [],
       'body' => '',
       'items_path' => '',
-      'id_path' => 'id',
       'timeout' => 30,
       'format' => 'auto',
       'csv_delimiter' => ',',
@@ -219,7 +224,7 @@ class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInter
     $check = new SourceCheck();
     $cursor = NULL;
     $fingerprints = [];
-    $seen_ids = [];
+    $seen_keys = [];
     $overlap = 0;
     $items_read = 0;
 
@@ -256,7 +261,7 @@ class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInter
       }
       $fingerprints[$fingerprint] = $number;
       $items_read += count($page->items);
-      $overlap += $this->checkIds($check, $page->items, $number, $seen_ids);
+      $overlap += $this->checkKeys($check, $page->items, $number, $seen_keys);
 
       if ($page->nextCursor === NULL) {
         break;
@@ -274,7 +279,7 @@ class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInter
   }
 
   /**
-   * Checks that the items of a page have a unique id; returns the overlap.
+   * Checks that the items of a page have a usable, unique key.
    *
    * @param \Drupal\import_engine\Source\SourceCheck $check
    *   The check to add messages to.
@@ -282,35 +287,36 @@ class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInter
    *   The items of the page.
    * @param int $number
    *   The number of the page, counting from 1.
-   * @param array<string, true> $seen_ids
-   *   The ids on earlier pages; updated.
+   * @param array<string, true> $seen_keys
+   *   The keys on earlier pages; updated.
    *
    * @return int
    *   How many items were already on an earlier page.
    */
-  private function checkIds(SourceCheck $check, array $items, int $number, array &$seen_ids): int {
-    $id_path = (string) $this->configuration['id_path'];
+  private function checkKeys(SourceCheck $check, array $items, int $number, array &$seen_keys): int {
+    $key_paths = $this->configuration['source_key'] ?? [];
     $on_this_page = [];
     $overlap = 0;
     foreach ($number === 1 ? array_slice($items, 0, self::SAMPLE_SIZE) : $items as $index => $item) {
-      $id = $this->paths->has($item, $id_path) ? $this->paths->get($item, $id_path) : NULL;
-      if ($id === NULL || $id === '') {
+      try {
+        $key = $this->itemKey->build($item, $key_paths);
+      }
+      catch (InvalidKeyException $exception) {
         $check->add(Severity::Error, $number === 1
-          ? sprintf('Item %d has no id at "%s".', $index + 1, $id_path)
-          : sprintf('Page %d, item %d has no id at "%s".', $number, $index + 1, $id_path));
+          ? sprintf('Item %d: %s.', $index + 1, $exception->getMessage())
+          : sprintf('Page %d, item %d: %s.', $number, $index + 1, $exception->getMessage()));
         continue;
       }
-      $key = json_encode($id, JSON_THROW_ON_ERROR);
       if (isset($on_this_page[$key])) {
-        $check->add(Severity::Error, sprintf('The ids at "%s" are not unique.', $id_path));
+        $check->add(Severity::Error, 'The keys of the items are not unique.');
         return $overlap;
       }
       $on_this_page[$key] = TRUE;
-      if (isset($seen_ids[$key])) {
+      if (isset($seen_keys[$key])) {
         $overlap++;
       }
     }
-    $seen_ids += $on_this_page;
+    $seen_keys += $on_this_page;
     return $overlap;
   }
 

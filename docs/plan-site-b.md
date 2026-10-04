@@ -85,7 +85,7 @@ Table growth must be **O(size of the dataset), not O(runs x dataset)**. An impor
 
 ## Milestones (each ends in something demonstrable)
 
-Progress on milestone 1: step 1 (module, config schema and the import definition) step 2 (source plugin type, HTTP source, authentication, decoder, path resolver) and step 3 (pagination plugins, GraphQL source, page fingerprint, multi-page check) are done. Step 4 (item table, extract) also builds the page store, the repeat stop and the skip described in ADR 0008; steps 5-7 follow.
+Progress on milestone 1: step 1 (module, config schema and the import definition) step 2 (source plugin type, HTTP source, authentication, decoder, path resolver) and step 3 (pagination plugins, GraphQL source, page fingerprint, multi-page check) are done. Step 4 (storage layer: source key on the definition, run entity, item table, page store, event log, retention) is done, see ADR 0009. Step 5 (the extract stage) builds the repeat stop and the skip described in ADR 0008 on top of it; steps 6-7 follow.
 
 1. **Engine core, headless.** Definition entity, `Http` source and the four pagination plugins (unit-tested with mocked HTTP), item table, `Entity` target, run and counters, `import:run` and `import:work`. Demo: import customers from site A.
 2. **Idempotency and references.** Mapping table, hashes, products then prices with references, mark and sweep with a delete policy.

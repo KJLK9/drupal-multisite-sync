@@ -37,6 +37,7 @@ use Drupal\import_engine\ImportDefinitionInterface;
     'label',
     'description',
     'source',
+    'source_key',
     'pagination',
     'authentication',
     'target',
@@ -69,6 +70,13 @@ class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInter
    * @var array{plugin: string, configuration: array<string, mixed>}
    */
   protected array $source = ['plugin' => 'http', 'configuration' => []];
+
+  /**
+   * The dotted paths whose values together identify a source item.
+   *
+   * @var list<string>
+   */
+  protected array $source_key = [];
 
   /**
    * The pagination plugin and its configuration.
@@ -131,6 +139,13 @@ class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInter
    */
   public function getSource(): array {
     return $this->source;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getSourceKey(): array {
+    return $this->source_key;
   }
 
   /**

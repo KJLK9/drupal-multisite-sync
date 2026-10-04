@@ -18,6 +18,21 @@ import_engine.import_definition.*:
     source:
       type: import_engine.source_reference
       label: 'Source'
+    source_key:
+      type: sequence
+      label: 'Key paths that identify a source item'
+      constraints:
+        Count:
+          min: 1
+          max: 5
+      sequence:
+        type: string
+        label: 'Dotted path in the source item'
+        constraints:
+          NotBlank: ~
+          Regex:
+            pattern: '/^[A-Za-z0-9_@#-]+(\.[A-Za-z0-9_@#-]+)*$/'
+            message: 'A key path is dotted names, for example customer.code.'
     pagination:
       type: import_engine.pagination_reference
       label: 'Pagination'
@@ -168,14 +183,6 @@ import_engine.source.http:
         Regex:
           pattern: '/^$|^[A-Za-z0-9_@#-]+(\.[A-Za-z0-9_@#-]+)*$/'
           message: 'A path is dotted names, for example data.customers.items.'
-    id_path:
-      type: string
-      label: 'Path of the id in an item'
-      constraints:
-        NotBlank: ~
-        Regex:
-          pattern: '/^[A-Za-z0-9_@#-]+(\.[A-Za-z0-9_@#-]+)*$/'
-          message: 'A path is dotted names, for example customer.id.'
     timeout:
       type: integer
       label: 'Timeout in seconds'
@@ -388,14 +395,6 @@ import_engine.source.graphql:
     items_path:
       type: import_engine.optional_path
       label: 'Path of the list of items'
-    id_path:
-      type: string
-      label: 'Path of the id in an item'
-      constraints:
-        NotBlank: ~
-        Regex:
-          pattern: '/^[A-Za-z0-9_@#-]+(\.[A-Za-z0-9_@#-]+)*$/'
-          message: 'A path is dotted names, for example customer.id.'
     timeout:
       type: integer
       label: 'Timeout in seconds'
@@ -443,3 +442,38 @@ import_engine.mapping_row:
         settings:
           type: ignore
           label: 'Mapper settings'
+
+import_engine.settings:
+  type: config_object
+  label: 'Import engine settings'
+  constraints:
+    FullyValidatable: ~
+  mapping:
+    retention_items_days:
+      type: integer
+      label: 'Days to keep items that are done'
+      constraints:
+        Range:
+          min: 0
+          max: 3650
+    retention_dead_days:
+      type: integer
+      label: 'Days to keep dead items (the dead letter queue)'
+      constraints:
+        Range:
+          min: 0
+          max: 3650
+    retention_events_days:
+      type: integer
+      label: 'Days to keep events (the history)'
+      constraints:
+        Range:
+          min: 0
+          max: 3650
+    retention_runs_days:
+      type: integer
+      label: 'Days to keep finished runs'
+      constraints:
+        Range:
+          min: 0
+          max: 3650

@@ -49,6 +49,13 @@ abstract class HttpSourceTestBase extends KernelTestBase {
   }
 
   /**
+   * The key paths of the import under test.
+   *
+   * @var list<string>
+   */
+  protected array $sourceKey = ['id'];
+
+  /**
    * Returns a request the source sent.
    */
   protected function request(int $index): RequestInterface {
@@ -99,12 +106,12 @@ abstract class HttpSourceTestBase extends KernelTestBase {
           'query' => [],
           'body' => '{"query": "{ customers { items { id } } }"}',
           'items_path' => 'data.customers.items',
-          'id_path' => 'id',
           'timeout' => 10,
           'format' => 'auto',
           'csv_delimiter' => ',',
         ],
       ],
+      'source_key' => $this->sourceKey,
       'authentication' => $authentication ?? [
         'plugin' => 'api_key_header',
         'configuration' => ['header' => 'api-key', 'env_var' => self::ENV_VAR],

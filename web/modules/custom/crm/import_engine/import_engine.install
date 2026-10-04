@@ -1,0 +1,100 @@
+<?php
+
+/**
+ * @file
+ * Install and schema functions for the Import engine module.
+ */
+
+declare(strict_types=1);
+
+/**
+ * Implements hook_schema().
+ *
+ * @phpstan-return array<string, array<string, mixed>>
+ *
+ *   Three tables with three lifetimes (see docs/decisions/0009):
+ *   - import_item: the work queue of a run; rows are short-lived and lose their
+ *   payload once done. Every unique key includes run_id, so the table can be
+ *   partitioned by run later without a code change.
+ *   - import_page: one row per page position of an import, overwritten by each
+ *   run, so it follows the size of the dataset and not the number of runs.
+ *   - import_event: an append-only log of what changed or went wrong. The
+ *   primary key includes the time, so it can be partitioned by date.
+ */
+function import_engine_schema(): array {
+  // A hash is 16 bytes, stored as such and not as 32 hex characters.
+  $hash = static fn (bool $required): array => [
+    'type' => 'blob',
+    'mysql_type' => 'BINARY(16)',
+    'pgsql_type' => 'bytea',
+    'sqlite_type' => 'blob',
+    'not null' => $required,
+  ];
+
+  $schema['import_item'] = [
+    'description' => 'The work queue: one row per source item per run.',
+    'fields' => [
+      'id' => ['type' => 'serial', 'size' => 'big', 'unsigned' => TRUE, 'not null' => TRUE],
+      'run_id' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE],
+      'pool' => ['type' => 'varchar_ascii', 'length' => 32, 'not null' => TRUE, 'default' => 'default'],
+      'source_key' => ['type' => 'varchar', 'length' => 190, 'not null' => TRUE],
+      'state' => ['type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      'outcome' => ['type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => FALSE],
+      'attempts' => ['type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      'priority' => ['type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      'next_attempt' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      'claimed_by' => ['type' => 'varchar_ascii', 'length' => 64, 'not null' => FALSE],
+      'claimed_until' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      'hash' => $hash(FALSE),
+      'payload' => ['type' => 'blob', 'size' => 'big', 'not null' => FALSE],
+      'error' => ['type' => 'varchar', 'length' => 255, 'not null' => FALSE],
+      'created' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      'changed' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+    ],
+    'primary key' => ['id'],
+    'unique keys' => [
+      'run_key' => ['run_id', 'source_key'],
+    ],
+    'indexes' => [
+      'claim' => ['pool', 'state', 'priority', 'id'],
+      'state_changed' => ['state', 'changed'],
+    ],
+  ];
+
+  $schema['import_page'] = [
+    'description' => 'The fingerprint and keys of each page position of an import, from the latest run that read it.',
+    'fields' => [
+      'definition_id' => ['type' => 'varchar_ascii', 'length' => 64, 'not null' => TRUE],
+      'position' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE],
+      'fingerprint' => $hash(TRUE),
+      'item_count' => ['type' => 'int', 'size' => 'small', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      'item_keys' => ['type' => 'blob', 'size' => 'big', 'not null' => TRUE],
+      'seen_run' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      'changed' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+    ],
+    'primary key' => ['definition_id', 'position'],
+  ];
+
+  $schema['import_event'] = [
+    'description' => 'An append-only log of changes and problems; never "unchanged".',
+    'fields' => [
+      'id' => ['type' => 'serial', 'size' => 'big', 'unsigned' => TRUE, 'not null' => TRUE],
+      'occurred' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE],
+      'run_id' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE],
+      'definition_id' => ['type' => 'varchar_ascii', 'length' => 64, 'not null' => TRUE],
+      'event' => ['type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE],
+      'item_hash' => $hash(TRUE),
+      'source_key' => ['type' => 'varchar', 'length' => 190, 'not null' => TRUE],
+      'target' => ['type' => 'varchar_ascii', 'length' => 64, 'not null' => FALSE],
+      'message' => ['type' => 'varchar', 'length' => 255, 'not null' => FALSE],
+    ],
+    'primary key' => ['id', 'occurred'],
+    'indexes' => [
+      'occurred' => ['occurred'],
+      'run' => ['run_id', 'id'],
+      'item_history' => ['item_hash', 'occurred'],
+    ],
+  ];
+
+  return $schema;
+}
