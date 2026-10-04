@@ -1,0 +1,132 @@
+{
+    "data": {
+        "customers": {
+            "totalCount": 30,
+            "items": [
+                {
+                    "id": "2",
+                    "uuid": "15646644-674a-4b42-b790-66f8321ce45c",
+                    "label": "Customer 1",
+                    "customerNumber": "CUST-0001",
+                    "status": true,
+                    "description": null,
+                    "prices": {
+                        "totalCount": 4,
+                        "items": [
+                            {
+                                "id": "4",
+                                "price": {
+                                    "number": "86.230000",
+                                    "currencyCode": "EUR"
+                                },
+                                "product": {
+                                    "label": "Product 1",
+                                    "basePrice": {
+                                        "number": "104.850000",
+                                        "currencyCode": "EUR"
+                                    }
+                                }
+                            },
+                            {
+                                "id": "5",
+                                "price": {
+                                    "number": "332.260000",
+                                    "currencyCode": "EUR"
+                                },
+                                "product": {
+                                    "label": "Product 2",
+                                    "basePrice": {
+                                        "number": "494.050000",
+                                        "currencyCode": "EUR"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "id": "3",
+                    "uuid": "3750b67b-4f4b-4cb8-a0ff-8cbd96f1038f",
+                    "label": "Customer 2",
+                    "customerNumber": "CUST-0002",
+                    "status": true,
+                    "description": null,
+                    "prices": {
+                        "totalCount": 6,
+                        "items": [
+                            {
+                                "id": "8",
+                                "price": {
+                                    "number": "97.220000",
+                                    "currencyCode": "EUR"
+                                },
+                                "product": {
+                                    "label": "Product 2",
+                                    "basePrice": {
+                                        "number": "494.050000",
+                                        "currencyCode": "EUR"
+                                    }
+                                }
+                            },
+                            {
+                                "id": "9",
+                                "price": {
+                                    "number": "121.310000",
+                                    "currencyCode": "EUR"
+                                },
+                                "product": {
+                                    "label": "Product 4",
+                                    "basePrice": {
+                                        "number": "451.130000",
+                                        "currencyCode": "EUR"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "id": "4",
+                    "uuid": "a3bb194b-ae26-42ac-a84d-060ebe64ecab",
+                    "label": "Customer 3",
+                    "customerNumber": "CUST-0003",
+                    "status": true,
+                    "description": null,
+                    "prices": {
+                        "totalCount": 8,
+                        "items": [
+                            {
+                                "id": "14",
+                                "price": {
+                                    "number": "363.400000",
+                                    "currencyCode": "EUR"
+                                },
+                                "product": {
+                                    "label": "Product 2",
+                                    "basePrice": {
+                                        "number": "494.050000",
+                                        "currencyCode": "EUR"
+                                    }
+                                }
+                            },
+                            {
+                                "id": "15",
+                                "price": {
+                                    "number": "11.640000",
+                                    "currencyCode": "EUR"
+                                },
+                                "product": {
+                                    "label": "Product 3",
+                                    "basePrice": {
+                                        "number": "147.930000",
+                                        "currencyCode": "EUR"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+    }
+}

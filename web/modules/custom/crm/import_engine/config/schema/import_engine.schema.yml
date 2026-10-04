@@ -16,13 +16,13 @@ import_engine.import_definition.*:
       constraints:
         NotNull: ~
     source:
-      type: import_engine.plugin_reference
+      type: import_engine.source_reference
       label: 'Source'
     pagination:
       type: import_engine.plugin_reference
       label: 'Pagination'
     authentication:
-      type: import_engine.plugin_reference
+      type: import_engine.authentication_reference
       label: 'Authentication'
     target:
       type: mapping
@@ -83,8 +83,147 @@ import_engine.import_definition.*:
           pattern: '/^[a-z][a-z0-9_]*$/'
           message: 'The pool must be a machine name.'
 
-# A plugin and its configuration. The plugin id and the shape of its
-# configuration are checked against the plugin once the plugin types exist.
+# A source plugin; its configuration is typed per plugin.
+import_engine.source_reference:
+  type: mapping
+  label: 'Source'
+  mapping:
+    plugin:
+      type: string
+      label: 'Plugin ID'
+      constraints:
+        PluginExists:
+          manager: plugin.manager.import_engine_source
+          interface: 'Drupal\import_engine\Source\SourceInterface'
+    configuration:
+      type: 'import_engine.source.[%parent.plugin]'
+      label: 'Plugin configuration'
+
+# An authentication plugin; its configuration is typed per plugin.
+import_engine.authentication_reference:
+  type: mapping
+  label: 'Authentication'
+  mapping:
+    plugin:
+      type: string
+      label: 'Plugin ID'
+      constraints:
+        PluginExists:
+          manager: plugin.manager.import_engine_authentication
+          interface: 'Drupal\import_engine\Authentication\AuthenticationInterface'
+    configuration:
+      type: 'import_engine.authentication.[%parent.plugin]'
+      label: 'Plugin configuration'
+
+import_engine.source.http:
+  type: mapping
+  label: 'HTTP source'
+  mapping:
+    url:
+      type: string
+      label: 'URL'
+      constraints:
+        NotBlank: ~
+        Regex:
+          # No query string or fragment: parameters go in "query", so secrets
+          # and paging values never end up in URLs in messages.
+          pattern: '/^https?:\/\/[^?#\s]+$/'
+          message: 'The URL must start with http:// or https:// and have no query string; use the query setting.'
+    method:
+      type: string
+      label: 'Method'
+      constraints:
+        Choice: [GET, POST]
+    headers:
+      type: sequence
+      label: 'Headers'
+      sequence:
+        type: string
+        label: 'Header value'
+        constraints:
+          NotNull: ~
+          Regex:
+            pattern: '/^[^\r\n]*$/'
+            message: 'A header value cannot contain line breaks.'
+    query:
+      type: sequence
+      label: 'Query parameters'
+      sequence:
+        type: string
+        label: 'Parameter value'
+        constraints:
+          NotNull: ~
+    body:
+      type: string
+      label: 'Body (JSON)'
+      constraints:
+        NotNull: ~
+        Callback:
+          callback: ['Drupal\import_engine\Plugin\ImportEngine\Source\HttpSource', 'validateJsonBody']
+    items_path:
+      type: string
+      label: 'Path of the list of items'
+      constraints:
+        NotNull: ~
+        Regex:
+          pattern: '/^$|^[A-Za-z0-9_@#-]+(\.[A-Za-z0-9_@#-]+)*$/'
+          message: 'A path is dotted names, for example data.customers.items.'
+    id_path:
+      type: string
+      label: 'Path of the id in an item'
+      constraints:
+        NotBlank: ~
+        Regex:
+          pattern: '/^[A-Za-z0-9_@#-]+(\.[A-Za-z0-9_@#-]+)*$/'
+          message: 'A path is dotted names, for example customer.id.'
+    timeout:
+      type: integer
+      label: 'Timeout in seconds'
+      constraints:
+        Range:
+          min: 1
+          max: 300
+    format:
+      type: string
+      label: 'Response format'
+      constraints:
+        Choice:
+          callback: 'Drupal\import_engine\Decoder\ResponseDecoder::formats'
+    csv_delimiter:
+      type: string
+      label: 'CSV delimiter'
+      constraints:
+        Length:
+          min: 1
+          max: 1
+
+import_engine.authentication.none:
+  type: mapping
+  label: 'No authentication'
+  mapping: {}
+
+import_engine.authentication.api_key_header:
+  type: mapping
+  label: 'API key in a header'
+  mapping:
+    header:
+      type: string
+      label: 'Header name'
+      constraints:
+        NotBlank: ~
+        Regex:
+          pattern: '/^[A-Za-z0-9-]+$/'
+          message: 'A header name is letters, digits and dashes.'
+    env_var:
+      type: string
+      label: 'Environment variable that holds the key'
+      constraints:
+        NotBlank: ~
+        Regex:
+          pattern: '/^[A-Z][A-Z0-9_]*$/'
+          message: 'An environment variable name is upper case letters, digits and underscores.'
+
+# A plugin and its configuration, not yet typed per plugin (pagination).
 import_engine.plugin_reference:
   type: mapping
   label: 'Plugin'

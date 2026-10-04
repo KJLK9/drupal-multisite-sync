@@ -74,7 +74,7 @@ Own, deliberately different from site A so the mapping shows something: for exam
 
 ## Milestones (each ends in something demonstrable)
 
-Progress on milestone 1: step 1 (module, config schema and the import definition) is done; steps 2-7 follow.
+Progress on milestone 1: step 1 (module, config schema and the import definition) and step 2 (source plugin type, HTTP source, authentication, decoder, path resolver) are done; steps 3-7 follow.
 
 1. **Engine core, headless.** Definition entity, `Http` source and the four pagination plugins (unit-tested with mocked HTTP), item table, `Entity` target, run and counters, `import:run` and `import:work`. Demo: import customers from site A.
 2. **Idempotency and references.** Mapping table, hashes, products then prices with references, mark and sweep with a delete policy.

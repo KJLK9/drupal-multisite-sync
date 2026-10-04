@@ -1,0 +1,24 @@
+services:
+  plugin.manager.import_engine_source:
+    class: Drupal\import_engine\Source\SourcePluginManager
+    parent: default_plugin_manager
+
+  plugin.manager.import_engine_authentication:
+    class: Drupal\import_engine\Authentication\AuthenticationPluginManager
+    parent: default_plugin_manager
+
+  import_engine.response_decoder:
+    class: Drupal\import_engine\Decoder\ResponseDecoder
+
+  import_engine.path_resolver:
+    class: Drupal\import_engine\Path\PathResolver
+
+  import_engine.path_discovery:
+    class: Drupal\import_engine\Path\PathDiscovery
+
+  import_engine.secret_resolver:
+    class: Drupal\import_engine\Secret\SecretResolver
+
+  import_engine.source_factory:
+    class: Drupal\import_engine\Source\SourceFactory
+    arguments: ['@plugin.manager.import_engine_source']

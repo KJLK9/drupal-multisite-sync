@@ -37,7 +37,18 @@ class ImportDefinitionTest extends KernelTestBase {
       'description' => 'Imports the customers of site A.',
       'source' => [
         'plugin' => 'http',
-        'configuration' => ['url' => 'https://site-a.ddev.site/graphql/catalog'],
+        'configuration' => [
+          'url' => 'https://site-a.ddev.site/graphql/catalog',
+          'method' => 'POST',
+          'headers' => [],
+          'query' => [],
+          'body' => '{"query": "{ customers { items { id } } }"}',
+          'items_path' => 'data.customers.items',
+          'id_path' => 'id',
+          'timeout' => 30,
+          'format' => 'auto',
+          'csv_delimiter' => ',',
+        ],
       ],
       'pagination' => [
         'plugin' => 'offset_limit',
@@ -172,8 +183,8 @@ class ImportDefinitionTest extends KernelTestBase {
         ['target' => ['entity_type' => 'node', 'bundle' => 'My Bundle']],
         'target.bundle',
       ],
-      'plugin id is not a machine name' => [
-        ['source' => ['plugin' => 'Http Source', 'configuration' => []]],
+      'unknown source plugin' => [
+        ['source' => ['plugin' => 'carrier_pigeon', 'configuration' => []]],
         'source.plugin',
       ],
       'source path with an empty segment' => [$row('title', 'price..number'), $source_path],
