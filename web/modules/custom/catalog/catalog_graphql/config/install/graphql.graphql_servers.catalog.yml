@@ -13,7 +13,10 @@ caching: true
 batching: true
 disable_introspection: false
 # The schema is cyclic (product -> prices -> customer -> prices -> ...), so
-# bound how deep a query may go.
-query_depth: 5
+# bound how deep a query may go. GraphiQL's introspection query is 11 deep and
+# is not exempt from this rule, so the limit must stay above that or the
+# explorer cannot load the schema. Real protection is the endpoint permission
+# plus the page limits; this only stops absurd nesting.
+query_depth: 12
 query_complexity: 200
 persisted_queries_settings: {  }

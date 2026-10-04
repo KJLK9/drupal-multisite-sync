@@ -12,7 +12,7 @@ schema: composable
 caching: true
 batching: true
 disable_introspection: false
-query_depth: 5
+query_depth: 12
 query_complexity: 200
 schema_configuration:
   composable:
