@@ -19,6 +19,12 @@ separate module, so the engine runs without it (drush, cron, workers).
   written to the event log with the name of the person.
 - **Circuit breakers** (`.../breakers`): the state of the breaker per server,
   and a confirmation form to open one by hand or to close it.
+- **Import definitions** (`.../definitions`, permission `administer import
+  definitions`): the list, and a wizard in five steps to add or change an
+  import: source; paging and authentication; key and target; mapping; behaviour
+  (what happens to what disappears, retries, circuit breaker, reports). Nothing
+  is saved before the last step, and the whole definition is checked against its
+  schema first. See ADR 0015.
 
 ## Testing
 

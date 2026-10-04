@@ -57,7 +57,7 @@ abstract class NodeTestBase extends ExtractTestBase {
     $this->installSchema('node', ['node_access']);
     $this->installConfig(['node', 'filter']);
     // The user that owns imported nodes; the first user gets ID 1.
-    User::create(['name' => 'importer'])->save();
+    User::create(['name' => 'importer', 'status' => 1])->save();
 
     NodeType::create(['type' => 'item', 'name' => 'Item'])->save();
     NodeType::create(['type' => 'account', 'name' => 'Account'])->save();

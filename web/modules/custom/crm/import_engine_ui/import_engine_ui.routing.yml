@@ -64,3 +64,43 @@ import_engine_ui.breaker_action:
     _permission: 'administer import runs'
     action: 'trip|reset'
     endpoint: '[^/]+'
+
+import_engine_ui.definitions:
+  path: '/admin/config/system/import-engine/definitions'
+  defaults:
+    _controller: 'Drupal\import_engine_ui\Controller\DefinitionController::list'
+    _title: 'Import definitions'
+  requirements:
+    _permission: 'administer import definitions'
+
+import_engine_ui.definition_add:
+  path: '/admin/config/system/import-engine/definitions/add'
+  defaults:
+    _form: 'Drupal\import_engine_ui\Form\DefinitionWizardForm'
+    _title: 'Add import definition'
+  requirements:
+    _permission: 'administer import definitions'
+
+import_engine_ui.definition_edit:
+  path: '/admin/config/system/import-engine/definitions/{import_definition}/edit'
+  defaults:
+    _form: 'Drupal\import_engine_ui\Form\DefinitionWizardForm'
+    _title: 'Edit import definition'
+  requirements:
+    _permission: 'administer import definitions'
+  options:
+    parameters:
+      import_definition:
+        type: 'entity:import_definition'
+
+import_engine_ui.definition_delete:
+  path: '/admin/config/system/import-engine/definitions/{import_definition}/delete'
+  defaults:
+    _form: 'Drupal\import_engine_ui\Form\DefinitionDeleteForm'
+    _title: 'Delete import definition'
+  requirements:
+    _permission: 'administer import definitions'
+  options:
+    parameters:
+      import_definition:
+        type: 'entity:import_definition'

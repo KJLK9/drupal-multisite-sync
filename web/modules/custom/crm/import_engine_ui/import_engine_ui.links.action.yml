@@ -1,0 +1,5 @@
+import_engine_ui.definition_add:
+  route_name: import_engine_ui.definition_add
+  title: 'Add import definition'
+  appears_on:
+    - import_engine_ui.definitions
