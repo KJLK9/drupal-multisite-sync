@@ -123,11 +123,14 @@ function import_engine_schema(): array {
       'last_seen_run' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
       'last_changed_run' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
       'changed' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      // Set by the sweep when the item disappeared from the source and its
+      // target was unpublished, so the sweep does not touch it again.
+      'gone' => ['type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
     ],
     'primary key' => ['definition_id', 'source_key'],
     'indexes' => [
       // The sweep: everything of an import not seen in the latest run.
-      'last_seen' => ['definition_id', 'last_seen_run'],
+      'last_seen' => ['definition_id', 'gone', 'last_seen_run'],
     ],
   ];
 

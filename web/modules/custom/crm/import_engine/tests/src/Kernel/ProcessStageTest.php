@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\import_engine\Kernel;
 
-use Drupal\import_engine\Entity\ImportRun;
 use Drupal\import_engine\Process\ProcessResult;
-use Drupal\import_engine\Process\ProcessStage;
 use Drupal\import_engine\Run\RunStatus;
 use Drupal\import_engine\Storage\EventType;
 use Drupal\node\Entity\Node;
@@ -19,68 +17,6 @@ use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 #[Group('import_engine')]
 #[RunTestsInSeparateProcesses]
 class ProcessStageTest extends NodeTestBase {
-
-  /**
-   * The process stage.
-   */
-  protected ProcessStage $process;
-
-  /**
-   * {@inheritdoc}
-   */
-  protected function setUp(): void {
-    parent::setUp();
-    $this->process = $this->container->get('import_engine.process_stage');
-  }
-
-  /**
-   * Values for a definition that writes accounts as the importer.
-   *
-   * @param array<string, mixed> $values
-   *   Values that replace the defaults.
-   *
-   * @return array<string, mixed>
-   *   The definition values.
-   */
-  protected function accounts(array $values = []): array {
-    return $values + [
-      'target' => [
-        'plugin' => 'entity',
-        'configuration' => ['entity_type' => 'node', 'bundle' => 'account', 'owner' => 1],
-      ],
-      'mapping' => [
-        [
-          'target_field' => 'title',
-          'mapper' => ['plugin' => 'string', 'sources' => ['value' => 'name'], 'settings' => []],
-        ],
-        [
-          'target_field' => 'field_code',
-          'mapper' => ['plugin' => 'string', 'sources' => ['value' => 'code'], 'settings' => []],
-        ],
-      ],
-      'resilience' => [
-        'max_attempts' => 3,
-        'backoff' => 'fixed',
-        'retry_delay' => 60,
-        'dlq_enabled' => TRUE,
-        'max_repeated_pages' => 3,
-      ],
-    ];
-  }
-
-  /**
-   * Extracts items and saves the definition, as a real run would.
-   *
-   * @param list<array<string, mixed>> $rows
-   *   The source items.
-   * @param array<string, mixed> $values
-   *   Definition values.
-   */
-  protected function extractRows(array $rows, array $values = []): ImportRun {
-    $values = $this->accounts($values);
-    $this->definition($values)->save();
-    return $this->extractAll(new FakeSource([$rows]), $values);
-  }
 
   /**
    * Asserts what a call did.

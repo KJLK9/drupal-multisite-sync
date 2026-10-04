@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine\Process;
 
+use Drupal\Component\Plugin\Exception\PluginException;
 use Drupal\import_engine\ImportDefinitionInterface;
 use Drupal\import_engine\Mapper\MapperInterface;
 use Drupal\import_engine\Mapper\MapperPluginManager;
@@ -34,11 +35,7 @@ final class PlanFactory {
    *   When the definition cannot be turned into a plan.
    */
   public function create(ImportDefinitionInterface $definition): ImportPlan {
-    $target_definition = $definition->getTarget();
-    $target = $this->targets->createInstance($target_definition['plugin'], $target_definition['configuration']);
-    if (!$target instanceof TargetInterface) {
-      throw new PlanException('The target is not a target plugin.');
-    }
+    $target = $this->target($definition);
     try {
       $fields = $target->fields();
     }
@@ -64,6 +61,26 @@ final class PlanFactory {
       ];
     }
     return new ImportPlan($target, $rows, $this->paths);
+  }
+
+  /**
+   * Creates the target of an import.
+   *
+   * @throws \Drupal\import_engine\Process\PlanException
+   *   When the target plugin does not exist.
+   */
+  public function target(ImportDefinitionInterface $definition): TargetInterface {
+    $target_definition = $definition->getTarget();
+    try {
+      $target = $this->targets->createInstance($target_definition['plugin'], $target_definition['configuration']);
+    }
+    catch (PluginException $exception) {
+      throw new PlanException($exception->getMessage(), 0, $exception);
+    }
+    if (!$target instanceof TargetInterface) {
+      throw new PlanException('The target is not a target plugin.');
+    }
+    return $target;
   }
 
   /**

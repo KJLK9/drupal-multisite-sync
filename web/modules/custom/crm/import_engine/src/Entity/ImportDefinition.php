@@ -43,7 +43,9 @@ use Drupal\import_engine\ImportDefinitionInterface;
     'target',
     'mapping',
     'delete_policy',
+    'delete_threshold_percent',
     'resilience',
+    'reporters',
     'pool',
   ],
 )]
@@ -115,6 +117,13 @@ class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInter
   protected string $delete_policy = 'unpublish';
 
   /**
+   * The share of known items, in percent, that may go missing in one run.
+   *
+   * 0 means no limit.
+   */
+  protected int $delete_threshold_percent = 20;
+
+  /**
    * Retry settings.
    *
    * @var array{max_attempts: int, backoff: string, retry_delay: int, dlq_enabled: bool, max_repeated_pages: int}
@@ -126,6 +135,13 @@ class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInter
     'dlq_enabled' => TRUE,
     'max_repeated_pages' => 3,
   ];
+
+  /**
+   * The reporters that are told how a run went.
+   *
+   * @var list<array{plugin: string, configuration: array<string, mixed>}>
+   */
+  protected array $reporters = [];
 
   /**
    * The worker pool that processes this import's items.
@@ -186,6 +202,20 @@ class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInter
    */
   public function getDeletePolicy(): DeletePolicy {
     return DeletePolicy::from($this->delete_policy);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getDeleteThresholdPercent(): int {
+    return $this->delete_threshold_percent;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getReporters(): array {
+    return $this->reporters;
   }
 
   /**

@@ -122,6 +122,22 @@ final class EventLog {
   }
 
   /**
+   * Returns the failed and dead events of a run, oldest first.
+   *
+   * @return list<\Drupal\import_engine\Storage\EventRecord>
+   *   The events.
+   */
+  public function problems(int $runId, int $limit = 20): array {
+    $rows = $this->rows($this->database->select('import_event', 'e')
+      ->fields('e')
+      ->condition('run_id', $runId)
+      ->condition('event', [EventType::Failed->value, EventType::Dead->value], 'IN')
+      ->orderBy('id')
+      ->range(0, $limit));
+    return array_map($this->hydrate(...), $rows);
+  }
+
+  /**
    * Returns the events of a run, oldest first.
    *
    * @return list<\Drupal\import_engine\Storage\EventRecord>

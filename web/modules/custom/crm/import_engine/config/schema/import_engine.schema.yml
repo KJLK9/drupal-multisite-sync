@@ -53,6 +53,18 @@ import_engine.import_definition.*:
       constraints:
         Choice:
           callback: 'Drupal\import_engine\DeletePolicy::values'
+    delete_threshold_percent:
+      type: integer
+      label: 'Most items, in percent, that may go missing in one run'
+      constraints:
+        Range:
+          min: 0
+          max: 100
+    reporters:
+      type: sequence
+      label: 'Reporters'
+      sequence:
+        type: import_engine.reporter_reference
     resilience:
       type: mapping
       label: 'Resilience'
@@ -608,3 +620,46 @@ import_engine.settings:
         Range:
           min: 0
           max: 3650
+
+# A reporter plugin; its configuration is typed per plugin.
+import_engine.reporter_reference:
+  type: mapping
+  label: 'Reporter'
+  mapping:
+    plugin:
+      type: string
+      label: 'Plugin ID'
+      constraints:
+        PluginExists:
+          manager: plugin.manager.import_engine_reporter
+          interface: 'Drupal\import_engine\Reporter\ReporterInterface'
+    configuration:
+      type: 'import_engine.reporter.[%parent.plugin]'
+      label: 'Plugin configuration'
+
+import_engine.reporter.log:
+  type: mapping
+  label: 'Log reporter'
+  mapping:
+    only_on_problems:
+      type: boolean
+      label: 'Only report runs that had problems'
+
+import_engine.reporter.mail:
+  type: mapping
+  label: 'Mail reporter'
+  mapping:
+    only_on_problems:
+      type: boolean
+      label: 'Only report runs that had problems'
+    recipients:
+      type: sequence
+      label: 'Recipients'
+      constraints:
+        Count:
+          min: 1
+      sequence:
+        type: string
+        label: 'Email address'
+        constraints:
+          Email: ~

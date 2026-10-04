@@ -121,6 +121,8 @@ class ImportDefinitionTest extends KernelTestBase {
     $this->assertTrue($definition->isDlqEnabled());
     $this->assertSame(3, $definition->getMaxRepeatedPages());
     $this->assertSame(60, $definition->getRetryDelay());
+    $this->assertSame(20, $definition->getDeleteThresholdPercent());
+    $this->assertSame([], $definition->getReporters());
     $this->assertSame('default', $definition->getPool());
     $this->assertTrue($definition->status());
   }
@@ -202,6 +204,24 @@ class ImportDefinitionTest extends KernelTestBase {
       'too many key paths' => [['source_key' => ['a', 'b', 'c', 'd', 'e', 'f']], 'source_key'],
       'key path with an empty segment' => [['source_key' => ['a..b']], 'source_key.0'],
       'unknown delete policy' => [['delete_policy' => 'archive'], 'delete_policy'],
+      'threshold above 100' => [['delete_threshold_percent' => 101], 'delete_threshold_percent'],
+      'negative threshold' => [['delete_threshold_percent' => -1], 'delete_threshold_percent'],
+      'unknown reporter plugin' => [
+        ['reporters' => [['plugin' => 'pigeon', 'configuration' => []]]],
+        'reporters.0.plugin',
+      ],
+      'mail reporter with a bad address' => [
+        [
+          'reporters' => [
+            ['plugin' => 'mail', 'configuration' => ['only_on_problems' => FALSE, 'recipients' => ['nobody']]],
+          ],
+        ],
+        'reporters.0.configuration.recipients.0',
+      ],
+      'mail reporter without recipients' => [
+        ['reporters' => [['plugin' => 'mail', 'configuration' => ['only_on_problems' => FALSE, 'recipients' => []]]]],
+        'reporters.0.configuration.recipients',
+      ],
       'no attempts' => [$resilience(0, 'fixed'), 'resilience.max_attempts'],
       'too many attempts' => [$resilience(99, 'fixed'), 'resilience.max_attempts'],
       'no repeated pages allowed' => [$resilience(3, 'fixed', 0), 'resilience.max_repeated_pages'],

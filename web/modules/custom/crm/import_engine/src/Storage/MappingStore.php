@@ -72,6 +72,8 @@ final class MappingStore {
       'target_id' => $targetId,
       'hash' => $binary,
       'last_seen_run' => $runId,
+      // An item that is in the source is not gone.
+      'gone' => 0,
     ];
     if ($changed) {
       $update += ['last_changed_run' => $runId, 'changed' => $now];
@@ -88,6 +90,7 @@ final class MappingStore {
         'first_seen_run' => $runId,
         'last_changed_run' => $runId,
         'changed' => $now,
+        'gone' => 0,
       ])
       ->updateFields($update)
       ->execute();
@@ -124,7 +127,7 @@ final class MappingStore {
   }
 
   /**
-   * Returns the keys of items last seen before a run, for the sweep.
+   * Returns the items last seen before a run that are not yet gone.
    *
    * @param string $definitionId
    *   The import definition.
@@ -140,10 +143,55 @@ final class MappingStore {
     $rows = $this->rows($this->database->select('import_mapping', 'm')
       ->fields('m')
       ->condition('definition_id', $definitionId)
+      ->condition('gone', 0)
       ->condition('last_seen_run', $runId, '<')
       ->orderBy('source_key')
       ->range(0, $limit));
     return array_map($this->hydrate(...), $rows);
+  }
+
+  /**
+   * Counts the items of an import that the source no longer has.
+   *
+   * These are the items last seen before the run that are not yet marked gone.
+   */
+  public function countNotSeenSince(string $definitionId, int $runId): int {
+    $query = $this->database->select('import_mapping', 'm')
+      ->condition('definition_id', $definitionId)
+      ->condition('gone', 0)
+      ->condition('last_seen_run', $runId, '<');
+    return (int) $this->statement($query->countQuery())->fetchField();
+  }
+
+  /**
+   * Counts the items of an import that are not marked gone.
+   */
+  public function countActive(string $definitionId): int {
+    $query = $this->database->select('import_mapping', 'm')
+      ->condition('definition_id', $definitionId)
+      ->condition('gone', 0);
+    return (int) $this->statement($query->countQuery())->fetchField();
+  }
+
+  /**
+   * Marks an item as gone from the source; its target was unpublished.
+   */
+  public function markGone(string $definitionId, string $key, ?int $now = NULL): void {
+    $this->database->update('import_mapping')
+      ->fields(['gone' => 1, 'changed' => $now ?? $this->time->getRequestTime()])
+      ->condition('definition_id', $definitionId)
+      ->condition('source_key', $key)
+      ->execute();
+  }
+
+  /**
+   * Forgets an item: its target was deleted, so a return starts from scratch.
+   */
+  public function forget(string $definitionId, string $key): void {
+    $this->database->delete('import_mapping')
+      ->condition('definition_id', $definitionId)
+      ->condition('source_key', $key)
+      ->execute();
   }
 
   /**
@@ -166,6 +214,7 @@ final class MappingStore {
       (int) $row->first_seen_run,
       (int) $row->last_seen_run,
       (int) $row->last_changed_run,
+      (bool) $row->gone,
     );
   }
 

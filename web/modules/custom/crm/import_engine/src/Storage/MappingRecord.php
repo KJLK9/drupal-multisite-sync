@@ -26,6 +26,8 @@ final class MappingRecord {
    *   The run that last saw the item.
    * @param int $lastChangedRun
    *   The run that last changed the target.
+   * @param bool $gone
+   *   Whether the item went missing in the source and was unpublished.
    */
   public function __construct(
     public readonly string $key,
@@ -35,6 +37,7 @@ final class MappingRecord {
     public readonly int $firstSeenRun,
     public readonly int $lastSeenRun,
     public readonly int $lastChangedRun,
+    public readonly bool $gone = FALSE,
   ) {
   }
 

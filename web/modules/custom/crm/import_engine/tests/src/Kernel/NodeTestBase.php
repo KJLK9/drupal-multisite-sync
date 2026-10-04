@@ -5,6 +5,11 @@ declare(strict_types=1);
 namespace Drupal\Tests\import_engine\Kernel;
 
 use Drupal\field\Entity\FieldConfig;
+use Drupal\import_engine\Entity\ImportDefinition;
+use Drupal\import_engine\Entity\ImportRun;
+use Drupal\import_engine\Finish\FinishResult;
+use Drupal\import_engine\Finish\FinishStage;
+use Drupal\import_engine\Process\ProcessStage;
 use Drupal\field\Entity\FieldStorageConfig;
 use Drupal\node\Entity\NodeType;
 use Drupal\user\Entity\User;
@@ -16,6 +21,16 @@ use Drupal\user\Entity\User;
  * date, a count and a reference to an "item"; content type "item" has a SKU.
  */
 abstract class NodeTestBase extends ExtractTestBase {
+
+  /**
+   * The process stage.
+   */
+  protected ProcessStage $process;
+
+  /**
+   * The finish stage.
+   */
+  protected FinishStage $finish;
 
   /**
    * {@inheritdoc}
@@ -36,6 +51,8 @@ abstract class NodeTestBase extends ExtractTestBase {
    */
   protected function setUp(): void {
     parent::setUp();
+    $this->process = $this->container->get('import_engine.process_stage');
+    $this->finish = $this->container->get('import_engine.finish_stage');
     $this->installEntitySchema('node');
     $this->installSchema('node', ['node_access']);
     $this->installConfig(['node', 'filter']);
@@ -54,6 +71,97 @@ abstract class NodeTestBase extends ExtractTestBase {
     $this->addField('account', 'field_item', 'entity_reference', [
       'target_type' => 'node',
     ], ['handler' => 'default:node', 'handler_settings' => ['target_bundles' => ['item' => 'item']]]);
+  }
+
+  /**
+   * Values for a definition that writes accounts as the importer.
+   *
+   * @param array<string, mixed> $values
+   *   Values that replace the defaults.
+   *
+   * @return array<string, mixed>
+   *   The definition values.
+   */
+  protected function accounts(array $values = []): array {
+    return $values + [
+      'target' => [
+        'plugin' => 'entity',
+        'configuration' => ['entity_type' => 'node', 'bundle' => 'account', 'owner' => 1],
+      ],
+      'mapping' => [
+        [
+          'target_field' => 'title',
+          'mapper' => ['plugin' => 'string', 'sources' => ['value' => 'name'], 'settings' => []],
+        ],
+        [
+          'target_field' => 'field_code',
+          'mapper' => ['plugin' => 'string', 'sources' => ['value' => 'code'], 'settings' => []],
+        ],
+      ],
+      'resilience' => [
+        'max_attempts' => 3,
+        'backoff' => 'fixed',
+        'retry_delay' => 60,
+        'dlq_enabled' => TRUE,
+        'max_repeated_pages' => 3,
+      ],
+    ];
+  }
+
+  /**
+   * Extracts items and saves the definition, as a real run would.
+   *
+   * @param list<array<string, mixed>> $rows
+   *   The source items.
+   * @param array<string, mixed> $values
+   *   Definition values.
+   */
+  protected function extractRows(array $rows, array $values = []): ImportRun {
+    $values = $this->accounts($values);
+    $this->definition($values)->save();
+    return $this->extractAll(new FakeSource([$rows]), $values);
+  }
+
+  /**
+   * Runs an import of accounts: extracts the rows and processes every item.
+   *
+   * The definition is saved on the first call; later calls reuse it.
+   *
+   * @param list<array<string, mixed>> $rows
+   *   The source items, in one page.
+   * @param array<string, mixed> $values
+   *   Definition values, used when the definition is saved.
+   * @param bool $fullRun
+   *   Whether the run reads every page again.
+   */
+  protected function importRows(array $rows, array $values = [], bool $fullRun = FALSE): ImportRun {
+    $values = $this->accounts($values);
+    if (ImportDefinition::load('customers') === NULL) {
+      $this->definition($values)->save();
+    }
+    $run = $this->extractAll(new FakeSource([$rows]), $values, $fullRun);
+    while ($this->process->process('w', 100, 'default', 600)->claimed > 0) {
+      // Keep going until the queue is empty.
+    }
+    return $run;
+  }
+
+  /**
+   * Finishes a run and returns what happened.
+   */
+  protected function finishRun(ImportRun $run): FinishResult {
+    $definition = ImportDefinition::load('customers');
+    $this->assertNotNull($definition);
+    return $this->finish->finish($run, $definition);
+  }
+
+  /**
+   * Loads a run again from the database.
+   */
+  protected function reload(ImportRun $run): ImportRun {
+    $loaded = ImportRun::load((int) $run->id());
+    $this->assertNotNull($loaded);
+    return $loaded;
   }
 
   /**

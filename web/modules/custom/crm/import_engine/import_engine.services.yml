@@ -104,3 +104,32 @@ services:
       - '@import_engine.retry_policy'
       - '@entity_type.manager'
       - '@datetime.time'
+
+  logger.channel.import_engine:
+    parent: logger.channel_base
+    arguments: ['import_engine']
+
+  plugin.manager.import_engine_reporter:
+    class: Drupal\import_engine\Reporter\ReporterPluginManager
+    parent: default_plugin_manager
+
+  import_engine.run_reporter:
+    class: Drupal\import_engine\Reporter\RunReporter
+    arguments: ['@plugin.manager.import_engine_reporter', '@logger.channel.import_engine']
+
+  import_engine.sweeper:
+    class: Drupal\import_engine\Finish\Sweeper
+    arguments: ['@import_engine.mapping_store', '@import_engine.event_log']
+
+  import_engine.finish_stage:
+    class: Drupal\import_engine\Finish\FinishStage
+    arguments:
+      - '@import_engine.item_storage'
+      - '@import_engine.page_store'
+      - '@import_engine.event_log'
+      - '@import_engine.sweeper'
+      - '@import_engine.plan_factory'
+      - '@import_engine.run_reporter'
+      - '@entity_type.manager'
+      - '@lock.persistent'
+      - '@datetime.time'

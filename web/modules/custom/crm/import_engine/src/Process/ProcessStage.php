@@ -160,12 +160,22 @@ final class ProcessStage {
     $known = $this->mapping->find($definition_id, $item->key);
 
     if ($known !== NULL && $known->targetId !== NULL && $known->hash === $hash) {
-      // The target already holds exactly this: nothing to save.
-      $this->mapping->record($definition_id, $item->key, (string) $known->targetType, $known->targetId, $hash, $run_id, FALSE, $now);
+      // The target already holds exactly this. An item that was unpublished
+      // because it left the source is the only thing left to undo.
+      $restored = $known->gone && $plan->target->publish($known->targetId);
+      $this->mapping->record($definition_id, $item->key, (string) $known->targetType, $known->targetId, $hash, $run_id, $restored, $now);
+      if ($restored) {
+        $this->events->record($run_id, $definition_id, EventType::Updated, $item->key, $known->targetType . ':' . $known->targetId, 'Back in the source: published again.', $now);
+        return $this->items->complete($item, Outcome::Updated, $hash, $now) ? 'updated' : 'lost';
+      }
       return $this->items->complete($item, Outcome::Unchanged, $hash, $now) ? 'unchanged' : 'lost';
     }
 
     $result = $plan->target->save($values, $known?->targetId);
+    if ($known !== NULL && $known->gone && !array_key_exists('status', $values)) {
+      // It left the source, was unpublished and is back: show it again.
+      $plan->target->publish($result->id);
+    }
     $this->mapping->record($definition_id, $item->key, $result->type, $result->id, $hash, $run_id, TRUE, $now);
     $this->events->record($run_id, $definition_id, $result->created ? EventType::Created : EventType::Updated, $item->key, $result->type . ':' . $result->id, NULL, $now);
 

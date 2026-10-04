@@ -75,6 +75,21 @@ interface ImportDefinitionInterface extends ConfigEntityInterface {
   public function getDeletePolicy(): DeletePolicy;
 
   /**
+   * Returns the share of known items that may go missing in one run.
+   *
+   * In percent; when more are missing the sweep does nothing. 0 is no limit.
+   */
+  public function getDeleteThresholdPercent(): int;
+
+  /**
+   * Returns the reporters that are told how a run went.
+   *
+   * @return list<array{plugin: string, configuration: array<string, mixed>}>
+   *   The reporter plugins with their configuration.
+   */
+  public function getReporters(): array;
+
+  /**
    * Returns the maximum number of attempts per item.
    */
   public function getMaxAttempts(): int;

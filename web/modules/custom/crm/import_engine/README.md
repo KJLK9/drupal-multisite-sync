@@ -171,3 +171,23 @@ and write them to the target. See ADR 0010.
   the backoff of the import (`fixed`, `linear` or `exponential`, capped at 6
   hours) until the attempts run out. An ended item goes to the dead letter queue
   with its payload, or is done as failed when the queue is switched off.
+
+## Finishing
+
+`FinishStage::finish()` closes a run when its items are done. Any worker may
+call it after a batch; it waits while items are pending or retrying. See ADR
+0011.
+
+- **Verify**: pages without failed items are marked, so the next run can skip
+  them.
+- **Sweep**: after a complete extraction, items that left the source are
+  unpublished (and shown again when they return), deleted or ignored, following
+  `delete_policy`. When more than `delete_threshold_percent` (default 20, 0 is
+  no limit) of the known items would go, nothing is swept and the run ends with
+  errors.
+- **Counters and status**: the counters are derived from the items. A run is
+  `failed` when extraction was not complete, `completed_with_errors` when items
+  failed or the sweep was blocked, and `completed` otherwise.
+- **Reporters** (`log`, `mail`) are listed on the import and get a report of the
+  run. Each has `only_on_problems`; a mail reporter has `recipients`. A reporter
+  that fails does not change the run.
