@@ -41,6 +41,10 @@ products, product prices) exposed through a read-only GraphQL API.
 - GraphQL: never load per item in a resolver (N+1). Batch through a buffer
   (see `PriceBuffer`) or the built-in `entity_load` producers, and
   cover it with a query-count assertion in a Kernel test.
+- Entity types with a published flag use `PublishedEntityAccessControlHandler`
+  (util/published_access): unpublished items are hidden from non-admins in
+  access checks *and* access-checked entity queries. Do not filter by status in
+  resolvers; rely on `accessCheck(TRUE)`.
 - Access checks and cache metadata on everything that outputs data. Query via
   the entity query API, never raw SQL with user input.
 - Conventional commits (`feat:`, `fix:`, ...); enforced by GrumPHP.

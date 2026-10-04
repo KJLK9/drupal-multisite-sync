@@ -9,3 +9,5 @@ description: Security checklist for Drupal changes (access, escaping, SQL, cachi
 - Caching: correct contexts (`user.permissions`, `url`), tags and max-age; no per-user data in a shared cache.
 - GraphQL: no field exposes private data; limit/offset bounded; no mutations unless intended; consider query depth/complexity limits.
 - Secrets and files: nothing sensitive in config exports or git; uploaded files validated.
+- Unpublished entities: use `PublishedEntityAccessControlHandler`; verify lists, counts and single lookups agree (kernel test per API).
+- API keys: header only, dedicated low-privilege role and user; never log or commit a key.
