@@ -116,3 +116,43 @@ import_engine_ui.definition_run:
     parameters:
       import_definition:
         type: 'entity:import_definition'
+
+import_engine_ui.connections:
+  path: '/admin/config/system/import-engine/connections'
+  defaults:
+    _controller: 'Drupal\import_engine_ui\Controller\ConnectionController::list'
+    _title: 'Import connections'
+  requirements:
+    _permission: 'administer import definitions'
+
+import_engine_ui.connection_add:
+  path: '/admin/config/system/import-engine/connections/add'
+  defaults:
+    _form: 'Drupal\import_engine_ui\Form\ConnectionForm'
+    _title: 'Add connection'
+  requirements:
+    _permission: 'administer import definitions'
+
+import_engine_ui.connection_edit:
+  path: '/admin/config/system/import-engine/connections/{import_connection}/edit'
+  defaults:
+    _form: 'Drupal\import_engine_ui\Form\ConnectionForm'
+    _title: 'Edit connection'
+  requirements:
+    _permission: 'administer import definitions'
+  options:
+    parameters:
+      import_connection:
+        type: 'entity:import_connection'
+
+import_engine_ui.connection_delete:
+  path: '/admin/config/system/import-engine/connections/{import_connection}/delete'
+  defaults:
+    _form: 'Drupal\import_engine_ui\Form\ConnectionDeleteForm'
+    _title: 'Delete connection'
+  requirements:
+    _permission: 'administer import definitions'
+  options:
+    parameters:
+      import_connection:
+        type: 'entity:import_connection'

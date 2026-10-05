@@ -18,4 +18,5 @@ Every import carried its own URL, headers, timeout and way of logging in. Two im
 ## Consequences
 - Secrets stay out of the connection too: authentication names an environment variable, as before.
 - An import cannot be moved to another kind of source by changing only its connection; the validation says so.
-- The management screen and the choice in the wizard come next (this decision covers the engine only).
+- **The management screen** (`/admin/config/system/import-engine/connections`) lists the connections with their URL, authentication and the imports that use them, and adds, changes and deletes them. Its source section shows only the settings that belong to a connection, taken from the plugin's own form; the rules are those of saved configuration (the form validates the entity it would save). The kind of source of a connection in use cannot change. Changing the URL of a connection in use warns that the imports may need "Read every page again". A connection in use has no delete link, and its delete page explains why.
+- The choice in the wizard comes next.

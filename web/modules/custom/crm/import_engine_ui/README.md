@@ -5,6 +5,10 @@ separate module, so the engine runs without it (drush, cron, workers).
 
 ## Pages
 
+- **Import connections** (`/admin/config/system/import-engine/connections`,
+  permission `administer import definitions`): the connections that imports
+  share, with where they go, how they log in and which imports use them. Add,
+  edit and delete; a connection in use cannot be deleted (ADR 0022).
 - **Import runs** (`/admin/config/system/import-engine/runs`, permission `view
   import runs`): the runs, newest first, with status, duration and counters. A
   run that is not over shows live counters, derived from its items.
