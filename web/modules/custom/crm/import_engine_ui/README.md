@@ -5,6 +5,10 @@ separate module, so the engine runs without it (drush, cron, workers).
 
 ## Pages
 
+- **Run sets** (`/admin/config/system/import-engine/run-sets`, permission
+  `administer import definitions`; running needs `administer import runs`):
+  named lists of imports with draggable rows, run in order with a progress bar
+  (ADR 0023).
 - **Import connections** (`/admin/config/system/import-engine/connections`,
   permission `administer import definitions`): the connections that imports
   share, with where they go, how they log in and which imports use them. Add,

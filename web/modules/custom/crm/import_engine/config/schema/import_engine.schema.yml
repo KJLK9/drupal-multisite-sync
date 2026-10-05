@@ -807,3 +807,38 @@ import_engine.connection_timeout:
     Range:
       min: 1
       max: 300
+
+# A named list of imports that are run one after the other.
+import_engine.import_run_set.*:
+  type: config_entity
+  label: 'Run set'
+  constraints:
+    FullyValidatable: ~
+  mapping:
+    id:
+      type: machine_name
+      label: 'ID'
+    label:
+      type: required_label
+      label: 'Label'
+    description:
+      type: text
+      label: 'Description'
+      constraints:
+        NotNull: ~
+    imports:
+      type: sequence
+      label: 'Imports, in the order they are run'
+      constraints:
+        Count:
+          min: 1
+        UniqueItems: ~
+      sequence:
+        type: string
+        label: 'Import'
+        constraints:
+          ConfigExists:
+            prefix: 'import_engine.import_definition.'
+    stop_on_errors:
+      type: boolean
+      label: 'Stop when items went wrong'

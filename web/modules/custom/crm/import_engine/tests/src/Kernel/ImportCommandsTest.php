@@ -44,6 +44,7 @@ class ImportCommandsTest extends NodeTestBase {
       $this->container->get('import_engine.breaker_store'),
       $this->container->get('entity_type.manager'),
       $this->container->get('datetime.time'),
+      $this->container->get('import_engine.run_set_runner'),
     );
     $this->output = new BufferedOutput();
     $commands->setInput(new ArrayInput([]));

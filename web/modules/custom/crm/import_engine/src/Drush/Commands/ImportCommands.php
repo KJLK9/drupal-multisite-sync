@@ -16,11 +16,15 @@ use Drupal\import_engine\Drive\RunDriver;
 use Drupal\import_engine\Drive\Worker;
 use Drupal\import_engine\Entity\ImportDefinition;
 use Drupal\import_engine\ImportDefinitionInterface;
+use Drupal\import_engine\Entity\ImportRunSet;
 use Drupal\import_engine\Run\ImportRunInterface;
 use Drupal\import_engine\Run\RunManager;
 use Drupal\import_engine\Run\RunStarter;
 use Drupal\import_engine\Run\RunStatus;
 use Drupal\import_engine\Run\Trigger;
+use Drupal\import_engine\RunSet\RunSetRunner;
+use Drupal\import_engine\RunSet\SetProgress;
+use Drupal\import_engine\RunSet\SetState;
 use Drupal\import_engine\Storage\ItemStorage;
 use Drush\Attributes as CLI;
 use Drush\Commands\AutowireTrait;
@@ -58,6 +62,8 @@ final class ImportCommands extends DrushCommands {
     private readonly EntityTypeManagerInterface $entityTypeManager,
     #[Autowire(service: 'datetime.time')]
     private readonly TimeInterface $time,
+    #[Autowire(service: 'import_engine.run_set_runner')]
+    private readonly RunSetRunner $setRunner,
   ) {
     parent::__construct();
   }
@@ -94,6 +100,44 @@ final class ImportCommands extends DrushCommands {
     $result = $this->driver->drive($run, $definition, $budget, $this->workerName(), max(1, (int) $options['batch']));
     $this->io()->writeln($this->describe($run, $result));
     return CommandResult::exitCode($result->exitCode());
+  }
+
+  /**
+   * Runs the imports of a run set one after the other.
+   *
+   * It stops at the first import that fails. Exit codes: 0 every import ran,
+   * 1 the set stopped at a failure, 2 it is not over (budget spent, or an
+   * import cannot go on now).
+   *
+   * @param string $set
+   *   The ID of the run set.
+   * @param array<string, mixed> $options
+   *   The command options.
+   */
+  #[CLI\Command(name: 'import:run-set')]
+  #[CLI\Argument(name: 'set', description: 'The ID of the run set.')]
+  #[CLI\Option(name: 'full', description: 'Process every page of every import, also those that did not change.')]
+  #[CLI\Option(name: 'max-time', description: 'Stop after this many seconds; 0 for no limit.')]
+  #[CLI\Option(name: 'batch', description: 'Items to claim at a time.')]
+  #[CLI\Usage(name: 'drush import:run-set catalog', description: 'Run the imports of the catalog set in order.')]
+  public function runSet(string $set, array $options = ['full' => FALSE, 'max-time' => 0, 'batch' => 50]): CommandResult {
+    $entity = ImportRunSet::load($set);
+    if ($entity === NULL) {
+      throw new \InvalidArgumentException(sprintf('There is no run set "%s".', $set));
+    }
+    $budget = RunBudget::ofSeconds((int) $options['max-time'], $this->time->getCurrentTime());
+    $budget->stopOnSignals();
+    $progress = $this->setRunner->run($entity, new SetProgress(), $budget, $this->workerName(), Trigger::Drush, NULL, (bool) $options['full'], max(1, (int) $options['batch']));
+
+    foreach ($progress->outcomes as $outcome) {
+      $this->io()->writeln(sprintf('%s: %s%s', $outcome['import'], str_replace('_', ' ', $outcome['status']), $outcome['run'] === NULL ? '' : sprintf(' (run %d)', $outcome['run'])));
+    }
+    $this->io()->writeln(match ($progress->state) {
+      SetState::Completed => sprintf('The set "%s" is complete.', $set),
+      SetState::Running => sprintf('The set "%s" is not over: the time was spent. Run it again to go on.', $set),
+      default => (string) $progress->message,
+    });
+    return CommandResult::exitCode($progress->exitCode());
   }
 
   /**

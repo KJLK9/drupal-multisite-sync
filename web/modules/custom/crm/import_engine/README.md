@@ -111,6 +111,15 @@ path) and may not repeat what the connection has or choose another
 authentication. `ConnectionResolver` merges them when the source is built. A
 connection that imports use cannot be deleted. See ADR 0022.
 
+## Run sets
+
+A run set (`import_run_set`) is a named, ordered list of imports. `drush
+import:run-set <set>` (or the interface) runs them one after the other and stops
+at the first import that fails, is cancelled, is gone or disabled, or cannot go
+on; with *stop on errors* it also stops when items of an import went wrong.
+`RunSetRunner` does the work, with the run driver, within a budget, and returns
+its progress. An import that is in a set cannot be deleted. See ADR 0023.
+
 ## Paths
 
 `items_path` (where the list is in the response), the key paths and the mapping

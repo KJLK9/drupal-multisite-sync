@@ -73,6 +73,10 @@ services:
     class: Drupal\import_engine\Run\RunStarter
     arguments: ['@entity_type.manager', '@lock.persistent']
 
+  import_engine.run_set_runner:
+    class: Drupal\import_engine\RunSet\RunSetRunner
+    arguments: ['@entity_type.manager', '@import_engine.run_starter', '@import_engine.run_driver']
+
   import_engine.extract_stage:
     class: Drupal\import_engine\Extract\ExtractStage
     arguments:

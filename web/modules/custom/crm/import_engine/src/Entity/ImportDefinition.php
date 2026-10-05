@@ -10,6 +10,7 @@ use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\import_engine\BackoffStrategy;
 use Drupal\import_engine\DeletePolicy;
 use Drupal\import_engine\ImportDefinitionInterface;
+use Drupal\import_engine\Storage\ImportDefinitionStorage;
 
 /**
  * Defines the import definition config entity.
@@ -27,6 +28,7 @@ use Drupal\import_engine\ImportDefinitionInterface;
     'status' => 'status',
     'uuid' => 'uuid',
   ],
+  handlers: ['storage' => ImportDefinitionStorage::class],
   admin_permission: 'administer import definitions',
   constraints: ['ImportConnection' => []],
   label_count: [

@@ -27,3 +27,9 @@ import_engine_ui.connections:
   description: 'Where imports read from and how they log in, shared by the imports that use them.'
   parent: system.admin_config_system
   route_name: import_engine_ui.connections
+
+import_engine_ui.run_sets:
+  title: 'Run sets'
+  description: 'Named lists of imports that run one after the other.'
+  parent: system.admin_config_system
+  route_name: import_engine_ui.run_sets

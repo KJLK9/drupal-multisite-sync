@@ -156,3 +156,55 @@ import_engine_ui.connection_delete:
     parameters:
       import_connection:
         type: 'entity:import_connection'
+
+import_engine_ui.run_sets:
+  path: '/admin/config/system/import-engine/run-sets'
+  defaults:
+    _controller: 'Drupal\import_engine_ui\Controller\RunSetController::list'
+    _title: 'Run sets'
+  requirements:
+    _permission: 'administer import definitions'
+
+import_engine_ui.run_set_add:
+  path: '/admin/config/system/import-engine/run-sets/add'
+  defaults:
+    _form: 'Drupal\import_engine_ui\Form\RunSetForm'
+    _title: 'Add run set'
+  requirements:
+    _permission: 'administer import definitions'
+
+import_engine_ui.run_set_edit:
+  path: '/admin/config/system/import-engine/run-sets/{import_run_set}/edit'
+  defaults:
+    _form: 'Drupal\import_engine_ui\Form\RunSetForm'
+    _title: 'Edit run set'
+  requirements:
+    _permission: 'administer import definitions'
+  options:
+    parameters:
+      import_run_set:
+        type: 'entity:import_run_set'
+
+import_engine_ui.run_set_delete:
+  path: '/admin/config/system/import-engine/run-sets/{import_run_set}/delete'
+  defaults:
+    _form: 'Drupal\import_engine_ui\Form\RunSetDeleteForm'
+    _title: 'Delete run set'
+  requirements:
+    _permission: 'administer import definitions'
+  options:
+    parameters:
+      import_run_set:
+        type: 'entity:import_run_set'
+
+import_engine_ui.run_set_run:
+  path: '/admin/config/system/import-engine/run-sets/{import_run_set}/run'
+  defaults:
+    _form: 'Drupal\import_engine_ui\Form\RunSetRunForm'
+    _title: 'Run set'
+  requirements:
+    _permission: 'administer import runs'
+  options:
+    parameters:
+      import_run_set:
+        type: 'entity:import_run_set'

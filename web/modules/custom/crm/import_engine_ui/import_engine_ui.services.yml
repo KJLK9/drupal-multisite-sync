@@ -18,3 +18,12 @@ services:
       - '@current_user'
       - '@messenger'
       - '@datetime.time'
+
+  import_engine_ui.run_set_batch:
+    class: Drupal\import_engine_ui\Run\RunSetBatch
+    arguments:
+      - '@import_engine.run_set_runner'
+      - '@entity_type.manager'
+      - '@current_user'
+      - '@messenger'
+      - '@datetime.time'
