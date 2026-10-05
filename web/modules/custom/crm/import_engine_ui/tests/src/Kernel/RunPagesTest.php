@@ -106,46 +106,136 @@ class RunPagesTest extends NodeTestBase {
   }
 
   /**
-   * A run page shows the run, its items and its events.
+   * The page of a run shows what it is and how it went, in a few lines.
    */
   public function testRunPage(): void {
     $run = $this->importRows([['id' => 1, 'name' => 'Acme', 'code' => 'A'], ['id' => 2, 'name' => '', 'code' => 'B']]);
     $this->finishRun($run);
     $run = $this->reload($run);
 
-    $build = $this->controller->view($run, new Request());
+    $build = $this->controller->view($run);
 
-    $summary = [];
-    foreach ($build['summary']['#rows'] as $row) {
-      $summary[(string) $row[0]] = $row[1];
+    $facts = [];
+    foreach ($build['summary']['#context']['facts'] as $fact) {
+      $facts[(string) $fact['label']] = $fact['value'];
     }
-    $this->assertSame('Customers', $summary['Import']);
-    $this->assertSame('1', (string) $summary['Pages read']);
+    $this->assertSame('Customers', $facts['Import']);
+    $this->assertSame(1, $facts['Pages read']);
+    $this->assertSame('completed with errors', $this->text($facts['Status']));
+    $this->assertArrayHasKey('Duration', $facts);
+    $this->assertArrayNotHasKey('items', $build, 'The items have a page of their own.');
+    $this->assertArrayNotHasKey('events', $build, 'The events have a page of their own.');
+    $this->assertArrayNotHasKey('actions', $build, 'A finished run cannot be cancelled.');
+    $this->assertSame('Run 1 of Customers', (string) $this->controller->title($run));
+
+    $tiles = [];
+    foreach ($build['counters']['#context']['tiles'] as $tile) {
+      $tiles[$tile['label']] = $tile;
+    }
+    $this->assertSame(2, $tiles['items extracted']['count']);
+    $this->assertSame('is-problem', $tiles['dead']['class'], 'A counter that went wrong stands out.');
+    $this->assertSame('', $tiles['created']['class']);
+  }
+
+  /**
+   * The pages of a run render: facts, counters, buttons and tables.
+   */
+  public function testPagesRender(): void {
+    $run = $this->importRows([['id' => 1, 'name' => 'Acme', 'code' => 'A'], ['id' => 2, 'name' => '', 'code' => 'B']]);
+    $this->finishRun($run);
+    $run = $this->reload($run);
+    $renderer = $this->container->get('renderer');
+
+    $overview = $this->controller->view($run);
+    $html = (string) $renderer->renderInIsolation($overview);
+    $this->assertStringContainsString('import-run-facts', $html);
+    $this->assertStringContainsString('import-run-status--completed-with-errors', $html);
+    $this->assertStringContainsString('import-run-counter is-problem', $html);
+    $this->assertStringContainsString('Items (2)', $html);
+
+    $items = $this->controller->items($run, new Request(['state' => 'dead']));
+    $html = (string) $renderer->renderInIsolation($items);
+    $this->assertStringContainsString('import-run-pill is-active', $html);
+    $this->assertStringContainsString('Dead (1)', $html);
+
+    $events = $this->controller->events($run);
+    $html = (string) $renderer->renderInIsolation($events);
+    $this->assertStringContainsString('Events (2)', $html);
+  }
+
+  /**
+   * The buttons between the pages of a run say how much each page has.
+   */
+  public function testRunNavigation(): void {
+    $run = $this->importRows([['id' => 1, 'name' => 'Acme', 'code' => 'A'], ['id' => 2, 'name' => '', 'code' => 'B']]);
+    $this->finishRun($run);
+    $run = $this->reload($run);
+
+    $nav = $this->controller->view($run)['nav'];
+
+    $this->assertSame('Overview', (string) $nav['overview']['#title']);
+    $this->assertSame('Items (2)', (string) $nav['items']['#title']);
+    $this->assertSame('Events (2)', (string) $nav['events']['#title']);
+    $this->assertSame('import_engine_ui.run_items', $nav['items']['#url']->getRouteName());
+    $this->assertContains('is-active', $nav['overview']['#attributes']['class']);
+    $this->assertNotContains('is-active', $nav['items']['#attributes']['class']);
+    $this->assertContains('is-active', $this->controller->items($run, new Request())['nav']['items']['#attributes']['class']);
+    $this->assertContains('is-active', $this->controller->events($run)['nav']['events']['#attributes']['class']);
+  }
+
+  /**
+   * The items page lists the items, newest first.
+   */
+  public function testItemsPage(): void {
+    $run = $this->importRows([['id' => 1, 'name' => 'Acme', 'code' => 'A'], ['id' => 2, 'name' => '', 'code' => 'B']]);
+
+    $build = $this->controller->items($run, new Request());
+
     $this->assertCount(2, $build['items']['#rows']);
     // Newest first: key 2 was queued last.
     $this->assertSame('["2"]', $build['items']['#rows'][0][0]);
     $this->assertSame('DEAD', strtoupper($build['items']['#rows'][0][1]));
-    $this->assertSame(['Created', 'Dead'], array_column($build['events']['#rows'], 1));
-    $this->assertArrayNotHasKey('operations', $build, 'A finished run cannot be cancelled.');
-    $this->assertSame('Run 1 of Customers', (string) $this->controller->title($run));
   }
 
   /**
-   * The items can be filtered by state; an unknown state is no filter.
+   * The events page lists what changed or went wrong.
+   */
+  public function testEventsPage(): void {
+    $run = $this->importRows([['id' => 1, 'name' => 'Acme', 'code' => 'A'], ['id' => 2, 'name' => '', 'code' => 'B']]);
+    $this->finishRun($run);
+
+    $build = $this->controller->events($this->reload($run));
+
+    $this->assertSame(['Created', 'Dead'], array_column($build['events']['#rows'], 1));
+  }
+
+  /**
+   * The items can be filtered by state, with buttons; unknown is no filter.
    */
   public function testItemFilter(): void {
     $run = $this->importRows([['id' => 1, 'name' => 'Acme', 'code' => 'A'], ['id' => 2, 'name' => '', 'code' => 'B']]);
 
-    $dead = $this->controller->view($run, new Request(['state' => 'dead']));
+    $dead = $this->controller->items($run, new Request(['state' => 'dead']));
     $this->assertCount(1, $dead['items']['#rows']);
     $this->assertSame('["2"]', $dead['items']['#rows'][0][0]);
 
-    $done = $this->controller->view($run, new Request(['state' => 'done']));
+    $done = $this->controller->items($run, new Request(['state' => 'done']));
     $this->assertCount(1, $done['items']['#rows']);
     $this->assertSame('["1"]', $done['items']['#rows'][0][0]);
 
-    $all = $this->controller->view($run, new Request(['state' => 'bogus']));
+    $all = $this->controller->items($run, new Request(['state' => 'bogus']));
     $this->assertCount(2, $all['items']['#rows']);
+
+    // The buttons: the state that is shown is the active one.
+    $active = [];
+    foreach ($done['filter'] as $key => $button) {
+      if (is_int($key) && in_array('is-active', $button['#attributes']['class'], TRUE)) {
+        $active[] = (string) $button['#title'];
+      }
+    }
+    $this->assertSame(['Done (1)'], $active);
+    $this->assertSame('All (2)', (string) $all['filter'][0]['#title']);
+    $this->assertContains('is-active', $all['filter'][0]['#attributes']['class']);
   }
 
   /**
@@ -155,13 +245,14 @@ class RunPagesTest extends NodeTestBase {
     $run = $this->extractRows($this->pagesOf(1, 1)[0]);
 
     $this->setUpCurrentUser([], ['view import runs']);
-    $this->assertArrayNotHasKey('operations', $this->controller->view($run, new Request()));
+    $this->assertArrayNotHasKey('actions', $this->controller->view($run));
 
     $this->setUpCurrentUser([], ['view import runs', 'administer import runs']);
-    $build = $this->controller->view($run, new Request());
-    $this->assertArrayHasKey('operations', $build);
-    $this->assertSame('import_engine_ui.run_cancel', $build['operations']['#links']['cancel']['url']->getRouteName());
-    $this->assertSame('import_engine_ui.definition_run', $build['operations']['#links']['continue']['url']->getRouteName());
+    $build = $this->controller->view($run);
+    $this->assertArrayHasKey('actions', $build);
+    $this->assertSame('import_engine_ui.run_cancel', $build['actions']['cancel']['#url']->getRouteName());
+    $this->assertSame('import_engine_ui.definition_run', $build['actions']['continue']['#url']->getRouteName());
+    $this->assertContains('button--danger', $build['actions']['cancel']['#attributes']['class']);
   }
 
   /**

@@ -1,35 +1,41 @@
+import_engine_ui.overview:
+  title: 'Import engine'
+  description: 'Imports, connections, run sets, runs and what to do when something goes wrong.'
+  parent: system.admin_config_system
+  route_name: import_engine_ui.overview
+
 import_engine_ui.runs:
   title: 'Import runs'
   description: 'See the runs of the imports, their items and events.'
-  parent: system.admin_config_system
+  parent: import_engine_ui.overview
   route_name: import_engine_ui.runs
 
 import_engine_ui.dead_letter:
   title: 'Dead letter queue'
   description: 'Items that ran out of attempts: retry, edit or discard them.'
-  parent: system.admin_config_system
+  parent: import_engine_ui.overview
   route_name: import_engine_ui.dead_letter
 
 import_engine_ui.breakers:
   title: 'Circuit breakers'
   description: 'The servers the imports are sparing, and a way to open or close them by hand.'
-  parent: system.admin_config_system
+  parent: import_engine_ui.overview
   route_name: import_engine_ui.breakers
 
 import_engine_ui.definitions:
   title: 'Import definitions'
   description: 'Create and change the imports: where items come from, where they go and how they are mapped.'
-  parent: system.admin_config_system
+  parent: import_engine_ui.overview
   route_name: import_engine_ui.definitions
 
 import_engine_ui.connections:
   title: 'Import connections'
   description: 'Where imports read from and how they log in, shared by the imports that use them.'
-  parent: system.admin_config_system
+  parent: import_engine_ui.overview
   route_name: import_engine_ui.connections
 
 import_engine_ui.run_sets:
   title: 'Run sets'
   description: 'Named lists of imports that run one after the other.'
-  parent: system.admin_config_system
+  parent: import_engine_ui.overview
   route_name: import_engine_ui.run_sets

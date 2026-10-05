@@ -208,3 +208,35 @@ import_engine_ui.run_set_run:
     parameters:
       import_run_set:
         type: 'entity:import_run_set'
+
+import_engine_ui.overview:
+  path: '/admin/config/system/import-engine'
+  defaults:
+    _controller: '\Drupal\system\Controller\SystemController::systemAdminMenuBlockPage'
+    _title: 'Import engine'
+  requirements:
+    _permission: 'view import runs'
+
+import_engine_ui.run_items:
+  path: '/admin/config/system/import-engine/runs/{import_run}/items'
+  defaults:
+    _controller: 'Drupal\import_engine_ui\Controller\RunController::items'
+    _title_callback: 'Drupal\import_engine_ui\Controller\RunController::title'
+  requirements:
+    _entity_access: 'import_run.view'
+  options:
+    parameters:
+      import_run:
+        type: 'entity:import_run'
+
+import_engine_ui.run_events:
+  path: '/admin/config/system/import-engine/runs/{import_run}/events'
+  defaults:
+    _controller: 'Drupal\import_engine_ui\Controller\RunController::events'
+    _title_callback: 'Drupal\import_engine_ui\Controller\RunController::title'
+  requirements:
+    _entity_access: 'import_run.view'
+  options:
+    parameters:
+      import_run:
+        type: 'entity:import_run'

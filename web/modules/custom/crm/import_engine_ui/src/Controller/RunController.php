@@ -110,12 +110,79 @@ final class RunController extends ControllerBase {
         '#empty' => $this->t('There are no runs yet. Start one with <code>drush import:run</code>.'),
       ],
       'pager' => ['#type' => 'pager'],
+      '#attached' => ['library' => ['import_engine_ui/runs']],
       '#cache' => ['max-age' => 0],
     ];
   }
 
   /**
-   * Shows one run: its figures, items and events.
+   * Shows one run: what it is, how it went, and the buttons that fit.
+   *
+   * The items and the events of a run are on their own pages, behind the
+   * navigation at the top; they are long, and the page of the run is meant to
+   * be taken in at a glance.
+   *
+   * @param \Drupal\import_engine\Run\ImportRunInterface $import_run
+   *   The run.
+   *
+   * @return array<string, mixed>
+   *   A render array.
+   */
+  public function view(ImportRunInterface $import_run): array {
+    $build = ['#attached' => ['library' => ['import_engine_ui/runs']]];
+    $build['nav'] = $this->runNavigation($import_run, 'overview');
+
+    if (!$import_run->getStatus()->isFinal() && $this->currentUser()->hasPermission('administer import runs')) {
+      $build['actions'] = [
+        '#type' => 'container',
+        '#attributes' => ['class' => ['import-run-actions']],
+        'continue' => [
+          '#type' => 'link',
+          '#title' => $this->t('Continue run'),
+          '#url' => Url::fromRoute('import_engine_ui.definition_run', ['import_definition' => $import_run->getDefinitionId()]),
+          '#attributes' => ['class' => ['button', 'button--primary']],
+        ],
+        'cancel' => [
+          '#type' => 'link',
+          '#title' => $this->t('Cancel run'),
+          '#url' => Url::fromRoute('import_engine_ui.run_cancel', ['import_run' => $import_run->id()]),
+          '#attributes' => ['class' => ['button', 'button--danger']],
+        ],
+      ];
+    }
+
+    $build['summary'] = [
+      '#type' => 'inline_template',
+      '#template' => '<dl class="import-run-facts">{% for fact in facts %}<div class="import-run-fact"><dt>{{ fact.label }}</dt><dd>{{ fact.value }}</dd></div>{% endfor %}</dl>',
+      '#context' => [
+        'facts' => $this->facts($import_run),
+      ],
+    ];
+
+    $counters = $this->counters($import_run);
+    $tiles = [];
+    foreach ($counters as $name => $count) {
+      // What went wrong stands out as soon as it is not zero.
+      $tiles[] = [
+        'label' => str_replace('_', ' ', $name),
+        'count' => $count,
+        'class' => in_array($name, ['failed', 'dead'], TRUE) && $count > 0 ? 'is-problem' : '',
+      ];
+    }
+    $build['counters'] = [
+      '#type' => 'inline_template',
+      '#template' => '<h2 class="import-run-heading">{{ title }}</h2><dl class="import-run-counters">{% for tile in tiles %}<div class="import-run-counter {{ tile.class }}"><dd>{{ tile.count }}</dd><dt>{{ tile.label }}</dt></div>{% endfor %}</dl>',
+      '#context' => [
+        'title' => $import_run->getStatus()->isFinal() ? $this->t('Counters') : $this->t('Counters (live)'),
+        'tiles' => $tiles,
+      ],
+    ];
+    $build['#cache'] = ['max-age' => 0];
+    return $build;
+  }
+
+  /**
+   * Shows the items of a run, with the states as buttons to filter by.
    *
    * @param \Drupal\import_engine\Run\ImportRunInterface $import_run
    *   The run.
@@ -125,56 +192,33 @@ final class RunController extends ControllerBase {
    * @return array<string, mixed>
    *   A render array.
    */
-  public function view(ImportRunInterface $import_run, Request $request): array {
+  public function items(ImportRunInterface $import_run, Request $request): array {
     $run_id = (int) $import_run->id();
     $filter = $this->stateFilter($request);
-    $build = [];
-
-    $build['summary'] = [
-      '#type' => 'table',
-      '#caption' => $this->t('Run'),
-      '#rows' => [
-        [$this->t('Import'), $this->definitionLabel($import_run)],
-        [$this->t('Status'), $this->statusCell($import_run)],
-        [$this->t('Started by'), $import_run->getTrigger()->value . ($import_run->isFullRun() ? ' (full run)' : '')],
-        [$this->t('Started'), $this->timestamp($import_run, 'started')],
-        [$this->t('Finished'), $this->timestamp($import_run, 'finished')],
-        [$this->t('Pages read'), $import_run->getPagesRead()],
-        [$this->t('Extraction complete'), $import_run->isExtractComplete() ? $this->t('yes') : $this->t('no')],
-        [$this->t('Remarks'), $import_run->getSummary() === '' ? '-' : $import_run->getSummary()],
-      ],
-    ];
-
-    if (!$import_run->getStatus()->isFinal() && $this->currentUser()->hasPermission('administer import runs')) {
-      $build['operations'] = [
-        '#type' => 'operations',
-        '#links' => [
-          'continue' => [
-            'title' => $this->t('Continue run'),
-            'url' => Url::fromRoute('import_engine_ui.definition_run', ['import_definition' => $import_run->getDefinitionId()]),
-          ],
-          'cancel' => [
-            'title' => $this->t('Cancel run'),
-            'url' => Url::fromRoute('import_engine_ui.run_cancel', ['import_run' => $run_id]),
-          ],
-        ],
-      ];
-    }
-
-    $counters = $this->counters($import_run);
-    $build['counters'] = [
-      '#type' => 'table',
-      '#caption' => $import_run->getStatus()->isFinal() ? $this->t('Counters') : $this->t('Counters (live)'),
-      '#header' => array_map(static fn (string $name): string => str_replace('_', ' ', $name), array_keys($counters)),
-      '#rows' => [array_values($counters)],
-    ];
+    $build = ['#attached' => ['library' => ['import_engine_ui/runs']]];
+    $build['nav'] = $this->runNavigation($import_run, 'items');
 
     $states = $this->items->countByState($run_id);
-    $links = [Link::createFromRoute($this->t('all (@count)', ['@count' => array_sum($states)]), 'import_engine_ui.run', ['import_run' => $run_id])];
+    $buttons = [
+      ['title' => $this->t('All'), 'count' => array_sum($states), 'query' => [], 'active' => $filter === NULL],
+    ];
     foreach ($states as $name => $count) {
-      $links[] = Link::createFromRoute($this->t('@state (@count)', ['@state' => $name, '@count' => $count]), 'import_engine_ui.run', ['import_run' => $run_id], ['query' => ['state' => $name]]);
+      $buttons[] = [
+        'title' => ucfirst((string) $name),
+        'count' => $count,
+        'query' => ['state' => $name],
+        'active' => $filter !== NULL && strtolower($filter->name) === $name,
+      ];
     }
-    $build['filter'] = ['#theme' => 'item_list', '#title' => $this->t('Items'), '#items' => $links];
+    $build['filter'] = ['#type' => 'container', '#attributes' => ['class' => ['import-run-filter']]];
+    foreach ($buttons as $delta => $button) {
+      $build['filter'][$delta] = [
+        '#type' => 'link',
+        '#title' => $this->t('@title (@count)', ['@title' => $button['title'], '@count' => $button['count']]),
+        '#url' => Url::fromRoute('import_engine_ui.run_items', ['import_run' => $run_id], ['query' => $button['query']]),
+        '#attributes' => ['class' => ['import-run-pill', $button['active'] ? 'is-active' : '']],
+      ];
+    }
 
     $total = $this->items->countItems([$run_id], $filter);
     $pager = $this->pagerManager->createPager($total, self::PER_PAGE, 0);
@@ -202,11 +246,28 @@ final class RunController extends ControllerBase {
       '#rows' => $rows,
       '#empty' => $this->t('No items.'),
     ];
-    $build['items_pager'] = ['#type' => 'pager', '#element' => 0];
+    $build['pager'] = ['#type' => 'pager', '#element' => 0];
+    $build['#cache'] = ['max-age' => 0];
+    return $build;
+  }
 
-    $event_pager = $this->pagerManager->createPager($this->events->countForRun($run_id), self::PER_PAGE, 1);
+  /**
+   * Shows the events of a run: what changed or went wrong.
+   *
+   * @param \Drupal\import_engine\Run\ImportRunInterface $import_run
+   *   The run.
+   *
+   * @return array<string, mixed>
+   *   A render array.
+   */
+  public function events(ImportRunInterface $import_run): array {
+    $run_id = (int) $import_run->id();
+    $build = ['#attached' => ['library' => ['import_engine_ui/runs']]];
+    $build['nav'] = $this->runNavigation($import_run, 'events');
+
+    $pager = $this->pagerManager->createPager($this->events->countForRun($run_id), self::PER_PAGE, 0);
     $rows = [];
-    foreach ($this->events->forRun($run_id, self::PER_PAGE, $event_pager->getCurrentPage() * self::PER_PAGE) as $event) {
+    foreach ($this->events->forRun($run_id, self::PER_PAGE, $pager->getCurrentPage() * self::PER_PAGE) as $event) {
       $rows[] = [
         $this->dateFormatter->format($event->occurred, 'custom', 'Y-m-d H:i:s'),
         $event->event->name,
@@ -217,14 +278,68 @@ final class RunController extends ControllerBase {
     }
     $build['events'] = [
       '#type' => 'table',
-      '#caption' => $this->t('Events: what changed or went wrong'),
       '#header' => [$this->t('When'), $this->t('Event'), $this->t('Key'), $this->t('Target'), $this->t('Message')],
       '#rows' => $rows,
       '#empty' => $this->t('Nothing changed and nothing went wrong.'),
     ];
-    $build['events_pager'] = ['#type' => 'pager', '#element' => 1];
+    $build['pager'] = ['#type' => 'pager', '#element' => 0];
     $build['#cache'] = ['max-age' => 0];
     return $build;
+  }
+
+  /**
+   * Builds the buttons that go between the pages of a run.
+   *
+   * @param \Drupal\import_engine\Run\ImportRunInterface $run
+   *   The run.
+   * @param string $current
+   *   The page that is shown: overview, items or events.
+   *
+   * @return array<string, mixed>
+   *   A render array.
+   */
+  private function runNavigation(ImportRunInterface $run, string $current): array {
+    $run_id = (int) $run->id();
+    $item_count = array_sum($this->items->countByState($run_id));
+    $event_count = $this->events->countForRun($run_id);
+    $pages = [
+      'overview' => [$this->t('Overview'), 'import_engine_ui.run'],
+      'items' => [$this->t('Items (@count)', ['@count' => $item_count]), 'import_engine_ui.run_items'],
+      'events' => [$this->t('Events (@count)', ['@count' => $event_count]), 'import_engine_ui.run_events'],
+    ];
+    $nav = ['#type' => 'container', '#attributes' => ['class' => ['import-run-nav']]];
+    foreach ($pages as $name => [$title, $route]) {
+      $nav[$name] = [
+        '#type' => 'link',
+        '#title' => $title,
+        '#url' => Url::fromRoute($route, ['import_run' => $run_id]),
+        '#attributes' => ['class' => ['import-run-pill', $name === $current ? 'is-active' : '']],
+      ];
+    }
+    return $nav;
+  }
+
+  /**
+   * Returns what the overview says about a run, as label and value.
+   *
+   * @return list<array{label: \Drupal\Core\StringTranslation\TranslatableMarkup, value: mixed}>
+   *   The facts.
+   */
+  private function facts(ImportRunInterface $run): array {
+    $remarks = $run->getSummary();
+    $full = $run->isFullRun() ? ' (full run)' : '';
+    $complete = $run->isExtractComplete() ? $this->t('yes') : $this->t('no');
+    return [
+      ['label' => $this->t('Import'), 'value' => $this->definitionLabel($run)],
+      ['label' => $this->t('Status'), 'value' => $this->statusCell($run)['data']],
+      ['label' => $this->t('Started by'), 'value' => $run->getTrigger()->value . $full],
+      ['label' => $this->t('Started'), 'value' => $this->timestamp($run, 'started')],
+      ['label' => $this->t('Finished'), 'value' => $this->timestamp($run, 'finished')],
+      ['label' => $this->t('Duration'), 'value' => $this->duration($run)],
+      ['label' => $this->t('Pages read'), 'value' => $run->getPagesRead()],
+      ['label' => $this->t('Extraction complete'), 'value' => $complete],
+      ['label' => $this->t('Remarks'), 'value' => $remarks === '' ? '-' : $remarks],
+    ];
   }
 
   /**

@@ -1,0 +1,151 @@
+/**
+ * @file
+ * The runs of the import engine: status badges, the page of a run and the
+ * buttons that go between its overview, items and events.
+ */
+
+/* Status of a run, as a badge. */
+.import-run-status {
+  display: inline-block;
+  padding: 0.1rem 0.6rem;
+  border-radius: 1rem;
+  background: #e8eaf0;
+  color: #232429;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.import-run-status--completed {
+  background: #e3f4e6;
+  color: #1a6b2c;
+}
+
+.import-run-status--completed-with-errors {
+  background: #fdf1d6;
+  color: #7a4d00;
+}
+
+.import-run-status--failed {
+  background: #fde6e1;
+  color: #b4300f;
+}
+
+.import-run-status--cancelled {
+  background: #ececef;
+  color: #55565b;
+}
+
+.import-run-status--queued,
+.import-run-status--extracting,
+.import-run-status--processing,
+.import-run-status--finishing {
+  background: #e1ebfc;
+  color: #003ecc;
+}
+
+/* The buttons between the pages of a run, and the filter of the items. */
+.import-run-nav,
+.import-run-filter,
+.import-run-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1.25rem;
+}
+
+.import-run-actions .button {
+  margin: 0;
+}
+
+.import-run-pill {
+  display: inline-block;
+  padding: 0.35rem 1rem;
+  border: 1px solid #d3d4d9;
+  border-radius: 2rem;
+  background: #fff;
+  color: #232429;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.import-run-pill:hover,
+.import-run-pill:focus {
+  border-color: #003ecc;
+  color: #003ecc;
+}
+
+.import-run-pill.is-active {
+  border-color: #003ecc;
+  background: #003ecc;
+  color: #fff;
+  font-weight: 600;
+}
+
+/* What the run is: small facts side by side. */
+.import-run-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 0.75rem 1.5rem;
+  margin: 0 0 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid #d3d4d9;
+  border-radius: 0.5rem;
+}
+
+.import-run-fact {
+  min-width: 0;
+}
+
+.import-run-fact dt {
+  color: #55565b;
+  font-size: 0.8rem;
+}
+
+.import-run-fact dd {
+  margin: 0.1rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+/* How it went: a number with its name underneath. */
+.import-run-heading {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.import-run-counters {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: 0.75rem;
+  margin: 0 0 1.5rem;
+}
+
+.import-run-counter {
+  display: flex;
+  flex-direction: column-reverse;
+  padding: 0.75rem 1rem;
+  border: 1px solid #d3d4d9;
+  border-radius: 0.5rem;
+}
+
+.import-run-counter dd {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.import-run-counter dt {
+  color: #55565b;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+}
+
+.import-run-counter.is-problem {
+  border-color: #b4300f;
+  background: #fff4f0;
+}
+
+.import-run-counter.is-problem dd {
+  color: #b4300f;
+}

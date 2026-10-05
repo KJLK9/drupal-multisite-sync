@@ -11,6 +11,7 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Url;
 use Drupal\Core\Form\SubformState;
 use Drupal\Core\Plugin\DefaultPluginManager;
 use Drupal\Core\Plugin\PluginFormInterface;
@@ -134,6 +135,12 @@ final class ConnectionForm extends FormBase {
       '#type' => 'submit',
       '#value' => $this->t('Save'),
       '#button_type' => 'primary',
+    ];
+    $form['actions']['cancel'] = [
+      '#type' => 'link',
+      '#title' => $this->t('Cancel'),
+      '#url' => Url::fromRoute('import_engine_ui.connections'),
+      '#attributes' => ['class' => ['dialog-cancel']],
     ];
     return $form;
   }

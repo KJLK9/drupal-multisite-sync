@@ -193,6 +193,12 @@ final class DefinitionWizardForm extends FormBase {
       '#name' => 'save',
       '#button_type' => 'primary',
     ];
+    $form['actions']['cancel'] = [
+      '#type' => 'link',
+      '#title' => $this->t('Cancel'),
+      '#url' => Url::fromRoute('import_engine_ui.definitions'),
+      '#attributes' => ['class' => ['dialog-cancel']],
+    ];
     return $form;
   }
 

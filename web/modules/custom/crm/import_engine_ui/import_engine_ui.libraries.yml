@@ -7,3 +7,8 @@ wizard:
   dependencies:
     - core/drupal
     - core/once
+
+runs:
+  css:
+    theme:
+      css/runs.css: {}

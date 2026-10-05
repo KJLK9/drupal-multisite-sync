@@ -8,6 +8,7 @@ use Drupal\Core\DependencyInjection\AutowireTrait;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Url;
 use Drupal\import_engine\ImportRunSetInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
@@ -141,6 +142,12 @@ final class RunSetForm extends FormBase {
       '#type' => 'submit',
       '#value' => $this->t('Save'),
       '#button_type' => 'primary',
+    ];
+    $form['actions']['cancel'] = [
+      '#type' => 'link',
+      '#title' => $this->t('Cancel'),
+      '#url' => Url::fromRoute('import_engine_ui.run_sets'),
+      '#attributes' => ['class' => ['dialog-cancel']],
     ];
     return $form;
   }
