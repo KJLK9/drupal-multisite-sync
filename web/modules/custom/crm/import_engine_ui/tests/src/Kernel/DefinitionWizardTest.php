@@ -918,4 +918,38 @@ class DefinitionWizardTest extends NodeTestBase {
     $this->assertSame('string', $rows['rows'][0]['mapper']['plugin']['#default_value']);
   }
 
+  /**
+   * The order of a choice does not depend on how the plugins were discovered.
+   *
+   * Files are found in the order the file system gives them, which differs
+   * between machines; here the plugins are found the other way round.
+   */
+  public function testChoiceOrderDoesNotDependOnDiscoveryOrder(): void {
+    foreach (['mapper', 'reporter'] as $kind) {
+      $manager = $this->container->get('plugin.manager.import_engine_' . $kind);
+      $reversed = array_reverse($manager->getDefinitions(), TRUE);
+      // The definitions are what discovery found; give them reversed.
+      (function () use ($reversed): void {
+        $this->definitions = $reversed;
+      })->call($manager);
+    }
+    $state = $this->toLastStep();
+    $state = $this->press($state, [], 'add_reporter');
+    $form = $this->buildAt($state);
+    $this->assertSame(['log', 'mail'], array_keys($form['reporters'][0]['plugin']['#options']));
+
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $state = $this->press($state, $this->plainStep2(), 'next');
+    $state = $this->press($state, $this->step3(), 'next');
+    $state = $this->press($state, [], 'add_mapping_row');
+    $render_state = new FormState();
+    $render_state->setStorage($state->getStorage());
+    $render_state->setUserInput(['rows' => [0 => ['target_field' => 'field_code']]]);
+    $rows = $this->container->get('form_builder')->buildForm(DefinitionWizardForm::class, $render_state);
+
+    $this->assertSame(['string', 'join'], array_keys($rows['rows'][0]['mapper']['plugin']['#options']));
+    $this->assertSame('string', $rows['rows'][0]['mapper']['plugin']['#default_value']);
+    $this->assertSame(['string', 'join'], $this->container->get('plugin.manager.import_engine_mapper')->idsForFieldType('string'));
+  }
+
 }

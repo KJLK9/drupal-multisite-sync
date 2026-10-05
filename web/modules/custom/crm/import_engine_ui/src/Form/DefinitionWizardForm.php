@@ -520,10 +520,12 @@ final class DefinitionWizardForm extends FormBase {
    *   The section.
    */
   private function pluginSection(array $parents, DefaultPluginManager $manager, array $current, array &$form, FormStateInterface $form_state, mixed $title, ?array $only = NULL, ?array $sources = NULL, ?string $suggestion = NULL): array {
+    $definitions = $manager->getDefinitions();
     $options = [];
-    foreach ($manager->getDefinitions() as $id => $definition) {
-      if ($only === NULL || in_array((string) $id, $only, TRUE)) {
-        $options[(string) $id] = (string) ($definition['label'] ?? $id);
+    // The order of the plugins that fit is the order they were given in.
+    foreach ($only ?? array_map(strval(...), array_keys($definitions)) as $id) {
+      if (isset($definitions[$id])) {
+        $options[$id] = (string) ($definitions[$id]['label'] ?? $id);
       }
     }
     if ($only === NULL) {
