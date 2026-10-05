@@ -240,3 +240,11 @@ import_engine_ui.run_events:
     parameters:
       import_run:
         type: 'entity:import_run'
+
+import_engine_ui.settings:
+  path: '/admin/config/system/import-engine/settings'
+  defaults:
+    _form: 'Drupal\import_engine_ui\Form\SettingsForm'
+    _title: 'Import engine settings'
+  requirements:
+    _permission: 'administer import definitions'

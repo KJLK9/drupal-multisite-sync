@@ -66,7 +66,16 @@ class NavigationTest extends KernelTestBase {
    * The sections are tabs on one overview page.
    */
   public function testSectionsAreTabs(): void {
-    $expected = ['Overview', 'Imports', 'Connections', 'Run sets', 'Runs', 'Dead letter queue', 'Circuit breakers'];
+    $expected = [
+      'Overview',
+      'Imports',
+      'Connections',
+      'Run sets',
+      'Runs',
+      'Dead letter queue',
+      'Circuit breakers',
+      'Settings',
+    ];
 
     $tabs = $this->tabs('import_engine_ui.run_sets');
 
@@ -82,7 +91,7 @@ class NavigationTest extends KernelTestBase {
     foreach (NavigationHooks::SECTIONS as $route => $section) {
       $tabs = $this->tabs($route);
 
-      $this->assertCount(7, $tabs['titles'], $route);
+      $this->assertCount(8, $tabs['titles'], $route);
       $this->assertCount(1, $tabs['active'], $route);
       $expected = $this->tabs($section)['active'];
       $this->assertSame($expected, $tabs['active'], $route);
