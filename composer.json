@@ -107,6 +107,7 @@
         }
     },
     "require-dev": {
+        "brianium/paratest": "^7.8",
         "drupal/coder": "^8.3",
         "drupal/core-dev": "^11.4",
         "mglaman/phpstan-drupal": "^2.2",
@@ -120,12 +121,20 @@
         "phpcbf": "phpcbf --standard=phpcs.xml.dist",
         "phpstan": "phpstan analyse --memory-limit=1G",
         "rector": "rector process --dry-run",
-        "test": "phpunit -c phpunit.xml.dist",
+        "test": "bash -c 'mkdir -p /tmp/php-opcache && PHP_INI_SCAN_DIR=:build/php.d exec vendor/bin/paratest -c phpunit.xml.dist --functional \"$@\"' --",
         "check": [
             "@phpcs",
             "@phpstan",
             "@rector",
             "@test"
+        ],
+        "test:unit": "phpunit -c phpunit.xml.dist --testsuite unit",
+        "test:serial": "phpunit -c phpunit.xml.dist",
+        "check:fast": [
+            "@phpcs",
+            "@phpstan",
+            "@rector",
+            "@test:unit"
         ]
     },
     "scripts-descriptions": {

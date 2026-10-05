@@ -13,8 +13,11 @@
     <env name="BROWSERTEST_OUTPUT_DIRECTORY" value="/tmp"/>
   </php>
   <testsuites>
-    <testsuite name="custom">
-      <directory>web/modules/custom/*/*/tests</directory>
+    <testsuite name="unit">
+      <directory>web/modules/custom/*/*/tests/src/Unit</directory>
+    </testsuite>
+    <testsuite name="kernel">
+      <directory>web/modules/custom/*/*/tests/src/Kernel</directory>
     </testsuite>
   </testsuites>
 </phpunit>

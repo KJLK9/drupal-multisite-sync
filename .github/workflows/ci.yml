@@ -6,7 +6,33 @@ on:
   pull_request:
 
 jobs:
-  quality:
+  # Style, static analysis and deprecations: quick, and no database.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: gd, pdo_mysql
+          coverage: none
+          tools: composer:v2
+      - name: Find the composer cache
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+      - run: composer install --no-interaction --prefer-dist
+      - run: composer phpcs
+      - run: composer phpstan
+      - run: composer rector
+
+  # The tests run in parallel, against a database in memory: every Kernel test
+  # creates and drops dozens of tables, which is slow on a disk.
+  test:
     runs-on: ubuntu-latest
     services:
       db:
@@ -17,6 +43,7 @@ jobs:
         ports:
           - 3306:3306
         options: >-
+          --tmpfs /var/lib/mysql
           --health-cmd="healthcheck.sh --connect --innodb_initialized"
           --health-interval=10s
           --health-timeout=5s
@@ -33,8 +60,13 @@ jobs:
           extensions: gd, pdo_mysql
           coverage: none
           tools: composer:v2
+      - name: Find the composer cache
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
       - run: composer install --no-interaction --prefer-dist
-      - run: composer phpcs
-      - run: composer phpstan
-      - run: composer rector
       - run: composer test

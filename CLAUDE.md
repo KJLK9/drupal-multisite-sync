@@ -9,7 +9,15 @@ products, product prices) exposed through a read-only GraphQL API.
 - `ddev composer phpcs` / `phpcbf`: Drupal + DrupalPractice standards
 - `ddev composer phpstan`: level 8, no baseline
 - `ddev composer rector`: Drupal deprecation scan (dry-run)
-- `ddev composer test`: PHPUnit (`web/modules/custom/*/*/tests`)
+- `ddev composer test`: all tests, in parallel (ParaTest, one process per test,
+  against the database in memory of `.ddev/docker-compose.testdb.yaml`; about a
+  minute). One module or test: `ddev composer test -- web/modules/custom/crm/import_engine`
+  or `... -- --filter testName`. Use these while working; run the whole suite
+  before reporting done.
+- `ddev composer test:unit`: only the Unit tests (a fraction of a second).
+- `ddev composer test:serial`: PHPUnit one test after the other, with readable
+  output, for debugging. Slow with the database on disk.
+- `ddev composer check:fast`: phpcs + phpstan + rector + Unit tests
 - `ddev drush @ddev.site_a cex` / `cim` / `cr`: config export / import / cache
   rebuild. Always target a site (`@ddev.site_a`, `@ddev.site_b`, see
   `drush/sites/ddev.site.yml`); plain `drush` hits the unused `default` site.

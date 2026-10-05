@@ -1,0 +1,27 @@
+# A database for the tests, in memory.
+#
+# Every Kernel test creates and drops dozens of tables. On a disk that is a
+# file and an fsync for each of them, which made the suite wait on the disk
+# (13 minutes); in memory it takes about a minute. It is a separate server on
+# purpose: the databases of the sites stay on disk and keep their data. What is
+# in here is gone when ddev stops, which is fine for tests.
+services:
+  testdb:
+    container_name: ddev-${DDEV_SITENAME}-testdb
+    image: mariadb:11.8
+    restart: "no"
+    labels:
+      com.ddev.site-name: ${DDEV_SITENAME}
+      com.ddev.approot: ${DDEV_APPROOT}
+    expose:
+      - "3306"
+    tmpfs:
+      - /var/lib/mysql:rw,size=1g
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: drupal
+    command:
+      - --innodb-flush-log-at-trx-commit=2
+      - --innodb-doublewrite=0
+      - --skip-log-bin
+      - --max-connections=300
