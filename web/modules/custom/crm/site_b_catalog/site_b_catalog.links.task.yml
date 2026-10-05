@@ -1,0 +1,41 @@
+entity.account.view:
+  title: 'View'
+  route_name: entity.account.canonical
+  base_route: entity.account.canonical
+entity.account.edit_form:
+  title: 'Edit'
+  route_name: entity.account.edit_form
+  base_route: entity.account.canonical
+entity.account.delete_form:
+  title: 'Delete'
+  route_name: entity.account.delete_form
+  base_route: entity.account.canonical
+  weight: 10
+
+entity.item.view:
+  title: 'View'
+  route_name: entity.item.canonical
+  base_route: entity.item.canonical
+entity.item.edit_form:
+  title: 'Edit'
+  route_name: entity.item.edit_form
+  base_route: entity.item.canonical
+entity.item.delete_form:
+  title: 'Delete'
+  route_name: entity.item.delete_form
+  base_route: entity.item.canonical
+  weight: 10
+
+entity.agreement.view:
+  title: 'View'
+  route_name: entity.agreement.canonical
+  base_route: entity.agreement.canonical
+entity.agreement.edit_form:
+  title: 'Edit'
+  route_name: entity.agreement.edit_form
+  base_route: entity.agreement.canonical
+entity.agreement.delete_form:
+  title: 'Delete'
+  route_name: entity.agreement.delete_form
+  base_route: entity.agreement.canonical
+  weight: 10

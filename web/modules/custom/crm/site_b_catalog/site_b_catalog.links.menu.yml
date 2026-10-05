@@ -1,0 +1,17 @@
+entity.account.collection:
+  title: 'Accounts'
+  description: 'The accounts of site B, imported from site A.'
+  route_name: entity.account.collection
+  parent: system.admin_content
+
+entity.item.collection:
+  title: 'Items'
+  description: 'The items of site B, imported from site A.'
+  route_name: entity.item.collection
+  parent: system.admin_content
+
+entity.agreement.collection:
+  title: 'Agreements'
+  description: 'The agreements of site B, imported from site A.'
+  route_name: entity.agreement.collection
+  parent: system.admin_content

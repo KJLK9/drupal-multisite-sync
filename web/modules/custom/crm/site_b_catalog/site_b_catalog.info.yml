@@ -1,12 +1,12 @@
 name: 'Site B catalog'
 type: module
-description: 'The content model of site B (accounts, items and agreements), which the imports from site A fill.'
+description: 'The content model of site B (accounts, items and agreements) that the imports from site A fill.'
 package: Custom
 core_version_requirement: ^11.2
 dependencies:
-  - drupal:field
-  - drupal:node
+  - drupal:filter
   - drupal:text
   - drupal:user
   - money_field:money_field
+  - published_access:published_access
   - import_engine:import_engine

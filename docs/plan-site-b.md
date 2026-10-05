@@ -120,7 +120,7 @@ Chosen: A.
 In this order, each step built, tested and approved before the next:
 
 1. **Wizard pain points**: AJAX rows, a menu of steps, a list of problems in words. Done, see ADR 0018.
-2. **A content model of real content entities** in `site_b_catalog`: own entity types (Account, Item, Agreement) with entity reference fields and a uniqueness constraint on (account, item), deliberately unlike the entities of catalog. Deleting an account or an item deletes its agreements (cascade), with tests. The imports are then made for these entities.
+2. **A content model of real content entities** (done, see ADR 0019) in `site_b_catalog`: own entity types (Account, Item, Agreement) with entity reference fields and a uniqueness constraint on (account, item), deliberately unlike the entities of catalog. Deleting an account or an item deletes its agreements (cascade), with tests. The imports are then made for these entities.
 3. **The mapping as one table** with "suggest a mapping" from the sample, clicking a path in the sample to use it, and a GraphQL preset for paging.
 4. **Reusable connections** (source and authentication as named configuration); a duplicate action if it is still needed.
 5. **Run sets**: a named list of imports run in order, from the interface and with drush, stopping at the first one that fails.

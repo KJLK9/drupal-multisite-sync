@@ -1,0 +1,17 @@
+account.add_form:
+  route_name: entity.account.add_form
+  title: 'Add account'
+  appears_on:
+    - entity.account.collection
+
+item.add_form:
+  route_name: entity.item.add_form
+  title: 'Add item'
+  appears_on:
+    - entity.item.collection
+
+agreement.add_form:
+  route_name: entity.agreement.add_form
+  title: 'Add agreement'
+  appears_on:
+    - entity.agreement.collection

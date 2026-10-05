@@ -1,6 +1,6 @@
 # 17. The content model of site B
 
-Date: 2026-10-05 · Status: accepted
+Date: 2026-10-05 · Status: replaced by ADR 0019 (content entities of its own)
 
 ## Context
 Site B imports the catalog of site A. An import that copies names and shapes one to one shows nothing of what the engine does. Site B should have a model of its own, with the differences a real integration has.

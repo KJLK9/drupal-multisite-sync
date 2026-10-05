@@ -5,57 +5,27 @@ declare(strict_types=1);
 namespace Drupal\Tests\site_b_catalog\Kernel;
 
 use Drupal\import_engine\Target\TargetInterface;
-use Drupal\KernelTests\KernelTestBase;
-use Drupal\node\Entity\NodeType;
-use Drupal\user\Entity\User;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 
 /**
- * Tests the content model of site B: its types, fields and displays.
+ * Tests the content model of site B: its entity types and fields.
  */
 #[Group('site_b_catalog')]
 #[RunTestsInSeparateProcesses]
-class ContentModelTest extends KernelTestBase {
+class ContentModelTest extends CatalogTestBase {
 
   /**
-   * {@inheritdoc}
-   */
-  protected static $modules = [
-    'system',
-    'user',
-    'field',
-    'text',
-    'filter',
-    'node',
-    'money_field',
-    'import_engine',
-    'site_b_catalog',
-  ];
-
-  /**
-   * {@inheritdoc}
-   */
-  protected function setUp(): void {
-    parent::setUp();
-    $this->installEntitySchema('user');
-    $this->installEntitySchema('node');
-    $this->installSchema('node', ['node_access']);
-    $this->installConfig(['node', 'filter', 'site_b_catalog']);
-    User::create(['name' => 'importer', 'status' => 1])->save();
-  }
-
-  /**
-   * Returns the fields a mapping can fill for a content type.
+   * Returns the fields a mapping can fill for an entity type.
    *
    * @return array<string, \Drupal\import_engine\Target\TargetField>
    *   The fields.
    */
-  protected function targetFields(string $bundle): array {
+  protected function targetFields(string $type): array {
     $target = $this->container->get('plugin.manager.import_engine_target')->createInstance('entity', [
-      'entity_type' => 'node',
-      'bundle' => $bundle,
+      'entity_type' => $type,
+      'bundle' => $type,
       'owner' => 1,
     ]);
     $this->assertInstanceOf(TargetInterface::class, $target);
@@ -63,62 +33,71 @@ class ContentModelTest extends KernelTestBase {
   }
 
   /**
-   * The three content types exist, each with its own fields.
+   * Each entity type has the fields of the model, with the types given.
    *
-   * @param string $bundle
-   *   The content type.
+   * @param string $type
+   *   The entity type.
    * @param array<string, string> $expected
    *   The field types of the fields of the type, by field name.
    */
   #[DataProvider('modelProvider')]
-  public function testContentTypeHasItsFields(string $bundle, array $expected): void {
-    $this->assertNotNull(NodeType::load($bundle));
+  public function testEntityTypeHasItsFields(string $type, array $expected): void {
+    $fields = $this->targetFields($type);
 
-    $fields = $this->targetFields($bundle);
-
-    foreach ($expected as $name => $type) {
-      $this->assertArrayHasKey($name, $fields, "$bundle.$name");
-      $this->assertSame($type, $fields[$name]->type, "$bundle.$name");
+    foreach ($expected as $name => $field_type) {
+      $this->assertArrayHasKey($name, $fields, "$type.$name");
+      $this->assertSame($field_type, $fields[$name]->type, "$type.$name");
     }
-    // Nothing else a person has to fill in besides what the model has.
-    $custom = array_filter(array_keys($fields), static fn (string $name): bool => str_starts_with($name, 'field_'));
-    $this->assertEqualsCanonicalizing(array_filter(array_keys($expected), static fn (string $name): bool => str_starts_with($name, 'field_')), $custom);
+    // The model has no fields that are not described here.
+    $this->assertEqualsCanonicalizing(array_keys($expected), array_diff(array_keys($fields), ['changed', 'created']));
   }
 
   /**
-   * The model: field names and their types, by content type.
+   * The model: field names and their types, by entity type.
    *
    * @return array<string, array{string, array<string, string>}>
-   *   The content type and its fields.
+   *   The entity type and its fields.
    */
   public static function modelProvider(): array {
     return [
       'account' => ['account', [
-        'title' => 'string',
+        'name' => 'string',
+        'number' => 'string',
+        'notes' => 'text_long',
         'status' => 'boolean',
-        'field_account_number' => 'string',
-        'field_notes' => 'text_long',
-        'field_source_id' => 'string',
+        'source_id' => 'string',
       ],
       ],
       'item' => ['item', [
         'title' => 'string',
+        'sku' => 'string',
+        'list_price' => 'money_field',
+        'summary' => 'text_long',
         'status' => 'boolean',
-        'field_list_price' => 'money_field',
-        'field_summary' => 'text_long',
-        'field_source_id' => 'string',
+        'source_id' => 'string',
       ],
       ],
       'agreement' => ['agreement', [
         'title' => 'string',
+        'account' => 'entity_reference',
+        'item' => 'entity_reference',
+        'price' => 'money_field',
         'status' => 'boolean',
-        'field_account' => 'entity_reference',
-        'field_item' => 'entity_reference',
-        'field_agreed_price' => 'money_field',
-        'field_source_id' => 'string',
+        'source_id' => 'string',
       ],
       ],
     ];
+  }
+
+  /**
+   * The entity types have no bundles: the type is the bundle.
+   */
+  public function testEntityTypesHaveNoBundles(): void {
+    $bundles = $this->container->get('entity_type.bundle.info');
+
+    foreach (['account', 'item', 'agreement'] as $type) {
+      $this->assertSame([$type], array_keys($bundles->getBundleInfo($type)), $type);
+    }
   }
 
   /**
@@ -127,13 +106,12 @@ class ContentModelTest extends KernelTestBase {
   public function testEveryFieldCanBeMapped(): void {
     $mappers = $this->container->get('plugin.manager.import_engine_mapper');
 
-    foreach (['account', 'item', 'agreement'] as $bundle) {
-      foreach ($this->targetFields($bundle) as $name => $field) {
-        // The fields of the model, not the ones Drupal fills in by itself.
-        if (!str_starts_with($name, 'field_') && !in_array($name, ['title', 'status'], TRUE)) {
+    foreach (['account', 'item', 'agreement'] as $type) {
+      foreach ($this->targetFields($type) as $name => $field) {
+        if (in_array($name, ['created', 'changed'], TRUE)) {
           continue;
         }
-        $this->assertNotSame([], $mappers->idsForFieldType($field->type), "$bundle.$name has type {$field->type}");
+        $this->assertNotSame([], $mappers->idsForFieldType($field->type), "$type.$name has type {$field->type}");
       }
     }
   }
@@ -144,27 +122,40 @@ class ContentModelTest extends KernelTestBase {
   public function testReferencesAndRequiredFields(): void {
     $agreement = $this->targetFields('agreement');
 
-    $this->assertTrue($agreement['field_account']->required);
-    $this->assertTrue($agreement['field_item']->required);
-    $this->assertTrue($agreement['field_agreed_price']->required);
-    $this->assertSame('node', $agreement['field_item']->settings['target_type']);
-    $this->assertTrue($this->targetFields('account')['field_account_number']->required);
-    $this->assertFalse($this->targetFields('item')['field_list_price']->required, 'A product without a price can be imported.');
+    $this->assertTrue($agreement['account']->required);
+    $this->assertTrue($agreement['item']->required);
+    $this->assertTrue($agreement['price']->required);
+    $this->assertSame('account', $agreement['account']->settings['target_type']);
+    $this->assertSame('item', $agreement['item']->settings['target_type']);
+    $this->assertFalse($agreement['title']->required, 'The title is made when it is left empty.');
+    $this->assertTrue($this->targetFields('account')['number']->required);
+    $this->assertFalse($this->targetFields('item')['list_price']->required, 'A product without a price can be imported.');
   }
 
   /**
-   * The content types can be edited and shown: they have their displays.
+   * The entities can be managed in the interface: their routes exist.
    */
-  public function testDisplaysExist(): void {
-    $displays = $this->container->get('entity_display.repository');
+  public function testAdminRoutesExist(): void {
+    $this->container->get('router.builder')->rebuild();
+    $routes = $this->container->get('router.route_provider');
 
-    foreach (['account', 'item', 'agreement'] as $bundle) {
-      $form = $displays->getFormDisplay('node', $bundle);
-      $view = $displays->getViewDisplay('node', $bundle);
-      $fields = array_filter(array_keys($this->targetFields($bundle)), static fn (string $name): bool => str_starts_with($name, 'field_'));
-      foreach ($fields as $name) {
-        $this->assertNotNull($form->getComponent($name), "$bundle form: $name");
-        $this->assertNotNull($view->getComponent($name), "$bundle view: $name");
+    foreach (['account' => 'accounts', 'item' => 'items', 'agreement' => 'agreements'] as $type => $path) {
+      foreach (['collection' => "/admin/site-b/$path", 'add_form' => "/admin/site-b/$path/add"] as $name => $expected) {
+        $this->assertSame($expected, $routes->getRouteByName("entity.$type.$name")->getPath(), "entity.$type.$name");
+      }
+      $this->assertSame("/admin/site-b/$path/{{$type}}/edit", $routes->getRouteByName("entity.$type.edit_form")->getPath());
+    }
+  }
+
+  /**
+   * Permissions exist for every entity type and operation.
+   */
+  public function testPermissionsExist(): void {
+    $permissions = array_keys($this->container->get('user.permissions')->getPermissions());
+
+    foreach (['account', 'item', 'agreement'] as $type) {
+      foreach (['administer', 'view', 'edit', 'delete', 'create'] as $operation) {
+        $this->assertContains("$operation $type", $permissions);
       }
     }
   }

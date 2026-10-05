@@ -1,0 +1,35 @@
+administer account:
+  title: 'Administer accounts'
+  restrict access: true
+view account:
+  title: 'View accounts'
+edit account:
+  title: 'Edit accounts'
+delete account:
+  title: 'Delete accounts'
+create account:
+  title: 'Create accounts'
+
+administer item:
+  title: 'Administer items'
+  restrict access: true
+view item:
+  title: 'View items'
+edit item:
+  title: 'Edit items'
+delete item:
+  title: 'Delete items'
+create item:
+  title: 'Create items'
+
+administer agreement:
+  title: 'Administer agreements'
+  restrict access: true
+view agreement:
+  title: 'View agreements'
+edit agreement:
+  title: 'Edit agreements'
+delete agreement:
+  title: 'Delete agreements'
+create agreement:
+  title: 'Create agreements'
