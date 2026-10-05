@@ -54,7 +54,7 @@ class MapperTest extends StorageTestBase {
     $manager = $this->container->get('plugin.manager.import_engine_mapper');
 
     // A plain text field can be filled from one value or from several.
-    $this->assertEqualsCanonicalizing(['string', 'join'], $manager->idsForFieldType('string'));
+    $this->assertSame(['string', 'join'], $manager->idsForFieldType('string'), 'The first is the one a field starts with.');
     $this->assertSame(['string'], $manager->idsForFieldType('email'));
     $this->assertSame(['text'], $manager->idsForFieldType('text_long'));
     $this->assertSame(['number'], $manager->idsForFieldType('integer'));

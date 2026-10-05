@@ -30,6 +30,10 @@ final class ImportMapper extends Plugin {
    *   required. A mapping row gives a dotted path for every name.
    * @param \Drupal\Core\StringTranslation\TranslatableMarkup|null $description
    *   A short description.
+   * @param int $weight
+   *   Decides the order of the mappers that fit a field type: the lowest comes
+   *   first and is the one a field starts with. Mappers with the same weight
+   *   are ordered by ID, so the order never depends on the machine.
    */
   public function __construct(
     public readonly string $id,
@@ -37,6 +41,7 @@ final class ImportMapper extends Plugin {
     public readonly array $field_types,
     public readonly array $sources,
     public readonly ?TranslatableMarkup $description = NULL,
+    public readonly int $weight = 0,
   ) {
   }
 

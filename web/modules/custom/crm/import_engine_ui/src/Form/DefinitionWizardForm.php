@@ -526,6 +526,11 @@ final class DefinitionWizardForm extends FormBase {
         $options[(string) $id] = (string) ($definition['label'] ?? $id);
       }
     }
+    if ($only === NULL) {
+      // By name, so the first one, which a new section starts with, does not
+      // depend on the order in which the files of the plugins were found.
+      asort($options);
+    }
     $selected = (string) ($this->input($form_state, [...$parents, 'plugin']) ?? $current['plugin'] ?? '');
     if (!isset($options[$selected])) {
       $selected = (string) array_key_first($options);

@@ -894,4 +894,28 @@ class DefinitionWizardTest extends NodeTestBase {
     $this->assertStringContainsString('id="import-wizard-source-test"', $form['source_test']['#prefix']);
   }
 
+  /**
+   * A choice of plugins is in a fixed order, so a new section starts the same.
+   */
+  public function testPluginChoicesStartWithTheSameOne(): void {
+    $state = $this->toLastStep();
+    $state = $this->press($state, [], 'add_reporter');
+
+    $form = $this->buildAt($state);
+
+    $this->assertSame(['log', 'mail'], array_keys($form['reporters'][0]['plugin']['#options']));
+    $this->assertSame('log', $form['reporters'][0]['plugin']['#default_value']);
+    // A text field starts with the text mapper, and offers the other after it.
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $state = $this->press($state, $this->plainStep2(), 'next');
+    $state = $this->press($state, $this->step3(), 'next');
+    $state = $this->press($state, [], 'add_mapping_row');
+    $render_state = new FormState();
+    $render_state->setStorage($state->getStorage());
+    $render_state->setUserInput(['rows' => [0 => ['target_field' => 'field_code']]]);
+    $rows = $this->container->get('form_builder')->buildForm(DefinitionWizardForm::class, $render_state);
+    $this->assertSame(['string', 'join'], array_keys($rows['rows'][0]['mapper']['plugin']['#options']));
+    $this->assertSame('string', $rows['rows'][0]['mapper']['plugin']['#default_value']);
+  }
+
 }

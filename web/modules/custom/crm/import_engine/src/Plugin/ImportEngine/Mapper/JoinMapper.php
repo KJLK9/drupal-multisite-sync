@@ -25,6 +25,8 @@ use Drupal\import_engine\Target\TargetField;
   field_types: ['string'],
   sources: ['first' => TRUE, 'second' => TRUE, 'third' => FALSE],
   description: new TranslatableMarkup('Joins two or three values into one text, for example a product and a customer.'),
+  // A plain text field starts with the text mapper; this one is the exception.
+  weight: 10,
 )]
 final class JoinMapper extends MapperPluginBase {
 

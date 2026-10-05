@@ -40,13 +40,16 @@ final class MapperPluginManager extends DefaultPluginManager {
    *   The plugin IDs, in the order of the plugin definitions.
    */
   public function idsForFieldType(string $fieldType): array {
-    $ids = [];
+    $found = [];
     foreach ($this->getDefinitions() as $id => $definition) {
       if (in_array($fieldType, $definition['field_types'] ?? [], TRUE)) {
-        $ids[] = (string) $id;
+        $found[(string) $id] = (int) ($definition['weight'] ?? 0);
       }
     }
-    return $ids;
+    // By weight, then by ID: the first is the mapper a field starts with, and
+    // that must not depend on the order in which the files were found.
+    uksort($found, static fn (string $a, string $b): int => [$found[$a], $a] <=> [$found[$b], $b]);
+    return array_keys($found);
   }
 
 }
