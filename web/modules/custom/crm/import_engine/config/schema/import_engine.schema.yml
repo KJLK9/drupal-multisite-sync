@@ -18,6 +18,13 @@ import_engine.import_definition.*:
     source:
       type: import_engine.source_reference
       label: 'Source'
+    connection:
+      type: string
+      label: 'Connection'
+      nullable: true
+      constraints:
+        ConfigExists:
+          prefix: 'import_engine.import_connection.'
     source_key:
       type: sequence
       label: 'Key paths that identify a source item'
@@ -181,6 +188,7 @@ import_engine.source.http:
         Choice: [GET, POST]
     headers:
       type: sequence
+      requiredKey: false
       label: 'Headers'
       sequence:
         type: string
@@ -215,6 +223,7 @@ import_engine.source.http:
           message: 'A path is dotted names, for example data.customers.items.'
     timeout:
       type: integer
+      requiredKey: false
       label: 'Timeout in seconds'
       constraints:
         Range:
@@ -436,6 +445,7 @@ import_engine.source.graphql:
   mapping:
     url:
       type: string
+      requiredKey: false
       label: 'URL'
       constraints:
         NotBlank: ~
@@ -456,6 +466,7 @@ import_engine.source.graphql:
           callback: ['Drupal\import_engine\Plugin\ImportEngine\Source\HttpSource', 'validateJsonBody']
     headers:
       type: sequence
+      requiredKey: false
       label: 'Headers'
       sequence:
         type: string
@@ -470,6 +481,7 @@ import_engine.source.graphql:
       label: 'Path of the list of items'
     timeout:
       type: integer
+      requiredKey: false
       label: 'Timeout in seconds'
       constraints:
         Range:
@@ -707,3 +719,91 @@ import_engine.reporter.mail:
         label: 'Email address'
         constraints:
           Email: ~
+
+# A connection: where the source is and how to log in, shared by imports. Only
+# the settings that the source plugin names as those of a connection are kept
+# here; the others (what to ask for) belong to the imports.
+import_engine.import_connection.*:
+  type: config_entity
+  label: 'Import connection'
+  constraints:
+    FullyValidatable: ~
+  mapping:
+    id:
+      type: machine_name
+      label: 'ID'
+    label:
+      type: required_label
+      label: 'Label'
+    description:
+      type: text
+      label: 'Description'
+      constraints:
+        NotNull: ~
+    source:
+      type: import_engine.connection_source_reference
+      label: 'Source'
+    authentication:
+      type: import_engine.authentication_reference
+      label: 'Authentication'
+
+import_engine.connection_source_reference:
+  type: mapping
+  label: 'Source'
+  mapping:
+    plugin:
+      type: string
+      label: 'Plugin ID'
+      constraints:
+        PluginExists:
+          manager: plugin.manager.import_engine_source
+          interface: 'Drupal\import_engine\Source\SourceInterface'
+    configuration:
+      type: 'import_engine.connection_source.[%parent.plugin]'
+      label: 'Plugin configuration'
+
+import_engine.connection_source.http:
+  type: mapping
+  label: 'HTTP connection'
+  mapping:
+    headers:
+      type: import_engine.connection_headers
+    timeout:
+      type: import_engine.connection_timeout
+
+import_engine.connection_source.graphql:
+  type: mapping
+  label: 'GraphQL connection'
+  mapping:
+    url:
+      type: string
+      label: 'URL'
+      constraints:
+        NotBlank: ~
+        Regex:
+          pattern: '/^https?:\/\/[^?#\s]+$/'
+          message: 'The URL must start with http:// or https:// and have no query string.'
+    headers:
+      type: import_engine.connection_headers
+    timeout:
+      type: import_engine.connection_timeout
+
+import_engine.connection_headers:
+  type: sequence
+  label: 'Headers'
+  sequence:
+    type: string
+    label: 'Header value'
+    constraints:
+      NotNull: ~
+      Regex:
+        pattern: '/^[^\r\n]*$/'
+        message: 'A header value cannot contain line breaks.'
+
+import_engine.connection_timeout:
+  type: integer
+  label: 'Timeout in seconds'
+  constraints:
+    Range:
+      min: 1
+      max: 300

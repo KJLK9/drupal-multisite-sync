@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine\Source;
 
+use Drupal\import_engine\Connection\ConnectionResolver;
 use Drupal\import_engine\ImportDefinitionInterface;
 
 /**
@@ -20,20 +21,28 @@ final class SourceFactory {
    */
   public function __construct(
     private readonly SourcePluginManager $sources,
+    private readonly ConnectionResolver $connections,
   ) {
   }
 
   /**
    * Creates the source of a definition.
+   *
+   * When the import uses a connection, the source is made of the settings of
+   * the import and those of the connection, which also gives the
+   * authentication.
+   *
+   * @throws \Drupal\import_engine\Connection\ConnectionException
+   *   When the connection of the import is gone or does not fit.
    */
   public function create(ImportDefinitionInterface $definition): SourceInterface {
-    $source = $definition->getSource();
-    $configuration = $source['configuration'] + [
-      'authentication' => $definition->getAuthentication(),
+    $resolved = $this->connections->resolve($definition);
+    $configuration = $resolved['source']['configuration'] + [
+      'authentication' => $resolved['authentication'],
       'pagination' => $definition->getPagination(),
       'source_key' => $definition->getSourceKey(),
     ];
-    $instance = $this->sources->createInstance($source['plugin'], $configuration);
+    $instance = $this->sources->createInstance($resolved['source']['plugin'], $configuration);
     assert($instance instanceof SourceInterface);
     return $instance;
   }

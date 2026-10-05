@@ -28,6 +28,7 @@ use Drupal\import_engine\ImportDefinitionInterface;
     'uuid' => 'uuid',
   ],
   admin_permission: 'administer import definitions',
+  constraints: ['ImportConnection' => []],
   label_count: [
     'singular' => '@count import definition',
     'plural' => '@count import definitions',
@@ -40,6 +41,7 @@ use Drupal\import_engine\ImportDefinitionInterface;
     'source_key',
     'pagination',
     'authentication',
+    'connection',
     'target',
     'mapping',
     'delete_policy',
@@ -149,6 +151,11 @@ class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInter
   ];
 
   /**
+   * The ID of the connection this import uses, if it uses one.
+   */
+  protected ?string $connection = NULL;
+
+  /**
    * The reporters that are told how a run went.
    *
    * @var list<array{plugin: string, configuration: array<string, mixed>}>
@@ -207,6 +214,26 @@ class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInter
    */
   public function getMapping(): array {
     return $this->mapping;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getConnection(): ?string {
+    return $this->connection === '' ? NULL : $this->connection;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function calculateDependencies(): static {
+    parent::calculateDependencies();
+    if ($this->getConnection() !== NULL) {
+      // So the connection is imported first, and is not deleted from under
+      // the imports that use it.
+      $this->addDependency('config', 'import_engine.import_connection.' . $this->getConnection());
+    }
+    return $this;
   }
 
   /**

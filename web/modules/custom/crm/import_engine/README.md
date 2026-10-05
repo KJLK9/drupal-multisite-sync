@@ -101,6 +101,16 @@ settings. See ADR 0008.
 variable that holds the key (`env_var`), never the key.
 `config/settings.env.php` loads the project's `.env`, see `.env.example`.
 
+## Connections
+
+A connection (`import_connection`) holds what several imports from the same
+place share: the URL, headers and timeout of a source (what a source plugin
+lists in `connection_keys`) and the authentication. An import refers to it
+with `connection:`; the import keeps what is its own (the query, the items
+path) and may not repeat what the connection has or choose another
+authentication. `ConnectionResolver` merges them when the source is built. A
+connection that imports use cannot be deleted. See ADR 0022.
+
 ## Paths
 
 `items_path` (where the list is in the response), the key paths and the mapping

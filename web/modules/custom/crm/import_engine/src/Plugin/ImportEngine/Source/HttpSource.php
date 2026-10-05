@@ -52,6 +52,9 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
   id: 'http',
   label: new TranslatableMarkup('HTTP'),
   description: new TranslatableMarkup('Reads items from an HTTP endpoint returning JSON, XML or CSV.'),
+  // The URL is that of one resource: it belongs to the import.
+  connection_keys: ['headers', 'timeout'],
+  required_keys: ['url'],
 )]
 class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInterface {
 

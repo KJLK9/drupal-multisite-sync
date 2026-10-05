@@ -27,6 +27,9 @@ use Drupal\import_engine\Source\SourceException;
   id: 'graphql',
   label: new TranslatableMarkup('GraphQL'),
   description: new TranslatableMarkup('Reads items from a GraphQL endpoint.'),
+  // One endpoint serves every query: the URL belongs to the connection.
+  connection_keys: ['url', 'headers', 'timeout'],
+  required_keys: ['url', 'query'],
 )]
 final class GraphqlSource extends HttpSource {
 

@@ -40,7 +40,7 @@ services:
 
   import_engine.source_factory:
     class: Drupal\import_engine\Source\SourceFactory
-    arguments: ['@plugin.manager.import_engine_source']
+    arguments: ['@plugin.manager.import_engine_source', '@import_engine.connection_resolver']
 
   import_engine.payload_codec:
     class: Drupal\import_engine\Storage\PayloadCodec
@@ -173,3 +173,7 @@ services:
   import_engine.mapping_suggester:
     class: Drupal\import_engine\Mapper\MappingSuggester
     arguments: ['@plugin.manager.import_engine_mapper']
+
+  import_engine.connection_resolver:
+    class: Drupal\import_engine\Connection\ConnectionResolver
+    arguments: ['@entity_type.manager', '@plugin.manager.import_engine_source']

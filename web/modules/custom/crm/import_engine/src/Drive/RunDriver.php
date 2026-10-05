@@ -7,6 +7,7 @@ namespace Drupal\import_engine\Drive;
 use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\import_engine\Breaker\CircuitBreaker;
+use Drupal\import_engine\Connection\ConnectionException;
 use Drupal\import_engine\Entity\ImportDefinition;
 use Drupal\import_engine\Extract\ExtractStage;
 use Drupal\import_engine\Extract\ExtractStatus;
@@ -78,7 +79,14 @@ final class RunDriver {
     $items = 0;
 
     if (in_array($run->getStatus(), [RunStatus::Queued, RunStatus::Extracting], TRUE)) {
-      $source ??= $this->breaker->wrap($this->sources->create($definition), $definition);
+      try {
+        $source ??= $this->breaker->wrap($this->sources->create($definition), $definition);
+      }
+      catch (ConnectionException $exception) {
+        // Nothing can be read until the import and its connection fit again.
+        $run->setSummary($exception->getMessage())->transitionTo(RunStatus::Failed, $this->time->getCurrentTime())->save();
+        return new DriveResult(DriveStatus::Finished, RunStatus::Failed, 0, 0, $exception->getMessage());
+      }
       do {
         $result = $this->extract->extract($run, $definition, $source, self::PAGES_PER_PORTION, $budget->deadline);
         $pages += $result->pages;

@@ -70,6 +70,14 @@ interface ImportDefinitionInterface extends ConfigEntityInterface {
   public function getMapping(): array;
 
   /**
+   * Returns the ID of the connection the import uses, if it uses one.
+   *
+   * The connection holds where the source is and how to log in; the import
+   * holds what to ask for.
+   */
+  public function getConnection(): ?string;
+
+  /**
    * Returns what to do with entities whose source item is gone.
    */
   public function getDeletePolicy(): DeletePolicy;
