@@ -1,0 +1,41 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.node.account.field_account_number
+    - field.field.node.account.field_notes
+    - field.field.node.account.field_source_id
+    - node.type.account
+  module:
+    - user
+    - text
+id: node.account.default
+targetEntityType: node
+bundle: account
+mode: default
+content:
+  field_account_number:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 1
+    region: content
+  field_notes:
+    type: text_default
+    label: above
+    settings: {  }
+    third_party_settings: {  }
+    weight: 2
+    region: content
+  field_source_id:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 3
+    region: content
+hidden:
+  links: true

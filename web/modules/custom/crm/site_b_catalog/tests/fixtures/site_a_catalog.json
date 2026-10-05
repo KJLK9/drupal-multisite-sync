@@ -1,0 +1,17 @@
+{
+  "customers": [
+    {"id": "1", "uuid": "c1", "label": "Acme BV", "customerNumber": "C-001", "status": true, "description": "<p>Our <strong>first</strong> customer.</p>"},
+    {"id": "2", "uuid": "c2", "label": "Globex", "customerNumber": "C-002", "status": true, "description": null},
+    {"id": "3", "uuid": "c3", "label": "Initech", "customerNumber": "C-003", "status": false, "description": "Closed down."}
+  ],
+  "products": [
+    {"id": "10", "uuid": "p10", "label": "Widget", "status": true, "description": "A small widget.", "basePrice": {"number": "9.95", "currencyCode": "EUR"}},
+    {"id": "11", "uuid": "p11", "label": "Gadget", "status": true, "description": "A big gadget.", "basePrice": {"number": "129.00", "currencyCode": "USD"}},
+    {"id": "12", "uuid": "p12", "label": "Sprocket", "status": false, "description": null, "basePrice": null}
+  ],
+  "productPrices": [
+    {"id": "100", "uuid": "r100", "product": {"id": "10", "label": "Widget"}, "customer": {"id": "1", "customerNumber": "C-001", "label": "Acme BV"}, "price": {"number": "8.50", "currencyCode": "EUR"}},
+    {"id": "101", "uuid": "r101", "product": {"id": "11", "label": "Gadget"}, "customer": {"id": "1", "customerNumber": "C-001", "label": "Acme BV"}, "price": {"number": "99.00", "currencyCode": "USD"}},
+    {"id": "102", "uuid": "r102", "product": {"id": "10", "label": "Widget"}, "customer": {"id": "2", "customerNumber": "C-002", "label": "Globex"}, "price": {"number": "9.10", "currencyCode": "EUR"}}
+  ]
+}

@@ -516,6 +516,21 @@ import_engine.mapping_row:
           type: 'import_engine.mapper.[%parent.plugin]'
           label: 'Mapper settings'
 
+import_engine.mapper.join:
+  type: mapping
+  label: 'Combined text mapper'
+  mapping:
+    separator:
+      type: string
+      label: 'Between the parts'
+      constraints:
+        NotNull: ~
+        Length:
+          max: 20
+    skip_empty:
+      type: boolean
+      label: 'Leave out a part that is missing'
+
 import_engine.mapper.string:
   type: mapping
   label: 'Text mapper'

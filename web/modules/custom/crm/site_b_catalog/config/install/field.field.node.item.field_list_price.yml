@@ -1,0 +1,18 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_list_price
+    - node.type.item
+id: node.item.field_list_price
+field_name: field_list_price
+entity_type: node
+bundle: item
+label: 'List price'
+description: 'The base price at site A.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: money_field

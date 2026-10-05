@@ -53,7 +53,8 @@ class MapperTest extends StorageTestBase {
   public function testMappersAreChosenByFieldType(): void {
     $manager = $this->container->get('plugin.manager.import_engine_mapper');
 
-    $this->assertSame(['string'], $manager->idsForFieldType('string'));
+    // A plain text field can be filled from one value or from several.
+    $this->assertEqualsCanonicalizing(['string', 'join'], $manager->idsForFieldType('string'));
     $this->assertSame(['string'], $manager->idsForFieldType('email'));
     $this->assertSame(['text'], $manager->idsForFieldType('text_long'));
     $this->assertSame(['number'], $manager->idsForFieldType('integer'));
@@ -252,6 +253,25 @@ class MapperTest extends StorageTestBase {
         $this->addToAssertionCount(1);
       }
     }
+  }
+
+  /**
+   * Several values are joined; parts that are missing are left out.
+   */
+  public function testJoin(): void {
+    $join = $this->mapper('join', ['separator' => ' / ']);
+
+    $this->assertSame('Widget / Acme', $this->map($join, ['first' => ' Widget ', 'second' => 'Acme']));
+    $this->assertSame('Widget / Acme / 7', $this->map($join, ['first' => 'Widget', 'second' => 'Acme', 'third' => 7]));
+    $this->assertSame('Widget', $this->map($join, ['first' => 'Widget', 'second' => NULL, 'third' => '  ']));
+    $this->assertNull($this->map($join, ['first' => '', 'second' => NULL]));
+    // A part that is missing can stay in as an empty part.
+    $keep = $this->mapper('join', ['separator' => ' / ', 'skip_empty' => FALSE]);
+    $this->assertSame('Widget / ', $this->map($keep, ['first' => 'Widget', 'second' => '']));
+    $this->assertSame('Widget /  / 7', $this->map($keep, ['first' => 'Widget', 'second' => '', 'third' => 7]));
+    $this->assertSame('Widget - Acme', $this->map($this->mapper('join'), ['first' => 'Widget', 'second' => 'Acme']));
+    // The sources are part of its definition.
+    $this->assertSame(['first' => TRUE, 'second' => TRUE, 'third' => FALSE], $this->container->get('plugin.manager.import_engine_mapper')->getDefinition('join')['sources']);
   }
 
   /**

@@ -1,0 +1,18 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.storage.node.field_source_id
+    - node.type.agreement
+id: node.agreement.field_source_id
+field_name: field_source_id
+entity_type: node
+bundle: agreement
+label: 'Source ID'
+description: 'The ID of the price at site A.'
+required: false
+translatable: false
+default_value: {  }
+default_value_callback: ''
+settings: {  }
+field_type: string

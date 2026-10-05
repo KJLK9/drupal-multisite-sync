@@ -126,6 +126,7 @@ class PluginFormsTest extends NodeTestBase {
       'string mapper' => ['mapper', 'string', ['trim' => FALSE, 'empty_as_null' => FALSE]],
       'text mapper' => ['mapper', 'text', ['format' => 'plain_text']],
       'number mapper' => ['mapper', 'number', []],
+      'join mapper' => ['mapper', 'join', ['separator' => ' / ', 'skip_empty' => FALSE]],
       'boolean mapper' => [
         'mapper',
         'boolean',

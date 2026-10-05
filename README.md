@@ -28,7 +28,7 @@ ddev composer check   # phpcs (Drupal, DrupalPractice) + phpstan level 8 + phpun
 
 ## Consuming the API
 
-Site A serves `https://site-a.ddev.site/graphql/catalog` (GraphQL, explorer in
+Site A serves `http://site-a.ddev.site/graphql/catalog` (GraphQL, explorer in
 the admin UI) and `/jsonapi/...` (read-only, includes flattened by
 `jsonapi_include`). Authenticate with an API key in the `api-key` header; keys
 in query strings are ignored. Create a user with the `catalog_reader` role and
@@ -36,7 +36,7 @@ generate its key on `/user/<uid>/key-auth`; the key is a secret and lives only
 in that account.
 
 ```bash
-curl -H "api-key: $KEY" "https://site-a.ddev.site/graphql/catalog?query={customers{totalCount}}"
+curl -H "api-key: $KEY" "http://site-a.ddev.site/graphql/catalog?query={customers{totalCount}}"
 ```
 
 Development data (dev only, not part of the exported config):

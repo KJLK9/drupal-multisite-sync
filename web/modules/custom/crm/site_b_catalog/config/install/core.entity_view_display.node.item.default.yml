@@ -1,0 +1,41 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - field.field.node.item.field_list_price
+    - field.field.node.item.field_summary
+    - field.field.node.item.field_source_id
+    - node.type.item
+  module:
+    - user
+    - money_field
+    - text
+id: node.item.default
+targetEntityType: node
+bundle: item
+mode: default
+content:
+  field_list_price:
+    type: money_field
+    label: above
+    settings: {  }
+    third_party_settings: {  }
+    weight: 1
+    region: content
+  field_summary:
+    type: text_default
+    label: above
+    settings: {  }
+    third_party_settings: {  }
+    weight: 2
+    region: content
+  field_source_id:
+    type: string
+    label: above
+    settings:
+      link_to_entity: false
+    third_party_settings: {  }
+    weight: 3
+    region: content
+hidden:
+  links: true
