@@ -36,6 +36,11 @@ separate module, so the engine runs without it (drush, cron, workers).
   (`RunBatch`), so closing the browser leaves a run that can be continued here,
   or by a worker. A run that waits for retries, for another process or for a
   source that is down ends the batch with a message that says so.
+- **Moving through the wizard**: a menu of steps at the top (a tick for a step
+  that is in order, a count for one with problems) lets a person go to any step;
+  what was typed is kept. Adding or removing rows, and trying the source, are
+  AJAX, so the page does not jump. After a try to save, the problems are listed
+  in the form in words. See ADR 0018.
 
 ## Testing
 

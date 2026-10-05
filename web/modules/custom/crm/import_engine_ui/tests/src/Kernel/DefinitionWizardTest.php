@@ -378,7 +378,7 @@ class DefinitionWizardTest extends NodeTestBase {
   }
 
   /**
-   * A mistake only the schema sees is shown, and its step opens.
+   * A mistake only the schema sees is listed, in words, and its step opens.
    */
   public function testSchemaProblemsAreShownAtTheirStep(): void {
     $state = $this->toLastStep();
@@ -389,8 +389,14 @@ class DefinitionWizardTest extends NodeTestBase {
 
     $this->assertNull(ImportDefinition::load('accounts'));
     $this->assertSame(4, $state->get('step'));
-    $errors = $this->messages()['error'];
-    $this->assertStringContainsString('Mapping: mapping.0.mapper.sources.value', $errors[0]);
+    $this->assertSame([], $this->messages(), 'The problems are in the form, not in messages.');
+    $form = $this->buildAt($state);
+    $this->assertArrayHasKey('summary', $form);
+    $texts = array_column($form['summary']['step_4']['#items'], '#plain_text');
+    $this->assertCount(1, $texts);
+    $this->assertStringStartsWith('Mapping, row 1 (title): ', $texts[0]);
+    $this->assertStringContainsString('Dotted path in the source item', $texts[0]);
+    $this->assertSame('Step 4: Mapping', (string) $form['summary']['step_4']['#title']);
   }
 
   /**
@@ -689,6 +695,203 @@ class DefinitionWizardTest extends NodeTestBase {
 
     $this->assertSame(['rows][0][mapper][sources][value'], array_keys($next->getErrors()));
     $this->assertSame(4, $next->get('step'));
+  }
+
+  /**
+   * Builds the form as the person sees it after a step.
+   *
+   * @param \Drupal\Core\Form\FormStateInterface $state
+   *   The state after the step.
+   * @param array<int, mixed> $args
+   *   The arguments of the form: the definition to edit, if any.
+   *
+   * @return array<string, mixed>
+   *   The form.
+   */
+  protected function buildAt(FormStateInterface $state, array $args = []): array {
+    $render_state = new FormState();
+    $render_state->setStorage($state->getStorage());
+    $render_state->addBuildInfo('args', $args);
+    return $this->container->get('form_builder')->buildForm(DefinitionWizardForm::class, $render_state);
+  }
+
+  /**
+   * Presses a button of the menu of steps.
+   *
+   * The text of the button holds a mark that depends on the state, so it is
+   * read from the form as it stands.
+   *
+   * @param \Drupal\Core\Form\FormStateInterface $previous
+   *   The state before.
+   * @param array<string, mixed> $values
+   *   The values of the step that is left.
+   * @param int $to
+   *   The step to go to.
+   */
+  protected function jump(FormStateInterface $previous, array $values, int $to): FormStateInterface {
+    $form = $this->buildAt($previous);
+    $state = new FormState();
+    $state->setStorage($previous->getStorage());
+    $state->addBuildInfo('args', []);
+    $state->setValues($values + ['goto_' . $to => (string) $form['steps']['goto_' . $to]['#value']]);
+    $this->container->get('form_builder')->submitForm(DefinitionWizardForm::class, $state);
+    return $state;
+  }
+
+  /**
+   * The menu of steps goes to any step, and keeps what was typed.
+   */
+  public function testMenuGoesToAnyStep(): void {
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $this->assertSame(2, $state->get('step'));
+
+    $state = $this->jump($state, $this->plainStep2(), 5);
+
+    $this->assertSame(5, $state->get('step'));
+    $this->assertSame('none', $state->get('definition')['pagination']['plugin'], 'What was on the step that was left is kept.');
+    $this->assertSame([1, 2, 5], $state->get('visited'));
+    $back = $this->jump($state, $this->step5(), 1);
+    $this->assertSame(1, $back->get('step'));
+    $this->assertSame(30, $back->get('definition')['delete_threshold_percent']);
+  }
+
+  /**
+   * Leaving a step that is not in order is possible, and not a mistake.
+   */
+  public function testLeavingAnUnfinishedStepIsAllowed(): void {
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $state = $this->press($state, $this->step2(), 'next');
+    // The key is still empty, which Next would refuse.
+    $refused = $this->press($state, ['source_key' => '', 'target' => $this->step3()['target']], 'next');
+    $this->assertArrayHasKey('source_key', $refused->getErrors());
+
+    $left = $this->jump($state, ['source_key' => '', 'target' => $this->step3()['target']], 1);
+
+    $this->assertSame([], $left->getErrors());
+    $this->assertSame(1, $left->get('step'));
+    $this->assertSame('node', $left->get('definition')['target']['configuration']['entity_type'] ?? NULL, 'The part that was fine is kept.');
+  }
+
+  /**
+   * Going back never asks for the step to be finished.
+   */
+  public function testPreviousNeverBlocks(): void {
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $values = $this->step2();
+    $values['pagination']['plugin'] = 'offset_limit';
+    $values['pagination']['settings'] = [
+      'target' => 'query',
+      'offset_param' => '',
+      'limit_param' => '',
+      'page_size' => '0',
+    ];
+
+    $back = $this->press($state, $values, 'previous');
+
+    $this->assertSame([], $back->getErrors());
+    $this->assertSame(1, $back->get('step'));
+    $this->assertSame(0, $back->get('definition')['pagination']['configuration']['page_size'], 'It is kept as it was typed, and the schema says so on Save.');
+  }
+
+  /**
+   * What cannot be read is not lost with the rest of the step.
+   */
+  public function testUnreadablePartKeepsItsValueAndTheRestIsKept(): void {
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $state = $this->press($state, $this->step2(), 'previous');
+    $values = $this->step1();
+    $values['label'] = 'Changed name';
+    $values['source']['settings']['headers'] = 'this is not a header';
+
+    $left = $this->jump($state, $values, 3);
+
+    $this->assertSame('Changed name', $left->get('definition')['label']);
+    $this->assertSame(['Accept' => 'application/json'], $left->get('definition')['source']['configuration']['headers'], 'The source keeps what it had.');
+    $this->assertStringContainsString('Not everything on step 1 could be kept: source', $this->messages()['warning'][0]);
+  }
+
+  /**
+   * A box that is not ticked sends nothing; leaving a step counts it as off.
+   */
+  public function testUntickedBoxesAreOffWhenLeavingStep(): void {
+    $state = $this->toLastStep();
+    $values = $this->step5();
+    unset($values['status'], $values['resilience']['dlq_enabled'], $values['breaker']['enabled']);
+
+    $left = $this->jump($state, $values, 4);
+
+    $stored = $left->get('definition');
+    $this->assertFalse($stored['status']);
+    $this->assertFalse($stored['resilience']['dlq_enabled']);
+    $this->assertFalse($stored['breaker']['enabled']);
+  }
+
+  /**
+   * The menu shows which steps are in order and which have a problem.
+   */
+  public function testMenuMarksStepsThatAreInOrderOrNot(): void {
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $form = $this->buildAt($state);
+    $this->assertSame('1. Source ✓', (string) $form['steps']['goto_1']['#value']);
+    $this->assertContains('is-current', $form['steps']['goto_2']['#attributes']['class']);
+    $this->assertSame('3. Key and target', (string) $form['steps']['goto_3']['#value'], 'A step that was not visited has no mark.');
+
+    // Step 3 is left without a key: it has problems from then on.
+    $state = $this->press($state, $this->step2(), 'next');
+    $state = $this->jump($state, ['source_key' => '', 'target' => $this->step3()['target']], 4);
+    $form = $this->buildAt($state);
+
+    $this->assertStringStartsWith('3. Key and target ⚠ ', (string) $form['steps']['goto_3']['#value']);
+    $this->assertContains('has-problems', $form['steps']['goto_3']['#attributes']['class']);
+    $this->assertContains('is-ok', $form['steps']['goto_1']['#attributes']['class']);
+    $this->assertArrayNotHasKey('summary', $form, 'The list of problems is for after a try to save.');
+  }
+
+  /**
+   * An import that is new can be shown before anything is filled in.
+   */
+  public function testBlankImportCanBeShown(): void {
+    $form = $this->container->get('form_builder')->getForm(DefinitionWizardForm::class);
+
+    $this->assertSame(['goto_1', 'goto_2', 'goto_3', 'goto_4', 'goto_5'], array_keys(array_filter($form['steps'], static fn (mixed $key): bool => is_array($key) && isset($key['#goto']))));
+    $this->assertSame('1. Source', (string) $form['steps']['goto_1']['#value'], 'The current step has no mark.');
+  }
+
+  /**
+   * Adding and removing rows is done by AJAX, so the page stays where it is.
+   */
+  public function testRowButtonsAreAjax(): void {
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $state = $this->press($state, $this->plainStep2(), 'next');
+    $state = $this->press($state, $this->step3(), 'next');
+    $state = $this->press($state, [], 'add_mapping_row');
+    $form = $this->buildAt($state);
+
+    $this->assertSame('import-wizard-rows', $form['add_row']['#ajax']['wrapper']);
+    $this->assertSame('import-wizard-rows', $form['rows'][0]['remove']['#ajax']['wrapper']);
+    $this->assertStringContainsString('id="import-wizard-rows"', $form['rows']['#prefix']);
+    $wizard = $this->container->get('class_resolver')->getInstanceFromDefinition(DefinitionWizardForm::class);
+    $trigger = new FormState();
+    $trigger->setTriggeringElement(['#rows_key' => 'rows']);
+    $this->assertSame($form['rows'], $wizard->ajaxRows($form, $trigger), 'The callback gives back the rows.');
+
+    // The reports are on the last step.
+    $last = $this->toLastStep();
+    $form = $this->buildAt($last);
+    $this->assertSame('import-wizard-reporters', $form['reporters']['add']['#ajax']['wrapper']);
+    $trigger->setTriggeringElement(['#rows_key' => 'reporters']);
+    $this->assertSame($form['reporters'], $wizard->ajaxRows($form, $trigger));
+  }
+
+  /**
+   * Trying the source is AJAX too, and its panel is what gets replaced.
+   */
+  public function testTryTheSourceIsAjax(): void {
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $form = $this->buildAt($state);
+
+    $this->assertSame('import-wizard-source-test', $form['source_test']['test']['#ajax']['wrapper']);
+    $this->assertStringContainsString('id="import-wizard-source-test"', $form['source_test']['#prefix']);
   }
 
 }

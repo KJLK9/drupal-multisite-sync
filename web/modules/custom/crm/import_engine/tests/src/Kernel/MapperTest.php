@@ -325,6 +325,14 @@ class MapperTest extends StorageTestBase {
 
     $this->assertSame([], $violations('money', ['default_currency' => 'EUR']));
     $this->assertSame(['default_currency'], $violations('money', ['default_currency' => 'euro']));
+    // The three words are texts; YAML would read true and false as booleans.
+    foreach (['true', 'false', 'fail'] as $when_empty) {
+      $this->assertSame([], $violations('boolean', [
+        'true_values' => ['1'],
+        'false_values' => ['0'],
+        'when_empty' => $when_empty,
+      ]), $when_empty);
+    }
     $this->assertSame([
       'when_empty',
     ], $violations('boolean', ['true_values' => ['1'], 'false_values' => ['0'], 'when_empty' => 'maybe']));

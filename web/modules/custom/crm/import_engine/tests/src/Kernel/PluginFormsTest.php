@@ -126,6 +126,8 @@ class PluginFormsTest extends NodeTestBase {
       'string mapper' => ['mapper', 'string', ['trim' => FALSE, 'empty_as_null' => FALSE]],
       'text mapper' => ['mapper', 'text', ['format' => 'plain_text']],
       'number mapper' => ['mapper', 'number', []],
+      'boolean mapper with its defaults' => ['mapper', 'boolean', []],
+      'boolean mapper that says yes' => ['mapper', 'boolean', ['when_empty' => 'true']],
       'join mapper' => ['mapper', 'join', ['separator' => ' / ', 'skip_empty' => FALSE]],
       'boolean mapper' => [
         'mapper',
@@ -196,7 +198,8 @@ class PluginFormsTest extends NodeTestBase {
       }
     }
 
-    $this->assertEqualsCanonicalizing($found, $covered);
+    // A plugin may have more than one case; each must have at least one.
+    $this->assertEqualsCanonicalizing($found, array_values(array_unique($covered)));
   }
 
   /**
@@ -291,6 +294,20 @@ class PluginFormsTest extends NodeTestBase {
     $this->assertSame([], $this->plugin('pagination', 'none')->buildConfigurationForm([], new FormState()));
     $this->assertInstanceOf(MapperInterface::class, $this->plugin('mapper', 'number'));
     $this->assertSame([], $this->plugin('mapper', 'number')->buildConfigurationForm([], new FormState()));
+  }
+
+  /**
+   * The owner can be given as typed in the autocomplete field.
+   */
+  public function testOwnerFromTheAutocompleteText(): void {
+    $target = $this->plugin('target', 'entity');
+    $form = [];
+
+    $cases = [['importer (1)', 1], ['1', 1], [1, 1], ['', 0], ['nobody', 0]];
+    foreach ($cases as [$given, $expected]) {
+      $target->submitConfigurationForm($form, (new FormState())->setValues(['content' => 'node:item', 'owner' => $given]));
+      $this->assertSame($expected, $target->getConfiguration()['owner'], (string) $given);
+    }
   }
 
 }

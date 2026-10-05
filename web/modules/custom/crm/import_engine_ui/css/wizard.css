@@ -1,0 +1,55 @@
+/**
+ * @file
+ * The menu of steps and the list of problems in the import wizard.
+ */
+
+.import-wizard-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1.5rem;
+  padding: 0 0 1rem;
+  border-bottom: 1px solid #d3d4d9;
+}
+
+.import-wizard-steps .form-actions,
+.import-wizard-steps > .form-submit {
+  margin: 0;
+}
+
+.import-wizard-steps .import-wizard-step {
+  margin: 0;
+  border-radius: 2rem;
+  background: #f3f4f9;
+  color: #232429;
+  font-weight: 400;
+}
+
+.import-wizard-steps .import-wizard-step.is-current {
+  background: #003ecc;
+  color: #fff;
+  font-weight: 700;
+}
+
+.import-wizard-steps .import-wizard-step.is-ok {
+  border-color: #1e7e34;
+}
+
+.import-wizard-steps .import-wizard-step.has-problems {
+  border-color: #b4300f;
+  background: #fff4f0;
+  color: #b4300f;
+}
+
+.import-wizard-title {
+  margin-top: 0;
+}
+
+.import-wizard-summary h3 {
+  margin-top: 0;
+}
+
+.import-wizard-summary .item-list__title {
+  margin: 0.5rem 0 0;
+  font-weight: 700;
+}

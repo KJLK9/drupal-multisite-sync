@@ -582,7 +582,8 @@ import_engine.mapper.boolean:
       type: string
       label: 'What a missing value means'
       constraints:
-        Choice: [true, false, fail]
+        # Quoted: unquoted true and false are booleans in YAML.
+        Choice: ['true', 'false', 'fail']
 
 import_engine.mapper.timestamp:
   type: mapping

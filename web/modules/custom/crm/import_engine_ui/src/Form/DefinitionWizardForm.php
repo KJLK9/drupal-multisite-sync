@@ -10,6 +10,10 @@ use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\DependencyInjection\AutowireTrait;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormBase;
+use Drupal\Core\TypedData\TypedDataInterface;
+use Drupal\Core\TypedData\ComplexDataInterface;
+use Drupal\Core\Render\Element;
+use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Form\SubformState;
 use Drupal\Core\Plugin\DefaultPluginManager;
@@ -120,17 +124,28 @@ final class DefinitionWizardForm extends FormBase {
       $form_state->set('definition', $this->initialValues($import_definition));
       $form_state->set('is_new', $import_definition === NULL);
       $form_state->set('step', 1);
+      // An import that exists has been through every step.
+      $form_state->set('visited', $import_definition === NULL ? [1] : array_keys(self::STEPS));
     }
     $step = (int) $form_state->get('step');
 
     $form['#tree'] = TRUE;
     $form['#attributes']['class'][] = 'import-definition-wizard';
+    $form['#attached']['library'][] = 'import_engine_ui/wizard';
+
+    $current = $this->values($form_state);
+    $problems = $this->problemsByStep($this->entityFromValues($current), ($current['id'] ?? '') === '');
+    $form['steps'] = $this->stepMenu($form_state, $step, $problems);
+    $summary = $this->problemSummary($form_state, $problems);
+    if ($summary !== []) {
+      $form['summary'] = $summary;
+    }
     $form['progress'] = [
-      '#markup' => '<p class="import-definition-wizard__progress"><strong>' . $this->t('Step @step of @total: @title', [
+      '#markup' => '<h2 class="import-wizard-title">' . $this->t('Step @step of @total: @title', [
         '@step' => (string) $step,
         '@total' => (string) count(self::STEPS),
         '@title' => self::STEPS[$step],
-      ]) . '</strong></p>',
+      ]) . '</h2>',
     ];
 
     match ($step) {
@@ -146,7 +161,15 @@ final class DefinitionWizardForm extends FormBase {
 
     $form['actions'] = ['#type' => 'actions', '#weight' => 100];
     if ($step > 1) {
-      $form['actions']['previous'] = ['#type' => 'submit', '#value' => $this->t('Previous'), '#name' => 'previous'];
+      // Going back never asks for a step to be finished.
+      $form['actions']['previous'] = [
+        '#type' => 'submit',
+        '#value' => $this->t('Previous'),
+        '#name' => 'previous',
+        '#goto' => $step - 1,
+        '#limit_validation_errors' => [],
+        '#submit' => ['::gotoStep'],
+      ];
     }
     if ($step < count(self::STEPS)) {
       $form['actions']['next'] = ['#type' => 'submit', '#value' => $this->t('Next'), '#name' => 'next'];
@@ -246,16 +269,12 @@ final class DefinitionWizardForm extends FormBase {
     $form['intro'] = [
       '#markup' => '<p>' . $this->t('Each row fills one field of the target. The mapper is chosen by the type of the field; a source is the dotted path of a value in the source item, for example <code>price.amount</code>.') . '</p>',
     ];
-    $paths = $this->samplePaths($form_state);
-    if ($paths !== []) {
-      // The paths found in the sample, offered while typing a source.
-      $form['path_list'] = [
-        '#type' => 'inline_template',
-        '#template' => '<datalist id="import-wizard-paths">{% for path in paths %}<option value="{{ path }}">{% endfor %}</datalist>',
-        '#context' => ['paths' => array_keys($paths)],
-      ];
-    }
-    $form['rows'] = ['#type' => 'container', '#tree' => TRUE];
+    $form['rows'] = [
+      '#type' => 'container',
+      '#tree' => TRUE,
+      '#prefix' => '<div id="import-wizard-rows">',
+      '#suffix' => '</div>',
+    ];
     foreach ($this->rowIds($form_state, 'mapping_row_ids', count($values['mapping'])) as $id) {
       $form['rows'][$id] = $this->mappingRow($id, $values['mapping'][$id] ?? NULL, $fields, $form, $form_state);
     }
@@ -265,6 +284,8 @@ final class DefinitionWizardForm extends FormBase {
       '#name' => 'add_mapping_row',
       '#limit_validation_errors' => [],
       '#submit' => ['::addMappingRow'],
+      '#rows_key' => 'rows',
+      '#ajax' => ['callback' => '::ajaxRows', 'wrapper' => 'import-wizard-rows', 'progress' => ['type' => 'none']],
     ];
   }
 
@@ -375,6 +396,8 @@ final class DefinitionWizardForm extends FormBase {
       '#title' => $this->t('Reports'),
       '#description' => $this->t('Who is told how a run went.'),
       '#open' => TRUE,
+      '#prefix' => '<div id="import-wizard-reporters">',
+      '#suffix' => '</div>',
     ];
     foreach ($this->rowIds($form_state, 'reporter_row_ids', count($values['reporters'])) as $id) {
       $form['reporters'][$id] = $this->pluginSection([
@@ -388,6 +411,12 @@ final class DefinitionWizardForm extends FormBase {
         '#limit_validation_errors' => [],
         '#submit' => ['::removeReporter'],
         '#row_id' => $id,
+        '#rows_key' => 'reporters',
+        '#ajax' => [
+          'callback' => '::ajaxRows',
+          'wrapper' => 'import-wizard-reporters',
+          'progress' => ['type' => 'none'],
+        ],
       ];
     }
     $form['reporters']['add'] = [
@@ -396,6 +425,8 @@ final class DefinitionWizardForm extends FormBase {
       '#name' => 'add_reporter',
       '#limit_validation_errors' => [],
       '#submit' => ['::addReporter'],
+      '#rows_key' => 'reporters',
+      '#ajax' => ['callback' => '::ajaxRows', 'wrapper' => 'import-wizard-reporters', 'progress' => ['type' => 'none']],
     ];
   }
 
@@ -453,6 +484,8 @@ final class DefinitionWizardForm extends FormBase {
       '#limit_validation_errors' => [],
       '#submit' => ['::removeMappingRow'],
       '#row_id' => $id,
+      '#rows_key' => 'rows',
+      '#ajax' => ['callback' => '::ajaxRows', 'wrapper' => 'import-wizard-rows', 'progress' => ['type' => 'none']],
     ];
     return $element;
   }
@@ -564,6 +597,8 @@ final class DefinitionWizardForm extends FormBase {
       '#description' => $this->t('Reads a few pages with the settings so far, and shows what came back and the paths of the values in its items. Those paths are offered in the next steps.'),
       '#open' => $form_state->get('source_sample') !== NULL,
       '#weight' => 50,
+      '#prefix' => '<div id="import-wizard-source-test">',
+      '#suffix' => '</div>',
     ];
     $form['source_test']['test'] = [
       '#type' => 'submit',
@@ -576,6 +611,7 @@ final class DefinitionWizardForm extends FormBase {
         default => [],
       },
       '#submit' => ['::testSource'],
+      '#ajax' => ['callback' => '::ajaxElement', 'wrapper' => 'import-wizard-source-test'],
     ];
 
     $sample = $form_state->get('source_sample');
@@ -587,6 +623,14 @@ final class DefinitionWizardForm extends FormBase {
       $items[] = ['#markup' => '<strong>' . ucfirst((string) $message['severity']) . ':</strong> ' . Html::escape((string) $message['message'])];
     }
     $form['source_test']['messages'] = ['#theme' => 'item_list', '#items' => $items];
+    if ($sample['paths'] !== []) {
+      // The paths found, offered while typing the source of a mapping row.
+      $form['source_test']['path_list'] = [
+        '#type' => 'inline_template',
+        '#template' => '<datalist id="import-wizard-paths">{% for path in paths %}<option value="{{ path }}">{% endfor %}</datalist>',
+        '#context' => ['paths' => array_keys($sample['paths'])],
+      ];
+    }
     if ($sample['paths'] !== []) {
       $rows = [];
       foreach (array_slice($sample['paths'], 0, 100, TRUE) as $path => $info) {
@@ -612,7 +656,7 @@ final class DefinitionWizardForm extends FormBase {
   public function testSource(array &$form, FormStateInterface $form_state): void {
     $step = (int) $form_state->get('step');
     if ($step === 2) {
-      $this->storeStep(2, $form, $form_state);
+      $this->storeStep(2, $form, $form_state, $form_state->getValues());
     }
     $values = $this->values($form_state);
     if ($step === 3) {
@@ -680,6 +724,277 @@ final class DefinitionWizardForm extends FormBase {
       }
     }
     return NULL;
+  }
+
+  /**
+   * Builds the menu of steps at the top of the form.
+   *
+   * Every step is a button: a person can go to any step at any time, and what
+   * was typed on the step that is left is kept as far as it can be. A mark
+   * shows which steps are in order and which have a problem.
+   *
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   * @param int $current
+   *   The current step.
+   * @param array<int, list<string>> $problems
+   *   The problems of the definition, by step.
+   *
+   * @return array<string, mixed>
+   *   The menu.
+   */
+  private function stepMenu(FormStateInterface $form_state, int $current, array $problems): array {
+    $visited = array_map(intval(...), (array) $form_state->get('visited'));
+    $menu = ['#type' => 'container', '#attributes' => ['class' => ['import-wizard-steps']], '#weight' => -20];
+    foreach (self::STEPS as $number => $title) {
+      $count = count($problems[$number] ?? []);
+      $classes = ['import-wizard-step'];
+      $mark = '';
+      if ($number === $current) {
+        $classes[] = 'is-current';
+      }
+      elseif (in_array($number, $visited, TRUE)) {
+        $classes[] = $count === 0 ? 'is-ok' : 'has-problems';
+        $mark = $count === 0 ? ' ✓' : ' ⚠ ' . $count;
+      }
+      $menu['goto_' . $number] = [
+        '#type' => 'submit',
+        '#value' => $number . '. ' . $title . $mark,
+        '#name' => 'goto_' . $number,
+        '#goto' => $number,
+        '#limit_validation_errors' => [],
+        '#submit' => ['::gotoStep'],
+        '#attributes' => ['class' => $classes],
+      ];
+    }
+    return $menu;
+  }
+
+  /**
+   * Builds the list of problems shown after a person tried to save.
+   *
+   * It follows the definition as it is now, so a problem disappears from it
+   * when it is fixed.
+   *
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   * @param array<int, list<string>> $problems
+   *   The problems of the definition, by step.
+   *
+   * @return array<string, mixed>
+   *   The list, empty when there is nothing to show.
+   */
+  private function problemSummary(FormStateInterface $form_state, array $problems): array {
+    if (!$form_state->get('attempted_save') || $problems === []) {
+      return [];
+    }
+    $summary = [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['messages', 'messages--error', 'import-wizard-summary']],
+      '#weight' => -10,
+      'title' => ['#markup' => '<h3>' . $this->t('The import cannot be saved yet') . '</h3>'],
+    ];
+    ksort($problems);
+    foreach ($problems as $step => $messages) {
+      $summary['step_' . $step] = [
+        '#theme' => 'item_list',
+        '#title' => $this->t('Step @step: @title', ['@step' => (string) $step, '@title' => self::STEPS[$step]]),
+        '#items' => array_map(static fn (string $message): array => ['#plain_text' => $message], $messages),
+      ];
+    }
+    return $summary;
+  }
+
+  /**
+   * Checks a definition against its schema; the problems come by step.
+   *
+   * @param \Drupal\import_engine\Entity\ImportDefinition $definition
+   *   The definition, from entityFromValues() when it is not complete.
+   * @param bool $idMissing
+   *   Whether the import has no ID yet.
+   *
+   * @return array<int, list<string>>
+   *   The problems, in words, by the step they belong to.
+   */
+  private function problemsByStep(ImportDefinition $definition, bool $idMissing = FALSE): array {
+    $problems = [];
+    if ($idMissing) {
+      $problems[1][] = (string) $this->t('Machine name: give the import a name, and so a machine name.');
+    }
+    try {
+      $typed = $definition->getTypedData();
+      foreach ($typed->validate() as $violation) {
+        $path = $violation->getPropertyPath();
+        $step = self::STEP_OF[explode('.', $path)[0]] ?? 5;
+        $problems[$step][] = $this->describeProblem($typed, $definition, $path, (string) $violation->getMessage());
+      }
+    }
+    catch (\Throwable $exception) {
+      $problems[5][] = (string) $this->t('The import could not be checked: @message', ['@message' => $exception->getMessage()]);
+    }
+    return $problems;
+  }
+
+  /**
+   * Says what is wrong in words: where, which setting, and why.
+   *
+   * @param \Drupal\Core\TypedData\TypedDataInterface $typed
+   *   The typed data of the definition, for the labels of the settings.
+   * @param \Drupal\import_engine\Entity\ImportDefinition $definition
+   *   The definition.
+   * @param string $path
+   *   The property path of the problem.
+   * @param string $message
+   *   What the validation said.
+   */
+  private function describeProblem(TypedDataInterface $typed, ImportDefinition $definition, string $path, string $message): string {
+    $label = NULL;
+    try {
+      $label = $typed instanceof ComplexDataInterface ? (string) $typed->get($path)->getDataDefinition()->getLabel() : NULL;
+    }
+    catch (\Throwable) {
+      // A path the typed data does not know: the last part has to do.
+    }
+    $segments = explode('.', $path);
+    $label = $label === NULL || $label === '' ? str_replace('_', ' ', (string) end($segments)) : $label;
+
+    $mapping = $definition->getMapping();
+    $context = match (TRUE) {
+      (bool) preg_match('/^mapping\.(\d+)/', $path, $m) => (string) $this->t('Mapping, row @n (@field)', [
+        '@n' => (string) ((int) $m[1] + 1),
+        '@field' => (string) ($mapping[(int) $m[1]]['target_field'] ?? '?'),
+      ]),
+      (bool) preg_match('/^reporters\.(\d+)/', $path, $m) => (string) $this->t('Report @n', ['@n' => (string) ((int) $m[1] + 1)]),
+      str_starts_with($path, 'source_key') => (string) $this->t('Key'),
+      str_starts_with($path, 'source') => (string) $this->t('Source'),
+      str_starts_with($path, 'pagination') => (string) $this->t('Paging'),
+      str_starts_with($path, 'authentication') => (string) $this->t('Authentication'),
+      str_starts_with($path, 'target') => (string) $this->t('Target'),
+      str_starts_with($path, 'resilience') => (string) $this->t('Retries'),
+      str_starts_with($path, 'breaker') => (string) $this->t('Circuit breaker'),
+      default => '',
+    };
+    return ($context === '' ? '' : $context . ': ') . $label . ': ' . $message;
+  }
+
+  /**
+   * Builds a definition from the values of the form, which may be incomplete.
+   *
+   * The configuration schema is looked up by the ID of the import, so an
+   * import that has no ID yet is checked under a placeholder.
+   *
+   * @param array<string, mixed> $values
+   *   The values.
+   */
+  private function entityFromValues(array $values): ImportDefinition {
+    if (($values['id'] ?? '') === '') {
+      $values['id'] = 'draft';
+    }
+    return ImportDefinition::create($values + ['label' => '']);
+  }
+
+  /**
+   * Returns what was submitted.
+   *
+   * Normally the values of the form, which are checked. When a person jumps
+   * to another step the step they leave may not be in order, and then its
+   * checks must not stop them: what they typed is taken as it is, with the
+   * checkboxes that are not ticked counted as off (a browser sends nothing
+   * for them).
+   *
+   * @param array<mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   * @param bool $lenient
+   *   Whether to take what was typed instead of the checked values.
+   *
+   * @return array<string, mixed>
+   *   The values.
+   */
+  private function submittedValues(array $form, FormStateInterface $form_state, bool $lenient): array {
+    if (!$lenient) {
+      return $form_state->getValues();
+    }
+    $input = $form_state->getUserInput();
+    $this->fillCheckboxes($form, $input);
+    return $input;
+  }
+
+  /**
+   * Puts 0 in the input for every checkbox that sent nothing.
+   *
+   * @param array<mixed> $element
+   *   The form, or a part of it.
+   * @param array<mixed> $input
+   *   The input; updated.
+   */
+  private function fillCheckboxes(array $element, array &$input): void {
+    foreach (Element::children($element) as $key) {
+      $child = $element[$key];
+      if (($child['#type'] ?? '') === 'checkbox' && isset($child['#parents'])) {
+        $exists = FALSE;
+        NestedArray::getValue($input, $child['#parents'], $exists);
+        if (!$exists) {
+          NestedArray::setValue($input, $child['#parents'], 0);
+        }
+      }
+      $this->fillCheckboxes($child, $input);
+    }
+  }
+
+  /**
+   * Goes to another step, keeping what was typed on this one.
+   *
+   * @param array<mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   */
+  public function gotoStep(array &$form, FormStateInterface $form_state): void {
+    $to = (int) ($form_state->getTriggeringElement()['#goto'] ?? 0);
+    $step = (int) $form_state->get('step');
+    if (!isset(self::STEPS[$to]) || $to === $step) {
+      $form_state->setRebuild();
+      return;
+    }
+    $failed = $this->storeStep($step, $form, $form_state, $this->submittedValues($form, $form_state, TRUE));
+    if ($failed !== []) {
+      $this->messenger()->addWarning($this->t('Not everything on step @step could be kept: @parts. They have the settings they had before; check them when you come back.', [
+        '@step' => (string) $step,
+        '@parts' => implode(', ', $failed),
+      ]));
+    }
+    $this->moveTo($form_state, $to);
+  }
+
+  /**
+   * Moves to a step; rows come from the definition again.
+   */
+  private function moveTo(FormStateInterface $form_state, int $to): void {
+    $visited = array_map(intval(...), (array) $form_state->get('visited'));
+    $visited[] = (int) $form_state->get('step');
+    $visited[] = $to;
+    $form_state->set('visited', array_values(array_unique($visited)));
+    $form_state->set('step', $to)->set('mapping_row_ids', NULL)->set('reporter_row_ids', NULL)->setRebuild();
+    $form_state->setUserInput([]);
+  }
+
+  /**
+   * AJAX callback: returns the list of rows that a button changed.
+   *
+   * @param array<mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return array<string, mixed>
+   *   The part of the form to replace.
+   */
+  public function ajaxRows(array &$form, FormStateInterface $form_state): array {
+    $key = (string) ($form_state->getTriggeringElement()['#rows_key'] ?? '');
+    $part = $form[$key] ?? [];
+    return is_array($part) ? $part : [];
   }
 
   /**
@@ -810,11 +1125,15 @@ final class DefinitionWizardForm extends FormBase {
   public function validateForm(array &$form, FormStateInterface $form_state): void {
     $button = (string) ($form_state->getTriggeringElement()['#name'] ?? '');
     $step = (int) $form_state->get('step');
-    if (in_array($button, ['add_mapping_row', 'add_reporter'], TRUE) || str_starts_with($button, 'remove_') || ($button === 'test_source' && $step !== 2)) {
+    $skipped = in_array($button, ['add_mapping_row', 'add_reporter', 'previous'], TRUE)
+      || str_starts_with($button, 'remove_')
+      || str_starts_with($button, 'goto_')
+      || ($button === 'test_source' && $step !== 2);
+    if ($skipped) {
       return;
     }
     foreach ($this->sectionsOfStep($form_state) as $path => $manager) {
-      $this->collectSection(explode('/', (string) $path), $manager, $form, $form_state, FALSE);
+      $this->validateSection(explode('/', (string) $path), $manager, $form, $form_state);
     }
     if ((int) $form_state->get('step') === 3) {
       $paths = TextLists::lines((string) $form_state->getValue('source_key'));
@@ -862,14 +1181,11 @@ final class DefinitionWizardForm extends FormBase {
    */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
     $step = (int) $form_state->get('step');
-    $this->storeStep($step, $form, $form_state);
+    $this->storeStep($step, $form, $form_state, $form_state->getValues());
 
     $button = (string) ($form_state->getTriggeringElement()['#name'] ?? '');
-    if ($button === 'previous' || $button === 'next') {
-      $to = $button === 'next' ? $step + 1 : $step - 1;
-      // Rows come from the saved definition again on the next step.
-      $form_state->set('step', $to)->set('mapping_row_ids', NULL)->set('reporter_row_ids', NULL)->setRebuild();
-      $form_state->setUserInput([]);
+    if ($button === 'next') {
+      $this->moveTo($form_state, $step + 1);
       return;
     }
     $this->save($form_state);
@@ -884,36 +1200,51 @@ final class DefinitionWizardForm extends FormBase {
    *   The form.
    * @param \Drupal\Core\Form\FormStateInterface $form_state
    *   The form state.
+   * @param array<string, mixed> $in
+   *   What was submitted: the values of the form, or, when a person leaves a
+   *   step that is not finished, what was typed.
+   *
+   * @return list<string>
+   *   The parts of the step that could not be kept, by name; they keep the
+   *   value they had. Empty when everything was kept.
    */
-  private function storeStep(int $step, array $form, FormStateInterface $form_state): void {
+  private function storeStep(int $step, array $form, FormStateInterface $form_state, array $in): array {
+    $failed = [];
     $values = $this->values($form_state);
     foreach ($this->sectionsOfStep($form_state) as $path => $manager) {
       $parents = explode('/', (string) $path);
-      $section = $this->collectSection($parents, $manager, $form, $form_state, TRUE);
-      if ($section !== NULL && count($parents) === 1) {
+      try {
+        $section = $this->collectSection($parents, $manager, $form, $in);
+      }
+      catch (\Throwable) {
+        // What was typed in this part cannot be read; it keeps its value.
+        $failed[] = $parents[0];
+        continue;
+      }
+      if (count($parents) === 1) {
         $values[$parents[0]] = $section;
       }
     }
 
     if ($step === 1) {
-      $values['label'] = (string) $form_state->getValue('label');
+      $values['label'] = (string) ($in['label'] ?? '');
       if ($form_state->get('is_new')) {
-        $values['id'] = (string) $form_state->getValue('id');
+        $values['id'] = (string) ($in['id'] ?? '');
       }
-      $values['description'] = (string) $form_state->getValue('description');
+      $values['description'] = (string) ($in['description'] ?? '');
     }
     elseif ($step === 3) {
-      $values['source_key'] = TextLists::lines((string) $form_state->getValue('source_key'));
+      $values['source_key'] = TextLists::lines((string) ($in['source_key'] ?? ''));
     }
     elseif ($step === 4) {
-      $values['mapping'] = $this->collectMapping($form, $form_state);
+      $values['mapping'] = $this->collectMapping($form, $in);
     }
     elseif ($step === 5) {
-      $values['status'] = (bool) $form_state->getValue('status');
-      $values['delete_policy'] = (string) $form_state->getValue('delete_policy');
-      $values['delete_threshold_percent'] = (int) $form_state->getValue('delete_threshold_percent');
-      $values['pool'] = (string) $form_state->getValue('pool');
-      $resilience = (array) $form_state->getValue('resilience');
+      $values['status'] = (bool) ($in['status'] ?? FALSE);
+      $values['delete_policy'] = (string) ($in['delete_policy'] ?? '');
+      $values['delete_threshold_percent'] = (int) ($in['delete_threshold_percent'] ?? 0);
+      $values['pool'] = (string) ($in['pool'] ?? '');
+      $resilience = (array) ($in['resilience'] ?? []);
       $values['resilience'] = [
         'max_attempts' => (int) ($resilience['max_attempts'] ?? 0),
         'backoff' => (string) ($resilience['backoff'] ?? ''),
@@ -921,15 +1252,16 @@ final class DefinitionWizardForm extends FormBase {
         'dlq_enabled' => (bool) ($resilience['dlq_enabled'] ?? FALSE),
         'max_repeated_pages' => (int) ($resilience['max_repeated_pages'] ?? 0),
       ];
-      $breaker = (array) $form_state->getValue('breaker');
+      $breaker = (array) ($in['breaker'] ?? []);
       $values['breaker'] = [
         'enabled' => (bool) ($breaker['enabled'] ?? FALSE),
         'threshold' => (int) ($breaker['threshold'] ?? 0),
         'cooldown' => (int) ($breaker['cooldown'] ?? 0),
       ];
-      $values['reporters'] = $this->collectReporters($form, $form_state);
+      $values['reporters'] = $this->collectReporters($form, $in);
     }
     $form_state->set('definition', $values);
+    return $failed;
   }
 
   /**
@@ -948,7 +1280,7 @@ final class DefinitionWizardForm extends FormBase {
   }
 
   /**
-   * Validates, or submits, a plugin section.
+   * Validates a plugin section with the plugin's own validation.
    *
    * @param list<string> $parents
    *   Where the section is in the form.
@@ -958,52 +1290,77 @@ final class DefinitionWizardForm extends FormBase {
    *   The form.
    * @param \Drupal\Core\Form\FormStateInterface $form_state
    *   The form state.
-   * @param bool $submit
-   *   Whether to submit (and return the result) instead of validating.
-   *
-   * @return array{plugin: string, configuration: array<string, mixed>}|null
-   *   The plugin and its configuration, when submitted.
    */
-  private function collectSection(array $parents, DefaultPluginManager $manager, array $form, FormStateInterface $form_state, bool $submit): ?array {
+  private function validateSection(array $parents, DefaultPluginManager $manager, array $form, FormStateInterface $form_state): void {
     $values = $form_state->getValue($parents);
     $id = is_array($values) ? (string) ($values['plugin'] ?? '') : '';
     $section = NestedArray::getValue($form, $parents);
     if ($id === '' || !is_array($section) || !isset($section['settings'])) {
-      return $submit ? ['plugin' => $id, 'configuration' => []] : NULL;
+      return;
+    }
+    $plugin = $manager->createInstance($id, []);
+    if (!$plugin instanceof PluginFormInterface) {
+      return;
+    }
+    $settings = $section['settings'];
+    $plugin->validateConfigurationForm($settings, SubformState::createForSubform($settings, $form, $form_state));
+  }
+
+  /**
+   * Turns the submitted values of a plugin section into its configuration.
+   *
+   * @param list<string> $parents
+   *   Where the section is in the form.
+   * @param \Drupal\Core\Plugin\DefaultPluginManager $manager
+   *   The manager of the plugin.
+   * @param array<mixed> $form
+   *   The form.
+   * @param array<string, mixed> $in
+   *   What was submitted.
+   *
+   * @return array{plugin: string, configuration: array<string, mixed>}
+   *   The plugin and its configuration.
+   */
+  private function collectSection(array $parents, DefaultPluginManager $manager, array $form, array $in): array {
+    $values = NestedArray::getValue($in, $parents);
+    $id = is_array($values) ? (string) ($values['plugin'] ?? '') : '';
+    $section = NestedArray::getValue($form, $parents);
+    if ($id === '' || !is_array($section) || !isset($section['settings'])) {
+      return ['plugin' => $id, 'configuration' => []];
     }
     $plugin = $manager->createInstance($id, []);
     if (!$plugin instanceof PluginFormInterface || !$plugin instanceof ConfigurableInterface) {
-      return $submit ? ['plugin' => $id, 'configuration' => []] : NULL;
+      return ['plugin' => $id, 'configuration' => []];
     }
     $settings = $section['settings'];
-    $subform_state = SubformState::createForSubform($settings, $form, $form_state);
-    if (!$submit) {
-      $plugin->validateConfigurationForm($settings, $subform_state);
-      return NULL;
-    }
-    $plugin->submitConfigurationForm($settings, $subform_state);
+    $plugin->submitConfigurationForm($settings, (new FormState())->setValues((array) ($values['settings'] ?? [])));
     return ['plugin' => $id, 'configuration' => (array) $plugin->getConfiguration()];
   }
 
   /**
-   * Reads the mapping rows of the form.
+   * Reads the mapping rows of what was submitted.
    *
    * @param array<mixed> $form
    *   The form.
-   * @param \Drupal\Core\Form\FormStateInterface $form_state
-   *   The form state.
+   * @param array<string, mixed> $in
+   *   What was submitted.
    *
    * @return list<array<string, mixed>>
    *   The mapping, as the definition keeps it.
    */
-  private function collectMapping(array $form, FormStateInterface $form_state): array {
+  private function collectMapping(array $form, array $in): array {
     $mapping = [];
-    foreach (array_keys((array) $form_state->getValue('rows')) as $id) {
-      $parents = ['rows', (string) $id, 'mapper'];
-      $section = $this->collectSection($parents, $this->mappers, $form, $form_state, TRUE);
-      $row = (array) $form_state->getValue(['rows', (string) $id]);
+    foreach ((array) ($in['rows'] ?? []) as $id => $row) {
+      try {
+        $section = $this->collectSection(['rows', (string) $id, 'mapper'], $this->mappers, $form, $in);
+      }
+      catch (\Throwable) {
+        // The settings of this mapper cannot be read: the mapper starts over.
+        $section = ['plugin' => (string) ($in['rows'][$id]['mapper']['plugin'] ?? ''), 'configuration' => []];
+      }
+      $row = (array) $row;
       $sources = array_filter(array_map(static fn (mixed $path): string => trim((string) $path), (array) ($row['mapper']['sources'] ?? [])), static fn (string $path): bool => $path !== '');
-      if ($section === NULL || $section['plugin'] === '') {
+      if ($section['plugin'] === '') {
         continue;
       }
       $mapping[] = [
@@ -1015,24 +1372,29 @@ final class DefinitionWizardForm extends FormBase {
   }
 
   /**
-   * Reads the reports of the form.
+   * Reads the reports of what was submitted.
    *
    * @param array<mixed> $form
    *   The form.
-   * @param \Drupal\Core\Form\FormStateInterface $form_state
-   *   The form state.
+   * @param array<string, mixed> $in
+   *   What was submitted.
    *
    * @return list<array{plugin: string, configuration: array<string, mixed>}>
    *   The reporters.
    */
-  private function collectReporters(array $form, FormStateInterface $form_state): array {
+  private function collectReporters(array $form, array $in): array {
     $reporters = [];
-    foreach (array_keys((array) $form_state->getValue('reporters')) as $id) {
+    foreach (array_keys((array) ($in['reporters'] ?? [])) as $id) {
       if (!is_int($id) && !ctype_digit((string) $id)) {
         continue;
       }
-      $section = $this->collectSection(['reporters', (string) $id], $this->reporters, $form, $form_state, TRUE);
-      if ($section !== NULL && $section['plugin'] !== '') {
+      try {
+        $section = $this->collectSection(['reporters', (string) $id], $this->reporters, $form, $in);
+      }
+      catch (\Throwable) {
+        $section = ['plugin' => (string) ($in['reporters'][$id]['plugin'] ?? ''), 'configuration' => []];
+      }
+      if ($section['plugin'] !== '') {
         $reporters[] = $section;
       }
     }
@@ -1048,7 +1410,7 @@ final class DefinitionWizardForm extends FormBase {
   private function save(FormStateInterface $form_state): void {
     $values = $this->values($form_state);
     $storage = $this->entityTypes->getStorage('import_definition');
-    $definition = $form_state->get('is_new') ? ImportDefinition::create($values) : $storage->load($values['id']);
+    $definition = $form_state->get('is_new') ? $this->entityFromValues($values) : $storage->load($values['id']);
     if (!$definition instanceof ImportDefinition) {
       $this->messenger()->addError($this->t('The import no longer exists.'));
       return;
@@ -1061,24 +1423,11 @@ final class DefinitionWizardForm extends FormBase {
       }
     }
 
-    $problems = [];
-    $first = 5;
-    foreach ($definition->getTypedData()->validate() as $violation) {
-      $root = explode('.', $violation->getPropertyPath())[0];
-      $step = self::STEP_OF[$root] ?? 5;
-      $first = min($first, $step);
-      $problems[] = $this->t('@step: @path: @message', [
-        '@step' => self::STEPS[$step],
-        '@path' => $violation->getPropertyPath(),
-        '@message' => (string) $violation->getMessage(),
-      ]);
-    }
+    $problems = $this->problemsByStep($definition, ($values['id'] ?? '') === '');
     if ($problems !== []) {
-      foreach ($problems as $problem) {
-        $this->messenger()->addError($problem);
-      }
-      $form_state->set('step', $first)->set('mapping_row_ids', NULL)->set('reporter_row_ids', NULL)->setRebuild();
-      $form_state->setUserInput([]);
+      // The summary at the top lists them; the first step with a problem opens.
+      $form_state->set('attempted_save', TRUE);
+      $this->moveTo($form_state, min(array_keys($problems)));
       return;
     }
 

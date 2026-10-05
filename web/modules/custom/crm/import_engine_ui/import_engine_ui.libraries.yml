@@ -1,0 +1,4 @@
+wizard:
+  css:
+    theme:
+      css/wizard.css: {}

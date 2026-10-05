@@ -10,6 +10,7 @@ use Drupal\Core\Entity\EntityFieldManagerInterface;
 use Drupal\Core\Entity\EntityPublishedInterface;
 use Drupal\Core\Entity\EntityTypeBundleInfoInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
+use Drupal\Core\Entity\Element\EntityAutocomplete;
 use Drupal\Core\Entity\FieldableEntityInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountSwitcherInterface;
@@ -346,8 +347,24 @@ final class EntityTarget extends TargetPluginBase implements ContainerFactoryPlu
    */
   protected function normalizeFormValues(array $values): array {
     [$values['entity_type'], $values['bundle']] = array_pad(explode(':', (string) ($values['content'] ?? ''), 2), 2, '');
-    $values['owner'] = (int) ($values['owner'] ?? 0);
+    $values['owner'] = $this->ownerId($values['owner'] ?? 0);
     return $values;
+  }
+
+  /**
+   * Returns the ID of the owner from what a form gave.
+   *
+   * The autocomplete field gives an ID after it has been checked, but text
+   * such as "importer (1)" when it comes straight from what was typed.
+   *
+   * @param mixed $value
+   *   The ID, or the text of the autocomplete field.
+   */
+  private function ownerId(mixed $value): int {
+    if (is_string($value) && !ctype_digit($value)) {
+      return (int) EntityAutocomplete::extractEntityIdFromAutocompleteInput($value);
+    }
+    return (int) $value;
   }
 
 }
