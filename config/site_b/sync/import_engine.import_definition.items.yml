@@ -1,0 +1,94 @@
+uuid: 2ab1d414-3b68-44a1-b2a9-f6429a8e60ad
+langcode: en
+status: true
+dependencies:
+  config:
+    - import_engine.import_connection.site_a
+id: items
+label: Items
+description: 'The products of site A, as items.'
+source:
+  plugin: graphql
+  configuration:
+    query: |-
+      query ($limit: Int!, $offset: Int!) {
+        products(limit: $limit, offset: $offset) {
+          totalCount
+          items { id label status description basePrice { number currencyCode } }
+        }
+      }
+    variables: ''
+    items_path: data.products.items
+connection: site_a
+source_key:
+  - id
+pagination:
+  plugin: offset_limit
+  configuration:
+    target: body
+    offset_param: variables.offset
+    limit_param: variables.limit
+    page_size: 50
+    total_path: data.products.totalCount
+    stop_on_short_page: false
+authentication:
+  plugin: none
+  configuration: {  }
+target:
+  plugin: entity
+  configuration:
+    entity_type: item
+    bundle: item
+    owner: 1
+mapping:
+  -
+    target_field: title
+    mapper:
+      plugin: string
+      sources:
+        value: label
+      settings: {  }
+  -
+    target_field: list_price
+    mapper:
+      plugin: money
+      sources:
+        amount: basePrice.number
+        currency: basePrice.currencyCode
+      settings: {  }
+  -
+    target_field: summary
+    mapper:
+      plugin: text
+      sources:
+        value: description
+      settings:
+        format: plain_text
+  -
+    target_field: source_id
+    mapper:
+      plugin: string
+      sources:
+        value: id
+      settings: {  }
+  -
+    target_field: status
+    mapper:
+      plugin: boolean
+      sources:
+        value: status
+      settings: {  }
+delete_policy: unpublish
+delete_threshold_percent: 20
+breaker:
+  enabled: true
+  threshold: 5
+  cooldown: 60
+reporters: {  }
+resilience:
+  max_attempts: 5
+  backoff: exponential
+  retry_delay: 60
+  dlq_enabled: true
+  max_repeated_pages: 3
+pool: default

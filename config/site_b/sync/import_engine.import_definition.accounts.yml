@@ -1,0 +1,93 @@
+uuid: 7ad607e4-bb48-4a21-872c-243d3da0001e
+langcode: en
+status: true
+dependencies:
+  config:
+    - import_engine.import_connection.site_a
+id: accounts
+label: Accounts
+description: 'The customers of site A, as accounts.'
+source:
+  plugin: graphql
+  configuration:
+    query: |-
+      query ($limit: Int!, $offset: Int!) {
+        customers(limit: $limit, offset: $offset) {
+          totalCount
+          items { id label customerNumber status description }
+        }
+      }
+    variables: ''
+    items_path: data.customers.items
+connection: site_a
+source_key:
+  - customerNumber
+pagination:
+  plugin: offset_limit
+  configuration:
+    target: body
+    offset_param: variables.offset
+    limit_param: variables.limit
+    page_size: 50
+    total_path: data.customers.totalCount
+    stop_on_short_page: false
+authentication:
+  plugin: none
+  configuration: {  }
+target:
+  plugin: entity
+  configuration:
+    entity_type: account
+    bundle: account
+    owner: 1
+mapping:
+  -
+    target_field: name
+    mapper:
+      plugin: string
+      sources:
+        value: label
+      settings: {  }
+  -
+    target_field: number
+    mapper:
+      plugin: string
+      sources:
+        value: customerNumber
+      settings: {  }
+  -
+    target_field: notes
+    mapper:
+      plugin: text
+      sources:
+        value: description
+      settings:
+        format: basic_html
+  -
+    target_field: source_id
+    mapper:
+      plugin: string
+      sources:
+        value: id
+      settings: {  }
+  -
+    target_field: status
+    mapper:
+      plugin: boolean
+      sources:
+        value: status
+      settings: {  }
+delete_policy: unpublish
+delete_threshold_percent: 20
+breaker:
+  enabled: true
+  threshold: 5
+  cooldown: 60
+reporters: {  }
+resilience:
+  max_attempts: 5
+  backoff: exponential
+  retry_delay: 60
+  dlq_enabled: true
+  max_repeated_pages: 3
+pool: default

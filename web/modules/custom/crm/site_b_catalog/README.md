@@ -52,16 +52,19 @@ administrators.
 
 ## The imports
 
-Make these in the wizard (Configuration, System, Import definitions). Run them
-in this order: accounts, items, agreements. The source of all three is the
-GraphQL source on `http://site-a.ddev.site/graphql/catalog` (plain http: there
-is no SSL locally) with the authentication "API key in a header" (header
-`api-key`, environment variable `SITE_A_API_KEY`) and paging "Offset and
-limit" with the paging values sent in the body: offset parameter
-`variables.offset`, limit parameter `variables.limit`, 50 per page. The target
-is the entity type itself (Account, Item, Agreement). The owner of what is
-written must be allowed to view accounts and items, including unpublished
-ones: an administrator.
+These imports are exported in `config/site_b/sync`, with the connection
+`site_a` and the run set `catalog` (`ddev drush @ddev.site_b import:run-set
+catalog`), so `cim` on a fresh site B creates them. What follows is what they
+contain, and what to enter if you make them in the wizard (Configuration,
+System, Import definitions). Run them in this order: accounts, items,
+agreements. The source of all three is the GraphQL source on
+`http://site-a.ddev.site/graphql/catalog` (plain http: there is no SSL locally)
+with the authentication "API key in a header" (header `api-key`, environment
+variable `SITE_A_API_KEY`) and paging "Offset and limit" with the paging values
+sent in the body: offset parameter `variables.offset`, limit parameter
+`variables.limit`, 50 per page. The target is the entity type itself (Account,
+Item, Agreement). The owner of what is written must be allowed to view accounts
+and items, including unpublished ones: an administrator.
 
 Use "Try the source" in the wizard to see the paths in the items.
 

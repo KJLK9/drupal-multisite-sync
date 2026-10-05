@@ -1,0 +1,12 @@
+uuid: 49acfa05-8b78-4693-ae2c-51ca39e654a5
+langcode: en
+status: true
+dependencies: {  }
+id: catalog
+label: Catalog
+description: 'The whole catalog of site A: accounts and items first, then the agreements that refer to them.'
+imports:
+  - accounts
+  - items
+  - agreements
+stop_on_errors: false

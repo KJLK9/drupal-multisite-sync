@@ -1,0 +1,105 @@
+uuid: a6e2aa3b-996e-48ae-91f7-a5c90224507c
+langcode: en
+status: true
+dependencies:
+  config:
+    - import_engine.import_connection.site_a
+id: agreements
+label: Agreements
+description: 'The product prices of site A, as agreements between an account and an item. Run after accounts and items.'
+source:
+  plugin: graphql
+  configuration:
+    query: |-
+      query ($limit: Int!, $offset: Int!) {
+        productPrices(limit: $limit, offset: $offset) {
+          totalCount
+          items {
+            id
+            product { id label }
+            customer { customerNumber label }
+            price { number currencyCode }
+          }
+        }
+      }
+    variables: ''
+    items_path: data.productPrices.items
+connection: site_a
+source_key:
+  - id
+pagination:
+  plugin: offset_limit
+  configuration:
+    target: body
+    offset_param: variables.offset
+    limit_param: variables.limit
+    page_size: 50
+    total_path: data.productPrices.totalCount
+    stop_on_short_page: false
+authentication:
+  plugin: none
+  configuration: {  }
+target:
+  plugin: entity
+  configuration:
+    entity_type: agreement
+    bundle: agreement
+    owner: 1
+mapping:
+  -
+    target_field: title
+    mapper:
+      plugin: join
+      sources:
+        first: product.label
+        second: customer.label
+      settings:
+        separator: ' for '
+        skip_empty: true
+  -
+    target_field: item
+    mapper:
+      plugin: reference
+      sources:
+        id: product.id
+      settings:
+        definition: items
+        required: true
+  -
+    target_field: account
+    mapper:
+      plugin: reference
+      sources:
+        id: customer.customerNumber
+      settings:
+        definition: accounts
+        required: true
+  -
+    target_field: price
+    mapper:
+      plugin: money
+      sources:
+        amount: price.number
+        currency: price.currencyCode
+      settings: {  }
+  -
+    target_field: source_id
+    mapper:
+      plugin: string
+      sources:
+        value: id
+      settings: {  }
+delete_policy: unpublish
+delete_threshold_percent: 20
+breaker:
+  enabled: true
+  threshold: 5
+  cooldown: 60
+reporters: {  }
+resilience:
+  max_attempts: 5
+  backoff: exponential
+  retry_delay: 60
+  dlq_enabled: true
+  max_repeated_pages: 3
+pool: default

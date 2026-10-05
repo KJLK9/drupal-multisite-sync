@@ -1,0 +1,18 @@
+uuid: 17d68c69-4f88-4acb-b994-8ba71238640e
+langcode: en
+status: true
+dependencies: {  }
+id: site_a
+label: 'Site A catalog'
+description: 'The GraphQL API of site A (plain http: there is no SSL locally). The key is in SITE_A_API_KEY.'
+source:
+  plugin: graphql
+  configuration:
+    url: 'http://site-a.ddev.site/graphql/catalog'
+    headers: {  }
+    timeout: 30
+authentication:
+  plugin: api_key_header
+  configuration:
+    header: api-key
+    env_var: SITE_A_API_KEY

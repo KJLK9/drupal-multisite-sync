@@ -20,11 +20,14 @@ module:
   filter: 0
   help: 0
   image: 0
+  import_engine: 0
+  import_engine_ui: 0
   layout_builder: 0
   layout_discovery: 0
   link: 0
   menu_link_content: 0
   menu_ui: 0
+  money_field: 0
   mysql: 0
   navigation: 0
   node: 0
@@ -32,6 +35,8 @@ module:
   page_cache: 0
   path: 0
   path_alias: 0
+  published_access: 0
+  site_b_catalog: 0
   system: 0
   taxonomy: 0
   text: 0
