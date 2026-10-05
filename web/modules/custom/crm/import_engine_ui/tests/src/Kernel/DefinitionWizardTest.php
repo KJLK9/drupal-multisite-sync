@@ -12,6 +12,7 @@ use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
 use GuzzleHttp\Psr7\Response;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\import_engine\Entity\ImportConnection;
 use Drupal\import_engine\Entity\ImportDefinition;
 use Drupal\import_engine\Run\Trigger;
 use Drupal\import_engine_ui\Controller\DefinitionController;
@@ -76,6 +77,7 @@ class DefinitionWizardTest extends NodeTestBase {
       'suggest_mapping' => 'Suggest a mapping',
       'add_reporter' => 'Add a report',
       'test_source' => 'Try the source',
+      'save_connection' => 'Save these settings as a connection',
     ];
     $state = new FormState();
     if ($previous !== NULL) {
@@ -1145,6 +1147,214 @@ class DefinitionWizardTest extends NodeTestBase {
     $form = $this->buildAt($state);
     $this->assertSame('offset', $form['pagination']['settings']['offset_param']['#default_value']);
     $this->assertSame(25, $form['pagination']['settings']['page_size']['#default_value']);
+  }
+
+  /**
+   * Saves a connection to the catalog.
+   */
+  protected function catalogConnection(): void {
+    ImportConnection::create([
+      'id' => 'site_a',
+      'label' => 'Site A',
+      'source' => [
+        'plugin' => 'graphql',
+        'configuration' => [
+          'url' => 'http://site-a.test/graphql',
+          'headers' => ['X-Team' => 'b'],
+          'timeout' => 20,
+        ],
+      ],
+      'authentication' => [
+        'plugin' => 'api_key_header',
+        'configuration' => [
+          'header' => 'api-key',
+          'env_var' => 'SITE_A_API_KEY',
+        ],
+      ],
+    ])->save();
+  }
+
+  /**
+   * The values of step 1 for a GraphQL import.
+   *
+   * @param array<string, mixed> $source
+   *   Values that replace the defaults of the source section.
+   *
+   * @return array<string, mixed>
+   *   The values.
+   */
+  protected function graphqlStep1(array $source = []): array {
+    $values = $this->step1();
+    $values['source'] = array_replace_recursive([
+      'plugin' => 'graphql',
+      'settings' => [
+        'query' => '{ customers { items { id } } }',
+        'variables' => '',
+        'items_path' => 'data.customers.items',
+      ],
+    ], $source);
+    return $values;
+  }
+
+  /**
+   * Builds the form again from the state, as a person who looks at it.
+   *
+   * @param \Drupal\Core\Form\FormStateInterface $state
+   *   The state of the wizard.
+   * @param array<string, mixed> $input
+   *   What the person has chosen on the page.
+   *
+   * @return array<string, mixed>
+   *   The form.
+   */
+  protected function showForm(FormStateInterface $state, array $input = []): array {
+    $render_state = new FormState();
+    $render_state->setStorage($state->getStorage());
+    $render_state->setUserInput($input);
+    return $this->container->get('form_builder')->buildForm(DefinitionWizardForm::class, $render_state);
+  }
+
+  /**
+   * The settings that belong to a connection are not asked for again.
+   */
+  public function testChosenConnectionHidesWhatItHas(): void {
+    $this->catalogConnection();
+    $state = $this->press(NULL, $this->graphqlStep1(), 'next');
+    $state = $this->press($state, ['pagination' => ['plugin' => 'none']], 'previous');
+
+    $form = $this->showForm($state, ['source' => ['connection' => 'site_a']]);
+
+    $this->assertSame('Site A', (string) $form['source']['connection']['#options']['site_a']);
+    $this->assertSame(['graphql' => 'GraphQL'], array_intersect_key(
+      $form['source']['plugin']['#options'],
+      ['graphql' => 1, 'http' => 1],
+    ));
+    foreach (['url', 'headers', 'timeout'] as $owned) {
+      $this->assertArrayNotHasKey($owned, $form['source']['settings']);
+    }
+    foreach (['query', 'variables', 'items_path'] as $own) {
+      $this->assertArrayHasKey($own, $form['source']['settings']);
+    }
+    $this->assertStringContainsString('Site A', (string) $form['source']['from_connection']['#markup']);
+  }
+
+  /**
+   * Without a connection everything is asked for, as before.
+   */
+  public function testWithoutConnectionEverythingIsAsked(): void {
+    $this->catalogConnection();
+    $form = $this->showForm($this->press(NULL, $this->graphqlStep1(), 'previous'));
+
+    $this->assertArrayHasKey('url', $form['source']['settings']);
+    $this->assertArrayNotHasKey('from_connection', $form['source']);
+  }
+
+  /**
+   * An import made with a connection keeps only what is its own.
+   */
+  public function testImportWithConnection(): void {
+    $this->catalogConnection();
+    $state = $this->press(NULL, $this->graphqlStep1(['connection' => 'site_a']), 'next');
+    $this->assertSame('site_a', $state->get('definition')['connection']);
+
+    // The authentication of step 2 is the connection's: nothing to fill in.
+    $form = $this->showForm($state);
+    $this->assertArrayNotHasKey('plugin', $form['authentication']);
+    $this->assertStringContainsString('Site A', (string) $form['authentication']['#markup']);
+    $this->assertArrayNotHasKey('new_connection', $form);
+
+    $state = $this->press($state, ['pagination' => ['plugin' => 'none']], 'next');
+    $state = $this->press($state, $this->step3(), 'next');
+    $state = $this->press($state, $this->step4(), 'next');
+    $this->press($state, $this->step5(), 'save');
+
+    $definition = ImportDefinition::load('accounts');
+    $this->assertNotNull($definition, implode(' ', $this->messages()['error'] ?? []));
+    $this->assertSame('site_a', $definition->getConnection());
+    $this->assertSame([
+      'query' => '{ customers { items { id } } }',
+      'variables' => '',
+      'items_path' => 'data.customers.items',
+    ], $definition->getSource()['configuration']);
+    $this->assertSame('none', $definition->getAuthentication()['plugin']);
+    $this->assertCount(0, $definition->getTypedData()->validate());
+  }
+
+  /**
+   * Choosing no connection again gives the import settings of its own.
+   */
+  public function testConnectionCanBeLeftAgain(): void {
+    $this->catalogConnection();
+    $state = $this->press(NULL, $this->graphqlStep1(['connection' => 'site_a']), 'next');
+
+    $state = $this->press($state, [], 'previous');
+    $state = $this->press($state, $this->graphqlStep1(['connection' => '', 'settings' => ['url' => 'http://x.test/g']]), 'next');
+
+    $this->assertNull($state->get('definition')['connection']);
+    $this->assertSame('http://x.test/g', $state->get('definition')['source']['configuration']['url']);
+  }
+
+  /**
+   * The settings so far are kept as a connection, which the import then uses.
+   */
+  public function testSaveSettingsAsConnection(): void {
+    $state = $this->press(NULL, $this->graphqlStep1([
+      'settings' => [
+        'url' => 'http://site-a.test/graphql',
+        'headers' => 'X-Team: b',
+        'timeout' => '20',
+      ],
+    ]), 'next');
+    $form = $this->showForm($state);
+    $this->assertArrayHasKey('new_connection', $form);
+
+    $values = $this->step2() + ['new_connection' => ['label' => 'Site A', 'id' => 'site_a']];
+    $state = $this->press($state, $values, 'save_connection');
+
+    $messages = $this->messages();
+    $connection = ImportConnection::load('site_a');
+    $this->assertNotNull($connection, implode(' ', $messages['error'] ?? []));
+    $this->assertSame([
+      'plugin' => 'graphql',
+      'configuration' => ['url' => 'http://site-a.test/graphql', 'headers' => ['X-Team' => 'b'], 'timeout' => 20],
+    ], $connection->getSource());
+    $this->assertSame('api_key_header', $connection->getAuthentication()['plugin']);
+    $definition = $state->get('definition');
+    $this->assertSame('site_a', $definition['connection']);
+    $this->assertSame('none', $definition['authentication']['plugin']);
+    $this->assertArrayNotHasKey('url', $definition['source']['configuration']);
+    $this->assertArrayHasKey('query', $definition['source']['configuration']);
+    $this->assertStringContainsString('now uses it', $messages['status'][0] ?? '');
+
+    // The step now shows the connection instead of the panel.
+    $form = $this->showForm($state);
+    $this->assertArrayNotHasKey('new_connection', $form);
+    $this->assertStringContainsString('Site A', (string) $form['authentication']['#markup']);
+  }
+
+  /**
+   * A connection needs a name; without one nothing is saved or changed.
+   */
+  public function testSaveConnectionNeedsName(): void {
+    $state = $this->press(NULL, $this->graphqlStep1(['settings' => ['url' => 'http://site-a.test/graphql']]), 'next');
+
+    $state = $this->press($state, $this->step2() + ['new_connection' => ['label' => '', 'id' => '']], 'save_connection');
+
+    $this->assertSame([], ImportConnection::loadMultiple());
+    $this->assertNull($state->get('definition')['connection']);
+    $this->assertArrayHasKey('error', $this->messages());
+  }
+
+  /**
+   * A source with no settings of a connection does not offer to save one.
+   */
+  public function testNoPanelWhenTheSourceHasNothingToShare(): void {
+    $state = $this->press(NULL, $this->step1(), 'next');
+
+    $form = $this->showForm($state);
+
+    // HTTP shares its headers and timeout, so it does offer.
+    $this->assertArrayHasKey('new_connection', $form);
   }
 
 }

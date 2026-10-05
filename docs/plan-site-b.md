@@ -122,7 +122,7 @@ In this order, each step built, tested and approved before the next:
 1. **Wizard pain points**: AJAX rows, a menu of steps, a list of problems in words. Done, see ADR 0018.
 2. **A content model of real content entities** (done, see ADR 0019) in `site_b_catalog`: own entity types (Account, Item, Agreement) with entity reference fields and a uniqueness constraint on (account, item), deliberately unlike the entities of catalog. Deleting an account or an item deletes its agreements (cascade), with tests. The imports are then made for these entities.
 3. **The mapping as one table** (done, see ADR 0021) with "suggest a mapping" from the sample, clicking a path in the sample to use it, and a GraphQL preset for paging.
-4. **Reusable connections** (source and authentication as named configuration, imports refer to them; see ADR 0022). Engine and management screen done; next the choice in the wizard and "save these settings as a connection".
+4. **Reusable connections** (source and authentication as named configuration, imports refer to them; see ADR 0022). Done: engine, management screen, and the choice in the wizard with "save these settings as a connection".
 5. **Run sets**: a named list of imports run in order, from the interface and with drush, stopping at the first one that fails.
 6. **A pass over the look and feel of the whole engine**, with screenshots from the person who uses it: an overview page, status badges, progress bars, readable times, a better run and item page.
 

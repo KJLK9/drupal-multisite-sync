@@ -25,6 +25,8 @@ use Drupal\import_engine\Entity\ImportDefinition;
 use Drupal\import_engine\Form\TextLists;
 use Drupal\import_engine\ImportDefinitionInterface;
 use Drupal\import_engine\Mapper\MapperPluginManager;
+use Drupal\import_engine\Connection\ConnectionResolver;
+use Drupal\import_engine\ImportConnectionInterface;
 use Drupal\import_engine\Mapper\MappingSuggester;
 use Drupal\import_engine\Source\SourceSampler;
 use Drupal\import_engine\Target\TargetField;
@@ -70,6 +72,7 @@ final class DefinitionWizardForm extends FormBase {
     'label' => 1,
     'description' => 1,
     'source' => 1,
+    'connection' => 1,
     'pagination' => 2,
     'authentication' => 2,
     'source_key' => 3,
@@ -99,6 +102,8 @@ final class DefinitionWizardForm extends FormBase {
     protected SourceSampler $sampler,
     #[Autowire(service: 'import_engine.mapping_suggester')]
     protected MappingSuggester $suggester,
+    #[Autowire(service: 'import_engine.connection_resolver')]
+    protected ConnectionResolver $connections,
   ) {
   }
 
@@ -219,7 +224,62 @@ final class DefinitionWizardForm extends FormBase {
       '#default_value' => $values['description'],
       '#rows' => 2,
     ];
-    $form['source'] = $this->pluginSection(['source'], $this->sources, $values['source'], $form, $form_state, $this->t('Source'));
+    $connection = $this->chosenConnection($form_state);
+    $form['source'] = $this->pluginSection(['source'], $this->sources, $values['source'], $form, $form_state, $this->t('Source'), [], $connection === NULL ? NULL : [$connection->getSource()['plugin']]);
+    $form['source']['connection'] = $this->connectionChoice($connection) + ['#weight' => -10];
+    if ($connection !== NULL && isset($form['source']['settings'])) {
+      // What the connection has is not asked for again.
+      $owned = $this->connections->connectionKeys($connection->getSource()['plugin']);
+      foreach ($owned as $key) {
+        unset($form['source']['settings'][$key]);
+      }
+      $form['source']['from_connection'] = [
+        '#markup' => '<p>' . $this->t('@settings come from the connection @label; change them there.', [
+          '@settings' => implode(', ', $owned),
+          '@label' => (string) $connection->label(),
+        ]) . '</p>',
+        '#weight' => -5,
+      ];
+    }
+  }
+
+  /**
+   * Returns the connection the import uses, as chosen on the form.
+   */
+  private function chosenConnection(FormStateInterface $form_state): ?ImportConnectionInterface {
+    $id = $this->input($form_state, ['source', 'connection']) ?? $this->values($form_state)['connection'] ?? NULL;
+    if (!is_string($id) || $id === '') {
+      return NULL;
+    }
+    $connection = $this->entityTypes->getStorage('import_connection')->load($id);
+    return $connection instanceof ImportConnectionInterface ? $connection : NULL;
+  }
+
+  /**
+   * Builds the choice of a connection.
+   *
+   * @return array<string, mixed>
+   *   The select.
+   */
+  private function connectionChoice(?ImportConnectionInterface $chosen): array {
+    $options = [];
+    foreach ($this->entityTypes->getStorage('import_connection')->loadMultiple() as $connection) {
+      $options[(string) $connection->id()] = (string) $connection->label();
+    }
+    asort($options);
+    $element = [
+      '#type' => 'select',
+      '#title' => $this->t('Connection'),
+      '#options' => $options,
+      '#empty_option' => $this->t('- None: settings of its own -'),
+      '#default_value' => $chosen?->id() ?? '',
+      '#description' => $this->t('A connection holds the address, headers, timeout and authentication that several imports share.'),
+      '#ajax' => ['callback' => '::ajaxElement', 'wrapper' => $this->wrapperId(['source'])],
+    ];
+    if ($options === []) {
+      $element['#access'] = FALSE;
+    }
+    return $element;
   }
 
   /**
@@ -233,7 +293,108 @@ final class DefinitionWizardForm extends FormBase {
   private function stepPagingAndAuthentication(array &$form, FormStateInterface $form_state): void {
     $values = $this->values($form_state);
     $form['pagination'] = $this->pluginSection(['pagination'], $this->paginations, $values['pagination'], $form, $form_state, $this->t('Paging'), $this->pagingPresets($values));
+    $connection = $this->chosenConnection($form_state);
+    if ($connection !== NULL) {
+      $form['authentication'] = [
+        '#type' => 'fieldset',
+        '#title' => $this->t('Authentication'),
+        '#markup' => '<p>' . $this->t('The connection @label logs in (@plugin). Change it there.', [
+          '@label' => (string) $connection->label(),
+          '@plugin' => $connection->getAuthentication()['plugin'],
+        ]) . '</p>',
+      ];
+      return;
+    }
     $form['authentication'] = $this->pluginSection(['authentication'], $this->authentications, $values['authentication'], $form, $form_state, $this->t('Authentication'));
+    if ($this->connections->connectionKeys($values['source']['plugin']) !== []) {
+      $this->saveAsConnectionPanel($form);
+    }
+  }
+
+  /**
+   * Adds the part where the settings so far are saved as a connection.
+   *
+   * @param array<mixed> $form
+   *   The form.
+   */
+  private function saveAsConnectionPanel(array &$form): void {
+    $form['new_connection'] = [
+      '#type' => 'details',
+      '#title' => $this->t('Save these settings as a connection'),
+      '#description' => $this->t('Keeps the address, headers, timeout and the authentication above as a connection, which this import then uses, and other imports can use too.'),
+      '#weight' => 40,
+      'label' => ['#type' => 'textfield', '#title' => $this->t('Name of the connection')],
+      'id' => [
+        '#type' => 'machine_name',
+        '#maxlength' => 64,
+        // Only asked for when the button is pressed, which checks it.
+        '#required' => FALSE,
+        '#machine_name' => ['exists' => [$this, 'connectionExists'], 'source' => ['new_connection', 'label']],
+      ],
+      'save' => [
+        '#type' => 'submit',
+        '#value' => $this->t('Save these settings as a connection'),
+        '#name' => 'save_connection',
+        '#limit_validation_errors' => [['new_connection'], ['authentication']],
+        '#submit' => ['::saveAsConnection'],
+      ],
+    ];
+  }
+
+  /**
+   * Returns whether a connection with this ID exists; for the machine name.
+   */
+  public function connectionExists(string $id): bool {
+    return $this->entityTypes->getStorage('import_connection')->load($id) !== NULL;
+  }
+
+  /**
+   * Saves the address and authentication so far as a connection, and uses it.
+   *
+   * @param array<mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   */
+  public function saveAsConnection(array &$form, FormStateInterface $form_state): void {
+    $form_state->setRebuild();
+    $this->storeStep(2, $form, $form_state, $form_state->getValues());
+    $values = $this->values($form_state);
+    $label = trim((string) $form_state->getValue(['new_connection', 'label']));
+    $id = (string) $form_state->getValue(['new_connection', 'id']);
+    if ($label === '' || $id === '') {
+      $this->messenger()->addError($this->t('Give the connection a name.'));
+      return;
+    }
+    $plugin = $values['source']['plugin'];
+    $keys = array_flip($this->connections->connectionKeys($plugin));
+    $connection = $this->entityTypes->getStorage('import_connection')->create([
+      'id' => $id,
+      'label' => $label,
+      'source' => [
+        'plugin' => $plugin,
+        'configuration' => array_intersect_key($values['source']['configuration'], $keys),
+      ],
+      'authentication' => $values['authentication'],
+    ]);
+    $violations = $connection->getTypedData()->validate();
+    if (count($violations) > 0) {
+      foreach ($violations as $violation) {
+        $this->messenger()->addError($this->t('The connection cannot be saved: @path: @message', [
+          '@path' => $violation->getPropertyPath(),
+          '@message' => (string) $violation->getMessage(),
+        ]));
+      }
+      return;
+    }
+    $connection->save();
+
+    // The import has no settings of its own for what the connection has.
+    $values['source']['configuration'] = array_diff_key($values['source']['configuration'], $keys);
+    $values['authentication'] = ['plugin' => 'none', 'configuration' => []];
+    $values['connection'] = $id;
+    $form_state->set('definition', $values);
+    $this->messenger()->addStatus($this->t('The connection @label is saved, and this import now uses it.', ['@label' => $label]));
   }
 
   /**
@@ -739,14 +900,18 @@ final class DefinitionWizardForm extends FormBase {
    * @param array<string, array<string, mixed>> $presets
    *   The configuration a plugin starts with when it is chosen, by plugin ID,
    *   instead of its own defaults.
+   * @param list<string>|null $only
+   *   The plugins to choose from; all when none.
    *
    * @return array<string, mixed>
    *   The section.
    */
-  private function pluginSection(array $parents, DefaultPluginManager $manager, array $current, array &$form, FormStateInterface $form_state, mixed $title, array $presets = []): array {
+  private function pluginSection(array $parents, DefaultPluginManager $manager, array $current, array &$form, FormStateInterface $form_state, mixed $title, array $presets = [], ?array $only = NULL): array {
     $options = [];
     foreach ($manager->getDefinitions() as $id => $definition) {
-      $options[(string) $id] = (string) ($definition['label'] ?? $id);
+      if ($only === NULL || in_array((string) $id, $only, TRUE)) {
+        $options[(string) $id] = (string) ($definition['label'] ?? $id);
+      }
     }
     // By name, so the first one, which a new section starts with, does not
     // depend on the order in which the files of the plugins were found.
@@ -1291,7 +1456,7 @@ final class DefinitionWizardForm extends FormBase {
   public function validateForm(array &$form, FormStateInterface $form_state): void {
     $button = (string) ($form_state->getTriggeringElement()['#name'] ?? '');
     $step = (int) $form_state->get('step');
-    $skipped = in_array($button, ['suggest_mapping', 'add_reporter', 'previous'], TRUE)
+    $skipped = in_array($button, ['suggest_mapping', 'add_reporter', 'previous', 'save_connection'], TRUE)
       || str_starts_with($button, 'remove_')
       || str_starts_with($button, 'goto_')
       || ($button === 'test_source' && $step !== 2);
@@ -1398,6 +1563,7 @@ final class DefinitionWizardForm extends FormBase {
     }
 
     if ($step === 1) {
+      $this->storeConnection($values, (string) ($in['source']['connection'] ?? ''));
       $values['label'] = (string) ($in['label'] ?? '');
       if ($form_state->get('is_new')) {
         $values['id'] = (string) ($in['id'] ?? '');
@@ -1436,6 +1602,29 @@ final class DefinitionWizardForm extends FormBase {
   }
 
   /**
+   * Keeps the choice of a connection in the values of the import.
+   *
+   * With a connection the import keeps none of what the connection has: not
+   * the settings of the source it owns, and no authentication of its own.
+   *
+   * @param array<string, mixed> $values
+   *   The values of the import; updated.
+   * @param string $id
+   *   The connection that was chosen; empty for none.
+   */
+  private function storeConnection(array &$values, string $id): void {
+    $connection = $id === '' ? NULL : $this->entityTypes->getStorage('import_connection')->load($id);
+    if (!$connection instanceof ImportConnectionInterface) {
+      $values['connection'] = NULL;
+      return;
+    }
+    $values['connection'] = $id;
+    $owned = array_flip($this->connections->connectionKeys($connection->getSource()['plugin']));
+    $values['source']['configuration'] = array_diff_key($values['source']['configuration'], $owned);
+    $values['authentication'] = ['plugin' => 'none', 'configuration' => []];
+  }
+
+  /**
    * Returns the plugin sections on the current step: their path and manager.
    *
    * @return array<string, \Drupal\Core\Plugin\DefaultPluginManager>
@@ -1444,7 +1633,7 @@ final class DefinitionWizardForm extends FormBase {
   private function sectionsOfStep(FormStateInterface $form_state): array {
     return match ((int) $form_state->get('step')) {
       1 => ['source' => $this->sources],
-      2 => ['pagination' => $this->paginations, 'authentication' => $this->authentications],
+      2 => ['pagination' => $this->paginations] + ($this->values($form_state)['connection'] ?? NULL ? [] : ['authentication' => $this->authentications]),
       3 => ['target' => $this->targets],
       default => [],
     };
