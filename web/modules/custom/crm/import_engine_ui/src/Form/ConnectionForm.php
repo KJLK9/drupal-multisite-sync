@@ -74,6 +74,8 @@ final class ConnectionForm extends FormBase {
   public function buildForm(array $form, FormStateInterface $form_state, ?ImportConnectionInterface $import_connection = NULL): array {
     $this->connection = $import_connection;
     $form['#tree'] = TRUE;
+    $form['#attributes']['class'][] = 'import-engine-form';
+    $form['#attached']['library'][] = 'import_engine_ui/wizard';
     $form['label'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Name'),

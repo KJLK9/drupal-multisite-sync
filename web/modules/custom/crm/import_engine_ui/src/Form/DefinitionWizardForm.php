@@ -139,6 +139,7 @@ final class DefinitionWizardForm extends FormBase {
 
     $form['#tree'] = TRUE;
     $form['#attributes']['class'][] = 'import-definition-wizard';
+    $form['#attributes']['class'][] = 'import-engine-form';
     $form['#attached']['library'][] = 'import_engine_ui/wizard';
 
     $current = $this->values($form_state);

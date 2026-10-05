@@ -1,7 +1,95 @@
 /**
  * @file
- * The menu of steps and the list of problems in the import wizard.
+ * The look of the forms of the import engine: the wizard (menu of steps, list
+ * of problems, mapping table) and the forms of connections and run sets.
  */
+
+/*
+ * Settings are laid out in columns: the short ones (a choice, a number, a
+ * checkbox) side by side, as many as fit, and the ones that need room (text
+ * areas, a URL, a table, a description) the full width. The columns are made
+ * by the browser from the width it has, so a narrow window has one.
+ */
+.import-engine-form .fieldset__wrapper,
+.import-engine-form .details-wrapper {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 0 1.5rem;
+  align-items: start;
+}
+
+.import-engine-form .fieldset__wrapper > *,
+.import-engine-form .details-wrapper > * {
+  min-width: 0;
+  margin-block: 0 1rem;
+}
+
+.import-engine-form .fieldset__wrapper > .fieldset__description,
+.import-engine-form .fieldset__wrapper > .form-type--textarea,
+.import-engine-form .fieldset__wrapper > .form-type--url,
+.import-engine-form .fieldset__wrapper > .form-type--item,
+.import-engine-form .fieldset__wrapper > .form-type--checkboxes,
+.import-engine-form .fieldset__wrapper > fieldset,
+.import-engine-form .fieldset__wrapper > details,
+.import-engine-form .fieldset__wrapper > table,
+.import-engine-form .fieldset__wrapper > div:not(.form-item),
+.import-engine-form .fieldset__wrapper > p,
+.import-engine-form .fieldset__wrapper > .form-actions,
+.import-engine-form .details-wrapper > .form-type--textarea,
+.import-engine-form .details-wrapper > table,
+.import-engine-form .details-wrapper > fieldset,
+.import-engine-form .details-wrapper > details,
+.import-engine-form .details-wrapper > p,
+.import-engine-form .details-wrapper > .form-actions {
+  grid-column: 1 / -1;
+}
+
+/* A field fills its column; Claro sizes selects and inputs to their content. */
+.import-engine-form .fieldset__wrapper .form-element--type-select,
+.import-engine-form .fieldset__wrapper .form-element--type-text,
+.import-engine-form .fieldset__wrapper .form-element--type-url,
+.import-engine-form .fieldset__wrapper .form-element--type-number,
+.import-engine-form .fieldset__wrapper .form-element--type-password,
+.import-engine-form .fieldset__wrapper .form-autocomplete,
+.import-engine-form .fieldset__wrapper .form-element--type-textarea,
+.import-engine-form .details-wrapper .form-element--type-select,
+.import-engine-form .details-wrapper .form-element--type-number,
+.import-engine-form .details-wrapper .form-element--type-text {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Quieter, so the label and the field stand out. */
+.import-engine-form .form-item__description,
+.import-engine-form .fieldset__description {
+  margin-top: 0.25rem;
+  color: #55565b;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+/* A section (source, target) is a card with room around it. */
+.import-engine-form > fieldset,
+.import-engine-form > div > fieldset {
+  margin: 0 0 1.5rem;
+  padding: 1rem 1.5rem 0.5rem;
+}
+
+.import-engine-form .fieldset__legend {
+  margin-bottom: 1rem;
+}
+
+.import-engine-form > .form-item,
+.import-engine-form > details {
+  margin-bottom: 1.5rem;
+}
+
+.import-engine-form > .form-actions {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #d3d4d9;
+}
 
 .import-wizard-steps {
   display: flex;

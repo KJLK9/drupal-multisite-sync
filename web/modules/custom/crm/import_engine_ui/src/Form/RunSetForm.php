@@ -63,6 +63,8 @@ final class RunSetForm extends FormBase {
     $form_state->set('rows', $rows);
 
     $form['#tree'] = TRUE;
+    $form['#attributes']['class'][] = 'import-engine-form';
+    $form['#attached']['library'][] = 'import_engine_ui/wizard';
     $form['label'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Name'),
