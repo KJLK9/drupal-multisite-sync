@@ -25,6 +25,7 @@ use Drupal\import_engine\Entity\ImportDefinition;
 use Drupal\import_engine\Form\TextLists;
 use Drupal\import_engine\ImportDefinitionInterface;
 use Drupal\import_engine\Mapper\MapperPluginManager;
+use Drupal\import_engine\Mapper\MappingSuggester;
 use Drupal\import_engine\Source\SourceSampler;
 use Drupal\import_engine\Target\TargetField;
 use Drupal\import_engine\Target\TargetInterface;
@@ -96,6 +97,8 @@ final class DefinitionWizardForm extends FormBase {
     protected DefaultPluginManager $reporters,
     #[Autowire(service: 'import_engine.source_sampler')]
     protected SourceSampler $sampler,
+    #[Autowire(service: 'import_engine.mapping_suggester')]
+    protected MappingSuggester $suggester,
   ) {
   }
 
@@ -148,6 +151,10 @@ final class DefinitionWizardForm extends FormBase {
       ]) . '</h2>',
     ];
 
+    if ($step === 4) {
+      // The paths are at hand above the table that needs them.
+      $this->sourceTestPanel($form, $form_state, $step, 0);
+    }
     match ($step) {
       1 => $this->stepSource($form, $form_state),
       2 => $this->stepPagingAndAuthentication($form, $form_state),
@@ -155,7 +162,7 @@ final class DefinitionWizardForm extends FormBase {
       4 => $this->stepMapping($form, $form_state),
       default => $this->stepBehaviour($form, $form_state),
     };
-    if ($step >= 2 && $step <= 4) {
+    if ($step === 2 || $step === 3) {
       $this->sourceTestPanel($form, $form_state, $step);
     }
 
@@ -225,8 +232,44 @@ final class DefinitionWizardForm extends FormBase {
    */
   private function stepPagingAndAuthentication(array &$form, FormStateInterface $form_state): void {
     $values = $this->values($form_state);
-    $form['pagination'] = $this->pluginSection(['pagination'], $this->paginations, $values['pagination'], $form, $form_state, $this->t('Paging'));
+    $form['pagination'] = $this->pluginSection(['pagination'], $this->paginations, $values['pagination'], $form, $form_state, $this->t('Paging'), $this->pagingPresets($values));
     $form['authentication'] = $this->pluginSection(['authentication'], $this->authentications, $values['authentication'], $form, $form_state, $this->t('Authentication'));
+  }
+
+  /**
+   * Returns what the paging plugins start with for the source of the import.
+   *
+   * A GraphQL source has no query string to page with: the paging values are
+   * variables of the query. They go in the body, under the names the variables
+   * usually have, and the total is looked for next to the list of items, where
+   * the lists of the catalog keep it.
+   *
+   * @param array<string, mixed> $values
+   *   The definition as it is.
+   *
+   * @return array<string, array<string, mixed>>
+   *   The configuration to start with, by plugin ID.
+   */
+  private function pagingPresets(array $values): array {
+    if (($values['source']['plugin'] ?? '') !== 'graphql') {
+      return [];
+    }
+    $items = (string) ($values['source']['configuration']['items_path'] ?? '');
+    $total = str_ends_with($items, '.items') ? substr($items, 0, -strlen('items')) . 'totalCount' : '';
+    return [
+      'offset_limit' => [
+        'target' => 'body',
+        'offset_param' => 'variables.offset',
+        'limit_param' => 'variables.limit',
+        'total_path' => $total,
+      ],
+      'page' => [
+        'target' => 'body',
+        'page_param' => 'variables.page',
+        'size_param' => 'variables.limit',
+        'total_path' => $total,
+      ],
+    ];
   }
 
   /**
@@ -251,7 +294,10 @@ final class DefinitionWizardForm extends FormBase {
   }
 
   /**
-   * Step 4: the mapping.
+   * Step 4: the mapping, one row for every field of the target.
+   *
+   * A field is mapped when it has a source; a field without one is left
+   * alone. The mapper is chosen by the type of the field.
    *
    * @param array<mixed> $form
    *   The form.
@@ -266,27 +312,38 @@ final class DefinitionWizardForm extends FormBase {
       return;
     }
 
+    $mappable = $this->mappableFields($fields);
     $form['intro'] = [
-      '#markup' => '<p>' . $this->t('Each row fills one field of the target. The mapper is chosen by the type of the field; a source is the dotted path of a value in the source item, for example <code>price.amount</code>.') . '</p>',
+      '#markup' => '<p>' . $this->t('Fill in where the value of a field comes from, as the dotted path of a value in the source item, for example <code>price.amount</code>. A field without a source is not filled by the import. A field marked * is required.') . '</p>',
     ];
-    $form['rows'] = [
-      '#type' => 'container',
-      '#tree' => TRUE,
-      '#prefix' => '<div id="import-wizard-rows">',
-      '#suffix' => '</div>',
-    ];
-    foreach ($this->rowIds($form_state, 'mapping_row_ids', count($values['mapping'])) as $id) {
-      $form['rows'][$id] = $this->mappingRow($id, $values['mapping'][$id] ?? NULL, $fields, $form, $form_state);
-    }
-    $form['add_row'] = [
+    $form['suggest'] = [
       '#type' => 'submit',
-      '#value' => $this->t('Add a field'),
-      '#name' => 'add_mapping_row',
+      '#value' => $this->t('Suggest a mapping'),
+      '#name' => 'suggest_mapping',
       '#limit_validation_errors' => [],
-      '#submit' => ['::addMappingRow'],
-      '#rows_key' => 'rows',
-      '#ajax' => ['callback' => '::ajaxRows', 'wrapper' => 'import-wizard-rows', 'progress' => ['type' => 'none']],
+      '#submit' => ['::suggestMapping'],
+      '#ajax' => ['callback' => '::ajaxMapping', 'wrapper' => 'import-wizard-mapping', 'progress' => ['type' => 'none']],
     ];
+    $form['mapping'] = [
+      '#type' => 'table',
+      '#header' => [$this->t('Field'), $this->t('Source'), $this->t('Mapper')],
+      '#tree' => TRUE,
+      '#prefix' => '<div id="import-wizard-mapping">',
+      '#suffix' => '</div>',
+      '#attributes' => ['class' => ['import-wizard-mapping']],
+      '#caption' => (string) $form_state->get('suggest_note') === '' ? NULL : (string) $form_state->get('suggest_note'),
+    ];
+    $saved = [];
+    foreach ($values['mapping'] as $row) {
+      $saved[(string) $row['target_field']] = $row;
+    }
+    foreach ($mappable as $name => $field) {
+      $form['mapping'][$name] = $this->mappingRow($name, $field, $saved[$name] ?? NULL, $form, $form_state);
+    }
+    $hidden = count($fields) - count($mappable);
+    if ($hidden > 0) {
+      $form['hidden_fields'] = ['#markup' => '<p><small>' . $this->t('@count fields of the target are not shown: no mapper fits their type.', ['@count' => (string) $hidden]) . '</small></p>'];
+    }
   }
 
   /**
@@ -431,63 +488,234 @@ final class DefinitionWizardForm extends FormBase {
   }
 
   /**
-   * Builds one row of the mapping.
+   * Returns the fields a mapping can fill, in the order of the table.
    *
-   * @param int $id
-   *   The ID of the row; it stays the same while rows come and go.
-   * @param array<string, mixed>|null $row
-   *   The saved row, if there is one.
+   * Fields that are required come first. A field no mapper fits is left out.
+   *
    * @param array<string, \Drupal\import_engine\Target\TargetField> $fields
-   *   The fields of the target.
+   *   All the fields of the target.
+   *
+   * @return array<string, \Drupal\import_engine\Target\TargetField>
+   *   The fields that can be mapped.
+   */
+  private function mappableFields(array $fields): array {
+    $mappable = array_filter($fields, fn (TargetField $field): bool => $this->mappers->idsForFieldType($field->type) !== []);
+    uasort($mappable, static fn (TargetField $a, TargetField $b): int => [
+      $b->required,
+      $a->label,
+    ] <=> [$a->required, $b->label]);
+    return $mappable;
+  }
+
+  /**
+   * Builds the row of one field in the mapping table.
+   *
+   * @param string $name
+   *   The name of the field.
+   * @param \Drupal\import_engine\Target\TargetField $field
+   *   The field.
+   * @param array<string, mixed>|null $saved
+   *   The mapping row the definition has for the field, if it has one.
    * @param array<mixed> $form
    *   The form.
    * @param \Drupal\Core\Form\FormStateInterface $form_state
    *   The form state.
    *
    * @return array<string, mixed>
-   *   The row.
+   *   The cells of the row: the field, its sources and its mapper.
    */
-  private function mappingRow(int $id, ?array $row, array $fields, array &$form, FormStateInterface $form_state): array {
-    $parents = ['rows', (string) $id];
+  private function mappingRow(string $name, TargetField $field, ?array $saved, array &$form, FormStateInterface $form_state): array {
+    $parents = ['mapping', $name];
+    $ids = $this->mappers->idsForFieldType($field->type);
     $options = [];
-    foreach ($fields as $name => $field) {
-      $options[$name] = $field->label . ($field->required ? ' *' : '') . ' (' . $field->type . ')';
+    foreach ($ids as $id) {
+      $options[$id] = (string) $this->mappers->getDefinition($id)['label'];
     }
-    $field_name = (string) ($this->input($form_state, [...$parents, 'target_field']) ?? $row['target_field'] ?? '');
-    $field = $fields[$field_name] ?? NULL;
+    $selected = (string) ($this->input($form_state, [...$parents, 'mapper', 'plugin']) ?? $saved['mapper']['plugin'] ?? '');
+    if (!isset($options[$selected])) {
+      $selected = $ids[0];
+    }
+    $definition = $this->mappers->getDefinition($selected);
 
-    $element = [
-      '#type' => 'fieldset',
-      '#title' => $this->t('Field @n', ['@n' => (string) ($id + 1)]),
-      '#prefix' => '<div id="' . $this->wrapperId($parents) . '">',
-      '#suffix' => '</div>',
+    $row['field'] = [
+      '#markup' => '<strong>' . Html::escape($field->label) . ($field->required ? ' *' : '') . '</strong><br><small>' . Html::escape($name . ' · ' . $field->type) . '</small>',
     ];
-    $element['target_field'] = [
-      '#type' => 'select',
-      '#title' => $this->t('Fill the field'),
-      '#options' => $options,
-      '#empty_option' => $this->t('- Select -'),
-      '#default_value' => $field_name,
-      '#ajax' => ['callback' => '::ajaxElement', 'wrapper' => $this->wrapperId($parents)],
-    ];
-    if ($field !== NULL) {
-      $mapper_ids = $this->mappers->idsForFieldType($field->type);
-      $current = $row['mapper'] ?? ['plugin' => '', 'configuration' => []];
-      $current['configuration'] = $current['settings'] ?? [];
-      $suggestion = $this->suggestPath($field, $this->samplePaths($form_state));
-      $element['mapper'] = $this->pluginSection([...$parents, 'mapper'], $this->mappers, $current, $form, $form_state, $this->t('Mapper'), $mapper_ids, $row['mapper']['sources'] ?? [], $suggestion);
+
+    $sources = (array) ($definition['sources'] ?? []);
+    $row['sources'] = ['#type' => 'container', '#attributes' => ['class' => ['import-wizard-sources']]];
+    foreach ($sources as $source => $required) {
+      $row['sources'][$source] = [
+        '#type' => 'textfield',
+        '#title' => $this->t('@source', ['@source' => (string) $source]),
+        '#title_display' => count($sources) > 1 ? 'before' : 'invisible',
+        '#default_value' => $saved['mapper']['sources'][$source] ?? '',
+        '#size' => 28,
+        '#maxlength' => 255,
+        '#attributes' => [
+          'list' => 'import-wizard-paths',
+          'class' => ['import-wizard-source'],
+          'placeholder' => $required ? '' : (string) $this->t('optional'),
+        ],
+      ];
     }
-    $element['remove'] = [
-      '#type' => 'submit',
-      '#value' => $this->t('Remove this field'),
-      '#name' => 'remove_mapping_row_' . $id,
-      '#limit_validation_errors' => [],
-      '#submit' => ['::removeMappingRow'],
-      '#row_id' => $id,
-      '#rows_key' => 'rows',
-      '#ajax' => ['callback' => '::ajaxRows', 'wrapper' => 'import-wizard-rows', 'progress' => ['type' => 'none']],
+
+    $row['mapper'] = ['#type' => 'container'];
+    $row['mapper']['plugin'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Mapper'),
+      '#title_display' => 'invisible',
+      '#options' => $options,
+      '#default_value' => $selected,
+      '#ajax' => ['callback' => '::ajaxMapping', 'wrapper' => 'import-wizard-mapping', 'progress' => ['type' => 'none']],
     ];
-    return $element;
+    if (!empty($definition['description'])) {
+      $row['mapper']['plugin']['#description'] = (string) $definition['description'];
+    }
+
+    // The settings are what the mapper describes; they start from the saved
+    // ones only when the saved mapper is the chosen one.
+    $configuration = ($saved['mapper']['plugin'] ?? '') === $selected ? (array) ($saved['mapper']['settings'] ?? []) : [];
+    $mapper = $this->mappers->createInstance($selected, $configuration);
+    if ($mapper instanceof PluginFormInterface) {
+      $settings = [
+        '#type' => 'details',
+        '#title' => $this->t('Settings'),
+        '#open' => FALSE,
+        '#parents' => [...$parents, 'mapper', 'settings'],
+        '#array_parents' => [...$parents, 'mapper', 'settings'],
+      ];
+      $settings = $mapper->buildConfigurationForm($settings, SubformState::createForSubform($settings, $form, $form_state));
+      if (Element::children($settings) !== []) {
+        // Only a field that is mapped needs its settings: the checks of the
+        // field itself would refuse a form in which nothing is wrong.
+        $this->deferRequired($settings);
+        $row['mapper']['settings'] = $settings;
+      }
+    }
+    return $row;
+  }
+
+  /**
+   * Makes the required settings of a field be checked later.
+   *
+   * A setting that is required is required for a field that is mapped, not for
+   * the many fields of the table that are left alone. The flag is kept, and
+   * validateMapping() looks at it for the fields that have a source.
+   *
+   * @param array<mixed> $element
+   *   The form, or a part of it; updated.
+   */
+  private function deferRequired(array &$element): void {
+    foreach (Element::children($element) as $key) {
+      if (!empty($element[$key]['#required'])) {
+        $element[$key]['#required'] = FALSE;
+        $element[$key]['#wizard_required'] = TRUE;
+      }
+      $this->deferRequired($element[$key]);
+    }
+  }
+
+  /**
+   * Reports the required settings of a mapped field that are empty.
+   *
+   * @param array<mixed> $element
+   *   The settings of the field, as built.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   */
+  private function checkDeferredRequired(array $element, FormStateInterface $form_state): void {
+    foreach (Element::children($element) as $key) {
+      $child = $element[$key];
+      if (!empty($child['#wizard_required']) && isset($child['#parents'])) {
+        $value = $form_state->getValue($child['#parents']);
+        if ($value === NULL || $value === '' || $value === []) {
+          $form_state->setErrorByName(implode('][', $child['#parents']), $this->t('@title is required for a field that is mapped.', ['@title' => (string) ($child['#title'] ?? $key)]));
+        }
+      }
+      $this->checkDeferredRequired($child, $form_state);
+    }
+  }
+
+  /**
+   * Builds a path that can be clicked, to put it in a source.
+   *
+   * @return array<string, mixed>
+   *   A render array.
+   */
+  private function pathButton(string $path): array {
+    return [
+      '#type' => 'html_tag',
+      '#tag' => 'button',
+      '#value' => $path,
+      '#attributes' => ['type' => 'button', 'class' => ['import-wizard-path', 'link'], 'data-path' => $path],
+    ];
+  }
+
+  /**
+   * Fills in the sources of the fields that have none, from the sample.
+   *
+   * Only fields that have no source yet are touched; what a person typed or
+   * saved is left as it is. What was found is a start to check.
+   *
+   * @param array<mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   */
+  public function suggestMapping(array &$form, FormStateInterface $form_state): void {
+    $form_state->setRebuild();
+    $values = $this->values($form_state);
+    $fields = $this->targetFields($values['target']);
+    $paths = $this->samplePaths($form_state);
+    if (!is_array($fields)) {
+      $form_state->set('suggest_note', (string) $this->t('Choose a target first.'));
+      return;
+    }
+    if ($paths === []) {
+      $form_state->set('suggest_note', (string) $this->t('There is nothing to suggest from yet: try the source first.'));
+      return;
+    }
+
+    $input = $form_state->getUserInput();
+    $mapped = [];
+    foreach ($values['mapping'] as $row) {
+      if ($row['mapper']['sources'] !== []) {
+        $mapped[(string) $row['target_field']] = TRUE;
+      }
+    }
+    foreach ((array) ($input['mapping'] ?? []) as $name => $row) {
+      // What is on the page counts, not what was saved.
+      $typed = array_filter(array_map(static fn (mixed $path): string => trim((string) $path), (array) ($row['sources'] ?? [])));
+      $mapped[(string) $name] = $typed !== [];
+    }
+
+    $suggestions = $this->suggester->suggest($this->mappableFields($fields), $paths, array_keys(array_filter($mapped)));
+    foreach ($suggestions as $name => $suggestion) {
+      NestedArray::setValue($input, ['mapping', $name, 'mapper', 'plugin'], $suggestion['mapper']);
+      foreach ($suggestion['sources'] as $source => $path) {
+        NestedArray::setValue($input, ['mapping', $name, 'sources', $source], $path);
+      }
+    }
+    $form_state->setUserInput($input);
+    $form_state->set('suggest_note', $suggestions === []
+      ? (string) $this->t('Nothing in the sample looked like a field that is still empty.')
+      : (string) $this->t('@count fields were filled in from the sample. Check them: they are suggestions.', ['@count' => (string) count($suggestions)]));
+  }
+
+  /**
+   * AJAX callback: returns the mapping table.
+   *
+   * @param array<mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return array<string, mixed>
+   *   The table.
+   */
+  public function ajaxMapping(array &$form, FormStateInterface $form_state): array {
+    $table = $form['mapping'] ?? [];
+    return is_array($table) ? $table : [];
   }
 
   /**
@@ -508,31 +736,21 @@ final class DefinitionWizardForm extends FormBase {
    *   The form state.
    * @param \Drupal\Core\StringTranslation\TranslatableMarkup|string $title
    *   The title of the section.
-   * @param list<string>|null $only
-   *   The plugins to choose from; all by default.
-   * @param array<string, string>|null $sources
-   *   For a mapper: the saved paths of its sources. NULL for other plugins.
-   * @param string|null $suggestion
-   *   For a mapper: a path found in the sample that probably is its first
-   *   source, used when no path is saved.
+   * @param array<string, array<string, mixed>> $presets
+   *   The configuration a plugin starts with when it is chosen, by plugin ID,
+   *   instead of its own defaults.
    *
    * @return array<string, mixed>
    *   The section.
    */
-  private function pluginSection(array $parents, DefaultPluginManager $manager, array $current, array &$form, FormStateInterface $form_state, mixed $title, ?array $only = NULL, ?array $sources = NULL, ?string $suggestion = NULL): array {
-    $definitions = $manager->getDefinitions();
+  private function pluginSection(array $parents, DefaultPluginManager $manager, array $current, array &$form, FormStateInterface $form_state, mixed $title, array $presets = []): array {
     $options = [];
-    // The order of the plugins that fit is the order they were given in.
-    foreach ($only ?? array_map(strval(...), array_keys($definitions)) as $id) {
-      if (isset($definitions[$id])) {
-        $options[$id] = (string) ($definitions[$id]['label'] ?? $id);
-      }
+    foreach ($manager->getDefinitions() as $id => $definition) {
+      $options[(string) $id] = (string) ($definition['label'] ?? $id);
     }
-    if ($only === NULL) {
-      // By name, so the first one, which a new section starts with, does not
-      // depend on the order in which the files of the plugins were found.
-      asort($options);
-    }
+    // By name, so the first one, which a new section starts with, does not
+    // depend on the order in which the files of the plugins were found.
+    asort($options);
     $selected = (string) ($this->input($form_state, [...$parents, 'plugin']) ?? $current['plugin'] ?? '');
     if (!isset($options[$selected])) {
       $selected = (string) array_key_first($options);
@@ -559,25 +777,13 @@ final class DefinitionWizardForm extends FormBase {
     if (!empty($definition['description'])) {
       $section['plugin']['#description'] = (string) $definition['description'];
     }
-    if ($sources !== NULL) {
-      $section['sources'] = ['#type' => 'container'];
-      $first = TRUE;
-      foreach ((array) ($definition['sources'] ?? []) as $name => $required) {
-        $section['sources'][$name] = [
-          '#type' => 'textfield',
-          '#title' => $this->t('Source: @name', ['@name' => (string) $name]),
-          '#description' => $this->t('Dotted path in the source item, for example <code>price.amount</code>.') . ($required ? '' : ' ' . $this->t('Optional.')),
-          '#default_value' => $sources[$name] ?? ($first && $suggestion !== NULL ? $suggestion : ''),
-          '#required' => (bool) $required,
-          '#attributes' => ['list' => 'import-wizard-paths'],
-        ];
-        $first = FALSE;
-      }
-    }
-
     // The settings are what the plugin describes; they start from the saved
     // configuration only when the saved plugin is the chosen one.
-    $configuration = ($current['plugin'] ?? '') === $selected ? (array) ($current['configuration'] ?? []) : [];
+    $saved = ($current['plugin'] ?? '') === $selected;
+    $configuration = $saved ? (array) ($current['configuration'] ?? []) : ($presets[$selected] ?? []);
+    if (!$saved && isset($presets[$selected])) {
+      $section['plugin']['#description'] = trim((string) ($section['plugin']['#description'] ?? '') . ' ' . $this->t('Filled in for this source; change it to what the source needs.'));
+    }
     $plugin = $manager->createInstance($selected, $configuration);
     $section['settings'] = ['#parents' => [...$parents, 'settings'], '#array_parents' => [...$parents, 'settings']];
     if ($plugin instanceof PluginFormInterface) {
@@ -596,14 +802,16 @@ final class DefinitionWizardForm extends FormBase {
    *   The form state.
    * @param int $step
    *   The current step.
+   * @param int $weight
+   *   Where the panel is on the page.
    */
-  private function sourceTestPanel(array &$form, FormStateInterface $form_state, int $step): void {
+  private function sourceTestPanel(array &$form, FormStateInterface $form_state, int $step, int $weight = 50): void {
     $form['source_test'] = [
       '#type' => 'details',
       '#title' => $this->t('Try the source'),
       '#description' => $this->t('Reads a few pages with the settings so far, and shows what came back and the paths of the values in its items. Those paths are offered in the next steps.'),
       '#open' => $form_state->get('source_sample') !== NULL,
-      '#weight' => 50,
+      '#weight' => $weight,
       '#prefix' => '<div id="import-wizard-source-test">',
       '#suffix' => '</div>',
     ];
@@ -641,11 +849,17 @@ final class DefinitionWizardForm extends FormBase {
     if ($sample['paths'] !== []) {
       $rows = [];
       foreach (array_slice($sample['paths'], 0, 100, TRUE) as $path => $info) {
-        $rows[] = [$path, $info['type'], $info['example']];
+        $rows[] = [
+          ['data' => $this->pathButton((string) $path)],
+          $info['type'],
+          $info['example'],
+        ];
       }
       $form['source_test']['paths'] = [
         '#type' => 'table',
-        '#caption' => $this->t('Paths in @count sample items', ['@count' => (string) $sample['items']]),
+        '#caption' => $step === 4
+          ? $this->t('Paths in @count sample items. Click a path to put it in the source you were typing in.', ['@count' => (string) $sample['items']])
+          : $this->t('Paths in @count sample items', ['@count' => (string) $sample['items']]),
         '#header' => [$this->t('Path'), $this->t('Type'), $this->t('Example')],
         '#rows' => $rows,
       ];
@@ -700,37 +914,6 @@ final class DefinitionWizardForm extends FormBase {
     }
     $shown = array_slice($paths, 0, 12);
     return ' ' . $this->t('Found in the sample: @paths.', ['@paths' => implode(', ', $shown) . (count($paths) > 12 ? ', …' : '')]);
-  }
-
-  /**
-   * Finds the path in the sample that most likely holds a field's value.
-   *
-   * A path matches when its name, or its last part, is the name of the field
-   * without the prefix of a field and the characters that differ in style: a
-   * field "field_customer_code" and a path "customer.code" or "customerCode".
-   *
-   * @param \Drupal\import_engine\Target\TargetField $field
-   *   The field.
-   * @param array<string, array{type: string, example: string}> $paths
-   *   The paths of the sample.
-   */
-  private function suggestPath(TargetField $field, array $paths): ?string {
-    $normalize = static fn (string $text): string => strtolower((string) preg_replace('/[^A-Za-z0-9]/', '', $text));
-    $wanted = $normalize(preg_replace('/^field_/', '', $field->name) ?? $field->name);
-    if ($wanted === '') {
-      return NULL;
-    }
-    foreach (array_keys($paths) as $path) {
-      if ($normalize((string) $path) === $wanted) {
-        return (string) $path;
-      }
-    }
-    foreach (array_keys($paths) as $path) {
-      if ($normalize((string) substr((string) strrchr('.' . $path, '.'), 1)) === $wanted) {
-        return (string) $path;
-      }
-    }
-    return NULL;
   }
 
   /**
@@ -1023,30 +1206,6 @@ final class DefinitionWizardForm extends FormBase {
   }
 
   /**
-   * Adds a row to the mapping.
-   *
-   * @param array<mixed> $form
-   *   The form.
-   * @param \Drupal\Core\Form\FormStateInterface $form_state
-   *   The form state.
-   */
-  public function addMappingRow(array &$form, FormStateInterface $form_state): void {
-    $this->addRow($form_state, 'mapping_row_ids', count($this->values($form_state)['mapping']));
-  }
-
-  /**
-   * Removes a row from the mapping.
-   *
-   * @param array<mixed> $form
-   *   The form.
-   * @param \Drupal\Core\Form\FormStateInterface $form_state
-   *   The form state.
-   */
-  public function removeMappingRow(array &$form, FormStateInterface $form_state): void {
-    $this->removeRow($form_state, 'mapping_row_ids', count($this->values($form_state)['mapping']));
-  }
-
-  /**
    * Adds a report.
    *
    * @param array<mixed> $form
@@ -1132,7 +1291,7 @@ final class DefinitionWizardForm extends FormBase {
   public function validateForm(array &$form, FormStateInterface $form_state): void {
     $button = (string) ($form_state->getTriggeringElement()['#name'] ?? '');
     $step = (int) $form_state->get('step');
-    $skipped = in_array($button, ['add_mapping_row', 'add_reporter', 'previous'], TRUE)
+    $skipped = in_array($button, ['suggest_mapping', 'add_reporter', 'previous'], TRUE)
       || str_starts_with($button, 'remove_')
       || str_starts_with($button, 'goto_')
       || ($button === 'test_source' && $step !== 2);
@@ -1149,32 +1308,37 @@ final class DefinitionWizardForm extends FormBase {
       }
     }
     if ((int) $form_state->get('step') === 4) {
-      $this->validateMapping($form_state);
+      $this->validateMapping($form, $form_state);
     }
   }
 
   /**
-   * Checks the mapping rows: one row per field, and no source left empty.
+   * Checks the mapping table: a field that has a source has all it needs.
    *
+   * @param array<mixed> $form
+   *   The form.
    * @param \Drupal\Core\Form\FormStateInterface $form_state
    *   The form state.
    */
-  private function validateMapping(FormStateInterface $form_state): void {
-    $seen = [];
-    foreach ((array) $form_state->getValue('rows') as $id => $row) {
-      $field = (string) ($row['target_field'] ?? '');
-      if ($field === '') {
-        $form_state->setErrorByName('rows][' . $id . '][target_field', $this->t('Choose the field this row fills, or remove the row.'));
+  private function validateMapping(array $form, FormStateInterface $form_state): void {
+    foreach ((array) $form_state->getValue('mapping') as $name => $row) {
+      $sources = array_filter(array_map(static fn (mixed $path): string => trim((string) $path), (array) ($row['sources'] ?? [])));
+      if ($sources === []) {
+        // Not mapped: nothing to check.
         continue;
       }
-      if (($row['mapper']['plugin'] ?? '') === '') {
-        $form_state->setErrorByName('rows][' . $id . '][target_field', $this->t('Choose a mapper for the field "@field", or remove the row.', ['@field' => $field]));
-        continue;
+      $plugin = (string) ($row['mapper']['plugin'] ?? '');
+      $definition = $this->mappers->getDefinition($plugin, FALSE);
+      foreach ((array) ($definition['sources'] ?? []) as $source => $required) {
+        if ($required && !isset($sources[$source])) {
+          $form_state->setErrorByName('mapping][' . $name . '][sources][' . $source, $this->t('The field "@field" needs a source for "@source", or none at all to leave it alone.', [
+            '@field' => (string) $name,
+            '@source' => (string) $source,
+          ]));
+        }
       }
-      if (isset($seen[$field])) {
-        $form_state->setErrorByName('rows][' . $id . '][target_field', $this->t('The field "@field" is filled by more than one row.', ['@field' => $field]));
-      }
-      $seen[$field] = TRUE;
+      $this->checkDeferredRequired($form['mapping'][$name]['mapper']['settings'] ?? [], $form_state);
+      $this->validateSection(['mapping', (string) $name, 'mapper'], $this->mappers, $form, $form_state);
     }
   }
 
@@ -1244,7 +1408,7 @@ final class DefinitionWizardForm extends FormBase {
       $values['source_key'] = TextLists::lines((string) ($in['source_key'] ?? ''));
     }
     elseif ($step === 4) {
-      $values['mapping'] = $this->collectMapping($form, $in);
+      $values['mapping'] = $this->collectMapping($form, $in, $values['mapping']);
     }
     elseif ($step === 5) {
       $values['status'] = (bool) ($in['status'] ?? FALSE);
@@ -1345,37 +1509,52 @@ final class DefinitionWizardForm extends FormBase {
   }
 
   /**
-   * Reads the mapping rows of what was submitted.
+   * Reads the mapping from what was submitted.
+   *
+   * A row is made for every field that has a source.
    *
    * @param array<mixed> $form
    *   The form.
    * @param array<string, mixed> $in
    *   What was submitted.
+   * @param list<array<string, mixed>> $previous
+   *   The mapping as it was; the rows that stay keep their place, so that the
+   *   order of the mapping, which is part of its fingerprint, only changes
+   *   when rows come or go.
    *
    * @return list<array<string, mixed>>
    *   The mapping, as the definition keeps it.
    */
-  private function collectMapping(array $form, array $in): array {
+  private function collectMapping(array $form, array $in, array $previous): array {
     $mapping = [];
-    foreach ((array) ($in['rows'] ?? []) as $id => $row) {
+    foreach ((array) ($in['mapping'] ?? []) as $name => $row) {
+      $row = (array) $row;
+      $sources = array_filter(array_map(static fn (mixed $path): string => trim((string) $path), (array) ($row['sources'] ?? [])));
+      $plugin = (string) ($row['mapper']['plugin'] ?? '');
+      if ($sources === [] || $plugin === '') {
+        continue;
+      }
       try {
-        $section = $this->collectSection(['rows', (string) $id, 'mapper'], $this->mappers, $form, $in);
+        $section = $this->collectSection(['mapping', (string) $name, 'mapper'], $this->mappers, $form, $in);
       }
       catch (\Throwable) {
         // The settings of this mapper cannot be read: the mapper starts over.
-        $section = ['plugin' => (string) ($in['rows'][$id]['mapper']['plugin'] ?? ''), 'configuration' => []];
+        $section = ['plugin' => $plugin, 'configuration' => []];
       }
-      $row = (array) $row;
-      $sources = array_filter(array_map(static fn (mixed $path): string => trim((string) $path), (array) ($row['mapper']['sources'] ?? [])), static fn (string $path): bool => $path !== '');
-      if ($section['plugin'] === '') {
-        continue;
-      }
-      $mapping[] = [
-        'target_field' => (string) ($row['target_field'] ?? ''),
+      $mapping[(string) $name] = [
+        'target_field' => (string) $name,
         'mapper' => ['plugin' => $section['plugin'], 'sources' => $sources, 'settings' => $section['configuration']],
       ];
     }
-    return $mapping;
+    $ordered = [];
+    foreach ($previous as $row) {
+      $field = (string) $row['target_field'];
+      if (isset($mapping[$field])) {
+        $ordered[] = $mapping[$field];
+        unset($mapping[$field]);
+      }
+    }
+    return [...$ordered, ...array_values($mapping)];
   }
 
   /**

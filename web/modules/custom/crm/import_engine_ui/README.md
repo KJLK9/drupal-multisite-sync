@@ -41,6 +41,12 @@ separate module, so the engine runs without it (drush, cron, workers).
   what was typed is kept. Adding or removing rows, and trying the source, are
   AJAX, so the page does not jump. After a try to save, the problems are listed
   in the form in words. See ADR 0018.
+- **The mapping** (step 4) is a table with a row for every field of the target:
+  the field, its source or sources (dotted paths) and the mapper with its
+  settings. A field without a source is left alone. "Suggest a mapping" fills in
+  the empty fields from the sample, and a path of the sample can be clicked to
+  use it. A GraphQL source starts its paging with the paging values as
+  variables. See ADR 0021.
 
 ## Testing
 

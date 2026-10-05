@@ -53,3 +53,44 @@
   margin: 0.5rem 0 0;
   font-weight: 700;
 }
+
+/* The mapping: one row for every field of the target. */
+.import-wizard-mapping {
+  width: 100%;
+}
+
+.import-wizard-mapping td {
+  vertical-align: top;
+}
+
+.import-wizard-mapping .import-wizard-sources .form-item,
+.import-wizard-mapping .form-item {
+  margin: 0 0 0.35rem;
+}
+
+.import-wizard-mapping .import-wizard-sources label {
+  margin: 0;
+  font-size: 0.85em;
+}
+
+.import-wizard-mapping details {
+  margin: 0.35rem 0 0;
+}
+
+.import-wizard-mapping caption {
+  caption-side: top;
+  padding: 0.5rem 0;
+  font-weight: 700;
+  text-align: left;
+}
+
+/* A path in the sample that can be clicked. */
+button.import-wizard-path {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #003ecc;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}

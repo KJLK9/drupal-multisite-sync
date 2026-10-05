@@ -169,3 +169,7 @@ services:
   import_engine.source_sampler:
     class: Drupal\import_engine\Source\SourceSampler
     arguments: ['@import_engine.source_factory', '@import_engine.path_discovery', '@import_engine.path_resolver']
+
+  import_engine.mapping_suggester:
+    class: Drupal\import_engine\Mapper\MappingSuggester
+    arguments: ['@plugin.manager.import_engine_mapper']

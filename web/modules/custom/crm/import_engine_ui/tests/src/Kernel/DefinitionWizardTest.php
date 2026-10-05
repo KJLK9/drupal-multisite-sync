@@ -6,6 +6,7 @@ namespace Drupal\Tests\import_engine_ui\Kernel;
 
 use Drupal\import_engine\Run\RunStatus;
 use Drupal\Core\Form\FormState;
+use Drupal\Core\Render\Element;
 use GuzzleHttp\Client;
 use GuzzleHttp\Handler\MockHandler;
 use GuzzleHttp\HandlerStack;
@@ -72,7 +73,7 @@ class DefinitionWizardTest extends NodeTestBase {
       'previous' => 'Previous',
       'next' => 'Next',
       'save' => 'Save',
-      'add_mapping_row' => 'Add a field',
+      'suggest_mapping' => 'Suggest a mapping',
       'add_reporter' => 'Add a report',
       'test_source' => 'Try the source',
     ];
@@ -172,29 +173,21 @@ class DefinitionWizardTest extends NodeTestBase {
   }
 
   /**
-   * The values of step 4: two fields.
+   * The values of step 4: two fields have a source.
    *
    * @return array<string, mixed>
    *   The values.
    */
   protected function step4(): array {
     return [
-      'rows' => [
-        0 => [
-          'target_field' => 'title',
-          'mapper' => [
-            'plugin' => 'string',
-            'sources' => ['value' => 'name'],
-            'settings' => ['trim' => 1, 'empty_as_null' => 1],
-          ],
+      'mapping' => [
+        'title' => [
+          'sources' => ['value' => 'name'],
+          'mapper' => ['plugin' => 'string', 'settings' => ['trim' => 1, 'empty_as_null' => 1]],
         ],
-        1 => [
-          'target_field' => 'field_code',
-          'mapper' => [
-            'plugin' => 'string',
-            'sources' => ['value' => 'customer_code'],
-            'settings' => ['trim' => 1, 'empty_as_null' => NULL],
-          ],
+        'field_code' => [
+          'sources' => ['value' => 'customer_code'],
+          'mapper' => ['plugin' => 'string', 'settings' => ['trim' => 1, 'empty_as_null' => NULL]],
         ],
       ],
     ];
@@ -231,8 +224,6 @@ class DefinitionWizardTest extends NodeTestBase {
     $state = $this->press(NULL, $this->step1(), 'next');
     $state = $this->press($state, $this->step2(), 'next');
     $state = $this->press($state, $this->step3(), 'next');
-    $state = $this->press($state, [], 'add_mapping_row');
-    $state = $this->press($state, [], 'add_mapping_row');
     $state = $this->press($state, $this->step4(), 'next');
     $this->assertSame(5, $state->get('step'));
     return $state;
@@ -337,44 +328,50 @@ class DefinitionWizardTest extends NodeTestBase {
   }
 
   /**
-   * A field can be filled by one row only, and every row needs a field.
+   * A field that has a source has all the sources its mapper needs.
    */
-  public function testMappingRowsAreChecked(): void {
+  public function testMappingNeedsTheRequiredSources(): void {
     $state = $this->press(NULL, $this->step1(), 'next');
     $state = $this->press($state, $this->step2(), 'next');
     $state = $this->press($state, $this->step3(), 'next');
-    $state = $this->press($state, [], 'add_mapping_row');
-    $state = $this->press($state, [], 'add_mapping_row');
 
-    $rows = $this->step4()['rows'];
-    $rows[1]['target_field'] = 'title';
-    $twice = $this->press($state, ['rows' => $rows], 'next');
-    $this->assertSame(['rows][1][target_field'], array_keys($twice->getErrors()));
+    // An amount needs an amount; the currency alone is not enough.
+    $values = [
+      'mapping' => [
+        'field_rate' => [
+          'sources' => ['amount' => '', 'currency' => 'price.currency'],
+          'mapper' => ['plugin' => 'money', 'settings' => ['default_currency' => 'EUR']],
+        ],
+      ],
+    ];
+    $refused = $this->press($state, $values, 'next');
+    $this->assertSame(['mapping][field_rate][sources][amount'], array_keys($refused->getErrors()));
+    $this->assertSame(4, $refused->get('step'));
 
-    $rows[1]['target_field'] = '';
-    $empty = $this->press($state, ['rows' => $rows], 'next');
-    $this->assertSame(['rows][1][target_field'], array_keys($empty->getErrors()));
+    // The currency is optional.
+    $values['mapping']['field_rate']['sources'] = ['amount' => 'price.amount', 'currency' => ''];
+    $accepted = $this->press($state, $values, 'next');
+    $this->assertSame([], $accepted->getErrors());
+    $this->assertSame(['amount' => 'price.amount'], $accepted->get('definition')['mapping'][0]['mapper']['sources']);
   }
 
   /**
-   * Rows can be added and removed without losing the others.
+   * Reports can be added and removed without losing the others.
    */
-  public function testAddAndRemoveRows(): void {
-    $state = $this->press(NULL, $this->step1(), 'next');
-    $state = $this->press($state, $this->step2(), 'next');
-    $state = $this->press($state, $this->step3(), 'next');
-    $state = $this->press($state, [], 'add_mapping_row');
-    $state = $this->press($state, [], 'add_mapping_row');
-    $this->assertSame([0, 1], $state->get('mapping_row_ids'));
+  public function testAddAndRemoveReports(): void {
+    $state = $this->toLastStep();
+    $state = $this->press($state, [], 'add_reporter');
+    $state = $this->press($state, [], 'add_reporter');
+    $this->assertSame([0, 1], $state->get('reporter_row_ids'));
 
     $remove = new FormState();
     $remove->setStorage($state->getStorage());
-    $remove->setValues(['remove_mapping_row_0' => 'Remove this field']);
+    $remove->setValues(['remove_reporter_0' => 'Remove this report']);
     $this->container->get('form_builder')->submitForm(DefinitionWizardForm::class, $remove);
 
-    $this->assertSame([1], $remove->get('mapping_row_ids'));
-    $again = $this->press($remove, [], 'add_mapping_row');
-    $this->assertSame([1, 2], $again->get('mapping_row_ids'), 'A new row never takes the ID of a removed one.');
+    $this->assertSame([1], $remove->get('reporter_row_ids'));
+    $again = $this->press($remove, [], 'add_reporter');
+    $this->assertSame([1, 2], $again->get('reporter_row_ids'), 'A new report never takes the ID of a removed one.');
   }
 
   /**
@@ -383,9 +380,9 @@ class DefinitionWizardTest extends NodeTestBase {
   public function testSchemaProblemsAreShownAtTheirStep(): void {
     $state = $this->toLastStep();
     $state = $this->press($state, [], 'previous');
-    $rows = $this->step4()['rows'];
-    $rows[0]['mapper']['sources']['value'] = 'name..bad';
-    $state = $this->press($state, ['rows' => $rows], 'save');
+    $mapping = $this->step4()['mapping'];
+    $mapping['title']['sources']['value'] = 'name..bad';
+    $state = $this->press($state, ['mapping' => $mapping], 'save');
 
     $this->assertNull(ImportDefinition::load('accounts'));
     $this->assertSame(4, $state->get('step'));
@@ -495,15 +492,12 @@ class DefinitionWizardTest extends NodeTestBase {
       1 => ['Step 1 of 5: Source', 'Name', 'URL', 'Headers'],
       2 => ['Step 2 of 5: Paging and authentication', 'Paging', 'Authentication', 'Type'],
       3 => ['Step 3 of 5: Key and target', 'Key of an item', 'Content type'],
-      4 => ['Step 4 of 5: Mapping', 'Field 1', 'Fill the field', 'Add a field'],
+      4 => ['Step 4 of 5: Mapping', 'Suggest a mapping', 'Title', 'field_code · string'],
       5 => ['Step 5 of 5: Behaviour', 'Circuit breaker', 'Attempts per item', 'Add a report'],
     ];
     $state = NULL;
     $values = [1 => $this->step1(), 2 => $this->step2(), 3 => $this->step3(), 4 => $this->step4()];
     for ($step = 1; $step <= 5; $step++) {
-      if ($step === 4) {
-        $state = $this->press($state, [], 'add_mapping_row');
-      }
       $render_state = new FormState();
       $render_state->setStorage($state?->getStorage() ?? []);
       $form = $this->container->get('form_builder')->buildForm(DefinitionWizardForm::class, $render_state);
@@ -519,7 +513,7 @@ class DefinitionWizardTest extends NodeTestBase {
   }
 
   /**
-   * Editing shows the saved mapping, with its mapper and the paths filled in.
+   * Editing shows the saved mapping in the table, with the paths filled in.
    */
   public function testEditRendersTheSavedMapping(): void {
     $state = $this->toLastStep();
@@ -537,12 +531,12 @@ class DefinitionWizardTest extends NodeTestBase {
     $form = $this->container->get('form_builder')->buildForm(DefinitionWizardForm::class, $render_state);
     $html = (string) $this->container->get('renderer')->renderRoot($form);
 
-    $this->assertStringContainsString('Field 1', $html);
-    $this->assertStringContainsString('Field 2', $html);
-    $this->assertStringContainsString('Source: value', $html);
+    $this->assertSame('name', $form['mapping']['title']['sources']['value']['#default_value']);
+    $this->assertSame('customer_code', $form['mapping']['field_code']['sources']['value']['#default_value']);
+    $this->assertSame('string', $form['mapping']['field_code']['mapper']['plugin']['#default_value']);
+    $this->assertSame('', $form['mapping']['field_notes']['sources']['value']['#default_value'], 'A field without a source is empty.');
     $this->assertStringContainsString('value="customer_code"', $html);
-    $this->assertSame('title', $form['rows'][0]['target_field']['#default_value']);
-    $this->assertSame('string', $form['rows'][1]['mapper']['plugin']['#default_value']);
+    $this->assertStringContainsString('import-wizard-mapping', $html);
   }
 
   /**
@@ -632,7 +626,7 @@ class DefinitionWizardTest extends NodeTestBase {
   }
 
   /**
-   * The mapping offers the paths found, and fills in the one that fits.
+   * The suggestion fills in the fields that have no source, from the sample.
    */
   public function testMappingSuggestsPaths(): void {
     $this->sourceReturns([['code' => 'C-1', 'name' => 'Acme', 'extra' => ['title' => 'T']]]);
@@ -640,61 +634,74 @@ class DefinitionWizardTest extends NodeTestBase {
     $state = $this->press($state, $this->plainStep2(), 'test_source');
     $state = $this->press($state, $this->plainStep2(), 'next');
     $state = $this->press($state, ['source_key' => 'code', 'target' => $this->step3()['target']], 'next');
-    $state = $this->press($state, [], 'add_mapping_row');
-    $state = $this->press($state, [], 'add_mapping_row');
 
+    $suggested = $this->press($state, [
+      'mapping' => ['field_notes' => ['sources' => ['value' => 'typed.by.hand'], 'mapper' => ['plugin' => 'text']]],
+    ], 'suggest_mapping');
+
+    $input = $suggested->getUserInput()['mapping'];
+    // Title is the name of the item; "title" is not the "name" at the source,
+    // but the words of the field and of a path are the same for field_code.
+    $this->assertSame('name', $input['title']['sources']['value']);
+    $this->assertSame('string', $input['title']['mapper']['plugin']);
+    $this->assertSame('code', $input['field_code']['sources']['value']);
+    // What a person typed is left alone.
+    $this->assertSame('typed.by.hand', $input['field_notes']['sources']['value']);
+    $this->assertStringContainsString('fields were filled in from the sample', (string) $suggested->get('suggest_note'));
+    $this->assertSame([], $suggested->getErrors());
+
+    // The form is rebuilt from that input, which Form API shows in the fields
+    // by itself; here it only has to come out whole.
     $render_state = new FormState();
-    $render_state->setStorage($state->getStorage());
-    $render_state->setUserInput(['rows' => [0 => ['target_field' => 'field_code'], 1 => ['target_field' => 'title']]]);
+    $render_state->setStorage($suggested->getStorage());
+    $render_state->setUserInput($suggested->getUserInput());
     $form = $this->container->get('form_builder')->buildForm(DefinitionWizardForm::class, $render_state);
-    $html = (string) $this->container->get('renderer')->renderRoot($form);
-
-    // A path that is the field, and one whose last part is the field.
-    $this->assertSame('code', $form['rows'][0]['mapper']['sources']['value']['#default_value']);
-    $this->assertSame('extra.title', $form['rows'][1]['mapper']['sources']['value']['#default_value']);
-    $this->assertStringContainsString('<datalist id="import-wizard-paths">', $html);
-    $this->assertStringContainsString('<option value="extra.title">', $html);
-    $this->assertSame('import-wizard-paths', $form['rows'][0]['mapper']['sources']['value']['#attributes']['list']);
+    $this->assertArrayHasKey('field_code', $form['mapping']);
   }
 
   /**
-   * A row whose field was chosen keeps its mapper when another row is added.
+   * A mapper that was chosen keeps its sources and settings on a rebuild.
+   *
+   * Choosing another mapper rebuilds the table by AJAX; what was chosen is in
+   * the input of the browser, which is what the rebuild reads.
    */
-  public function testRowKeepsItsMapperWhileRowsChange(): void {
+  public function testChosenMapperSurvivesRebuild(): void {
     $state = $this->press(NULL, $this->step1(), 'next');
     $state = $this->press($state, $this->plainStep2(), 'next');
     $state = $this->press($state, $this->step3(), 'next');
-    $state = $this->press($state, [], 'add_mapping_row');
 
-    // The button drops the values; the input of the browser is still there.
     $render_state = new FormState();
     $render_state->setStorage($state->getStorage());
-    $render_state->setUserInput(['rows' => [0 => ['target_field' => 'field_code']]]);
+    $render_state->setUserInput(['mapping' => ['field_code' => ['mapper' => ['plugin' => 'join']]]]);
     $form = $this->container->get('form_builder')->buildForm(DefinitionWizardForm::class, $render_state);
 
-    $this->assertArrayHasKey('mapper', $form['rows'][0]);
-    $this->assertSame('field_code', $form['rows'][0]['target_field']['#default_value']);
+    $row = $form['mapping']['field_code'];
+    $this->assertSame('join', $row['mapper']['plugin']['#default_value']);
+    $this->assertSame(['first', 'second', 'third'], Element::children($row['sources']));
+    $this->assertArrayHasKey('separator', $row['mapper']['settings'], 'The settings are those of the chosen mapper.');
   }
 
   /**
-   * A row whose source path is missing is an error, not a dropped row.
+   * A field without a source is left alone, and is not a mistake.
    */
-  public function testRowWithoutSourceIsAnError(): void {
+  public function testFieldWithoutSourceIsLeftAlone(): void {
     $state = $this->press(NULL, $this->step1(), 'next');
     $state = $this->press($state, $this->plainStep2(), 'next');
     $state = $this->press($state, $this->step3(), 'next');
-    $state = $this->press($state, [], 'add_mapping_row');
-
-    $rows = [
-      0 => [
-        'target_field' => 'title',
-        'mapper' => ['plugin' => 'string', 'sources' => ['value' => ''], 'settings' => []],
+    $values = [
+      'mapping' => [
+        'title' => ['sources' => ['value' => ''], 'mapper' => ['plugin' => 'string']],
+        'field_code' => [
+          'sources' => ['value' => 'code'],
+          'mapper' => ['plugin' => 'string', 'settings' => ['trim' => 1, 'empty_as_null' => 1]],
+        ],
       ],
     ];
-    $next = $this->press($state, ['rows' => $rows], 'next');
 
-    $this->assertSame(['rows][0][mapper][sources][value'], array_keys($next->getErrors()));
-    $this->assertSame(4, $next->get('step'));
+    $next = $this->press($state, $values, 'next');
+
+    $this->assertSame([], $next->getErrors());
+    $this->assertSame(['field_code'], array_column($next->get('definition')['mapping'], 'target_field'));
   }
 
   /**
@@ -858,26 +865,23 @@ class DefinitionWizardTest extends NodeTestBase {
   }
 
   /**
-   * Adding and removing rows is done by AJAX, so the page stays where it is.
+   * The mapping and the reports change by AJAX, so the page stays where it is.
    */
-  public function testRowButtonsAreAjax(): void {
+  public function testMappingAndReportsChangeByAjax(): void {
     $state = $this->press(NULL, $this->step1(), 'next');
     $state = $this->press($state, $this->plainStep2(), 'next');
     $state = $this->press($state, $this->step3(), 'next');
-    $state = $this->press($state, [], 'add_mapping_row');
     $form = $this->buildAt($state);
-
-    $this->assertSame('import-wizard-rows', $form['add_row']['#ajax']['wrapper']);
-    $this->assertSame('import-wizard-rows', $form['rows'][0]['remove']['#ajax']['wrapper']);
-    $this->assertStringContainsString('id="import-wizard-rows"', $form['rows']['#prefix']);
     $wizard = $this->container->get('class_resolver')->getInstanceFromDefinition(DefinitionWizardForm::class);
-    $trigger = new FormState();
-    $trigger->setTriggeringElement(['#rows_key' => 'rows']);
-    $this->assertSame($form['rows'], $wizard->ajaxRows($form, $trigger), 'The callback gives back the rows.');
+
+    $this->assertSame('import-wizard-mapping', $form['suggest']['#ajax']['wrapper']);
+    $this->assertSame('import-wizard-mapping', $form['mapping']['title']['mapper']['plugin']['#ajax']['wrapper']);
+    $this->assertStringContainsString('id="import-wizard-mapping"', $form['mapping']['#prefix']);
+    $this->assertSame($form['mapping'], $wizard->ajaxMapping($form, new FormState()), 'The callback gives back the table.');
 
     // The reports are on the last step.
-    $last = $this->toLastStep();
-    $form = $this->buildAt($last);
+    $form = $this->buildAt($this->toLastStep());
+    $trigger = new FormState();
     $this->assertSame('import-wizard-reporters', $form['reporters']['add']['#ajax']['wrapper']);
     $trigger->setTriggeringElement(['#rows_key' => 'reporters']);
     $this->assertSame($form['reporters'], $wizard->ajaxRows($form, $trigger));
@@ -909,13 +913,9 @@ class DefinitionWizardTest extends NodeTestBase {
     $state = $this->press(NULL, $this->step1(), 'next');
     $state = $this->press($state, $this->plainStep2(), 'next');
     $state = $this->press($state, $this->step3(), 'next');
-    $state = $this->press($state, [], 'add_mapping_row');
-    $render_state = new FormState();
-    $render_state->setStorage($state->getStorage());
-    $render_state->setUserInput(['rows' => [0 => ['target_field' => 'field_code']]]);
-    $rows = $this->container->get('form_builder')->buildForm(DefinitionWizardForm::class, $render_state);
-    $this->assertSame(['string', 'join'], array_keys($rows['rows'][0]['mapper']['plugin']['#options']));
-    $this->assertSame('string', $rows['rows'][0]['mapper']['plugin']['#default_value']);
+    $row = $this->buildAt($state)['mapping']['field_code']['mapper']['plugin'];
+    $this->assertSame(['string', 'join'], array_keys($row['#options']));
+    $this->assertSame('string', $row['#default_value']);
   }
 
   /**
@@ -935,21 +935,216 @@ class DefinitionWizardTest extends NodeTestBase {
     }
     $state = $this->toLastStep();
     $state = $this->press($state, [], 'add_reporter');
-    $form = $this->buildAt($state);
-    $this->assertSame(['log', 'mail'], array_keys($form['reporters'][0]['plugin']['#options']));
+    $this->assertSame(['log', 'mail'], array_keys($this->buildAt($state)['reporters'][0]['plugin']['#options']));
 
     $state = $this->press(NULL, $this->step1(), 'next');
     $state = $this->press($state, $this->plainStep2(), 'next');
     $state = $this->press($state, $this->step3(), 'next');
-    $state = $this->press($state, [], 'add_mapping_row');
+    $row = $this->buildAt($state)['mapping']['field_code']['mapper']['plugin'];
+
+    $this->assertSame(['string', 'join'], array_keys($row['#options']));
+    $this->assertSame('string', $row['#default_value']);
+    $this->assertSame(['string', 'join'], $this->container->get('plugin.manager.import_engine_mapper')->idsForFieldType('string'));
+  }
+
+  /**
+   * The table lists the fields that can be mapped, the required ones first.
+   */
+  public function testTableListsMappableFieldsRequiredFirst(): void {
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $state = $this->press($state, $this->plainStep2(), 'next');
+    $state = $this->press($state, $this->step3(), 'next');
+
+    $form = $this->buildAt($state);
+
+    $names = array_keys(array_filter($form['mapping'], static fn (mixed $row, mixed $key): bool => is_array($row) && !str_starts_with((string) $key, '#'), ARRAY_FILTER_USE_BOTH));
+    $this->assertSame('title', $names[0], 'Title is required.');
+    $this->assertContains('field_rate', $names);
+    $this->assertNotContains('langcode', $names, 'No mapper fits a language.');
+    $this->assertStringContainsString('fields of the target are not shown', (string) $form['hidden_fields']['#markup']);
+    // A field that takes more than one value has a source for each.
+    $this->assertSame(['amount', 'currency'], Element::children($form['mapping']['field_rate']['sources']));
+  }
+
+  /**
+   * The order of the mapping only changes when fields come or go.
+   */
+  public function testMappingOrderIsKept(): void {
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $state = $this->press($state, $this->plainStep2(), 'next');
+    $state = $this->press($state, $this->step3(), 'next');
+    $first = [
+      'mapping' => [
+        'field_code' => ['sources' => ['value' => 'code'], 'mapper' => ['plugin' => 'string']],
+        'title' => ['sources' => ['value' => 'name'], 'mapper' => ['plugin' => 'string']],
+      ],
+    ];
+    $state = $this->press($state, $first, 'next');
+    $this->assertSame(['field_code', 'title'], array_column($state->get('definition')['mapping'], 'target_field'));
+
+    $back = $this->press($state, [], 'previous');
+    // The same fields, in the order of the table, and one more.
+    $again = [
+      'mapping' => [
+        'title' => ['sources' => ['value' => 'name'], 'mapper' => ['plugin' => 'string']],
+        'field_code' => ['sources' => ['value' => 'code'], 'mapper' => ['plugin' => 'string']],
+        'field_notes' => [
+          'sources' => ['value' => 'notes'],
+          'mapper' => ['plugin' => 'text', 'settings' => ['format' => 'plain_text']],
+        ],
+      ],
+    ];
+    $this->assertSame(4, $back->get('step'));
+    $forward = $this->press($back, $again, 'next');
+
+    $this->assertSame([], array_map('strval', $forward->getErrors()));
+    $this->assertSame(['field_code', 'title', 'field_notes'], array_column($forward->get('definition')['mapping'], 'target_field'), 'The ones that stay keep their place.');
+  }
+
+  /**
+   * Without a sample there is nothing to suggest, and it says so.
+   */
+  public function testSuggestionNeedsSample(): void {
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $state = $this->press($state, $this->plainStep2(), 'next');
+    $state = $this->press($state, $this->step3(), 'next');
+
+    $suggested = $this->press($state, [], 'suggest_mapping');
+
+    $this->assertStringContainsString('try the source first', (string) $suggested->get('suggest_note'));
+    $this->assertSame([], $suggested->getErrors());
+  }
+
+  /**
+   * A money field is suggested with its amount and currency, and the mapper.
+   */
+  public function testSuggestionFindsAnAmountAndItsCurrency(): void {
+    $this->sourceReturns([['code' => 'C-1', 'rate' => ['number' => '9.95', 'currencyCode' => 'EUR']]]);
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $state = $this->press($state, $this->plainStep2(), 'test_source');
+    $state = $this->press($state, $this->plainStep2(), 'next');
+    $state = $this->press($state, ['source_key' => 'code', 'target' => $this->step3()['target']], 'next');
+
+    $suggested = $this->press($state, [], 'suggest_mapping');
+
+    $input = $suggested->getUserInput()['mapping']['field_rate'];
+    $this->assertSame('money', $input['mapper']['plugin']);
+    $this->assertSame(['amount' => 'rate.number', 'currency' => 'rate.currencyCode'], $input['sources']);
+  }
+
+  /**
+   * What is typed in a field of the table is kept when leaving the step.
+   */
+  public function testLeavingTheMappingKeepsWhatWasTyped(): void {
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $state = $this->press($state, $this->plainStep2(), 'next');
+    $state = $this->press($state, $this->step3(), 'next');
+    $values = [
+      'mapping' => [
+        'title' => ['sources' => ['value' => 'name'], 'mapper' => ['plugin' => 'string', 'settings' => ['trim' => 1]]],
+        'field_rate' => [
+          'sources' => ['amount' => 'price.amount', 'currency' => ''],
+          'mapper' => ['plugin' => 'money', 'settings' => ['default_currency' => 'USD']],
+        ],
+      ],
+    ];
+
+    $left = $this->jump($state, $values, 1);
+
+    $mapping = $left->get('definition')['mapping'];
+    $this->assertSame(['title', 'field_rate'], array_column($mapping, 'target_field'));
+    $this->assertSame(['trim' => TRUE, 'empty_as_null' => FALSE], $mapping[0]['mapper']['settings']);
+    $this->assertSame('USD', $mapping[1]['mapper']['settings']['default_currency']);
+  }
+
+  /**
+   * The paths of the sample can be clicked, and the table can take them.
+   */
+  public function testPathsAreButtonsAndSourcesAreMarkedForThem(): void {
+    $this->sourceReturns([['code' => 'C-1', 'name' => 'Acme']]);
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $state = $this->press($state, $this->plainStep2(), 'test_source');
+    $state = $this->press($state, $this->plainStep2(), 'next');
+    $state = $this->press($state, ['source_key' => 'code', 'target' => $this->step3()['target']], 'next');
+
+    $form = $this->buildAt($state);
+    $html = (string) $this->container->get('renderer')->renderRoot($form);
+
+    $this->assertStringContainsString('data-path="code"', $html);
+    $this->assertStringContainsString('class="import-wizard-path link"', $html);
+    $this->assertContains('import-wizard-source', $form['mapping']['title']['sources']['value']['#attributes']['class']);
+    $this->assertContains('import_engine_ui/wizard', $form['#attached']['library']);
+    $this->assertStringContainsString('<datalist id="import-wizard-paths">', $html);
+    // The paths are above the table, where they are at hand.
+    $this->assertLessThan($form['mapping']['#weight'] ?? 0, -1);
+    $this->assertLessThan(strpos($html, 'import-wizard-mapping'), strpos($html, 'data-path="code"'));
+  }
+
+  /**
+   * A GraphQL source starts its paging with the settings that fit it.
+   */
+  public function testGraphqlSourceStartsPagingWithVariables(): void {
+    $values = $this->step1();
+    $values['source'] = [
+      'plugin' => 'graphql',
+      'settings' => [
+        'url' => 'http://site-a.test/graphql',
+        'query' => '{ x }',
+        'variables' => '',
+        'headers' => '',
+        'items_path' => 'data.customers.items',
+        'timeout' => '30',
+      ],
+    ];
+    $state = $this->press(NULL, $values, 'next');
+    $this->assertSame('graphql', $state->get('definition')['source']['plugin']);
+
     $render_state = new FormState();
     $render_state->setStorage($state->getStorage());
-    $render_state->setUserInput(['rows' => [0 => ['target_field' => 'field_code']]]);
-    $rows = $this->container->get('form_builder')->buildForm(DefinitionWizardForm::class, $render_state);
+    $render_state->setUserInput(['pagination' => ['plugin' => 'offset_limit']]);
+    $form = $this->container->get('form_builder')->buildForm(DefinitionWizardForm::class, $render_state);
 
-    $this->assertSame(['string', 'join'], array_keys($rows['rows'][0]['mapper']['plugin']['#options']));
-    $this->assertSame('string', $rows['rows'][0]['mapper']['plugin']['#default_value']);
-    $this->assertSame(['string', 'join'], $this->container->get('plugin.manager.import_engine_mapper')->idsForFieldType('string'));
+    $settings = $form['pagination']['settings'];
+    $this->assertSame('body', $settings['target']['#default_value']);
+    $this->assertSame('variables.offset', $settings['offset_param']['#default_value']);
+    $this->assertSame('variables.limit', $settings['limit_param']['#default_value']);
+    $this->assertSame('data.customers.totalCount', $settings['total_path']['#default_value']);
+    $this->assertStringContainsString('Filled in for this source', (string) $form['pagination']['plugin']['#description']);
+  }
+
+  /**
+   * An HTTP source gets the plain defaults, and a saved choice is kept.
+   */
+  public function testOtherSourcesAndSavedPagingKeepTheirValues(): void {
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $render_state = new FormState();
+    $render_state->setStorage($state->getStorage());
+    $render_state->setUserInput(['pagination' => ['plugin' => 'offset_limit']]);
+
+    $settings = $this->container->get('form_builder')->buildForm(DefinitionWizardForm::class, $render_state)['pagination']['settings'];
+
+    $this->assertSame('query', $settings['target']['#default_value']);
+    $this->assertSame('offset', $settings['offset_param']['#default_value']);
+
+    // Once the paging is saved, a GraphQL source does not overwrite it.
+    $values = $this->step1();
+    $values['source'] = [
+      'plugin' => 'graphql',
+      'settings' => [
+        'url' => 'http://site-a.test/graphql',
+        'query' => '{ x }',
+        'variables' => '',
+        'headers' => '',
+        'items_path' => 'data.items',
+        'timeout' => '30',
+      ],
+    ];
+    $state = $this->press(NULL, $values, 'next');
+    $state = $this->press($state, $this->step2(), 'next');
+    $state = $this->press($state, [], 'previous');
+    $form = $this->buildAt($state);
+    $this->assertSame('offset', $form['pagination']['settings']['offset_param']['#default_value']);
+    $this->assertSame(25, $form['pagination']['settings']['page_size']['#default_value']);
   }
 
 }
