@@ -30,8 +30,10 @@ RUN COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader -
 FROM base AS runtime
 WORKDIR /var/www/html
 COPY --from=build /var/www/html /var/www/html
+COPY deploy/docker/hosts.conf /etc/apache2/conf-available/import-engine-hosts.conf
 COPY deploy/docker/bootstrap.sh deploy/docker/seed-site-a.php deploy/docker/seed-site-b.php /opt/import-engine/
-RUN chmod +x /opt/import-engine/bootstrap.sh \
+RUN a2enconf import-engine-hosts \
+    && chmod +x /opt/import-engine/bootstrap.sh \
     && mkdir -p web/sites/site_a/files web/sites/site_b/files \
     && chown -R www-data:www-data web/sites/site_a/files web/sites/site_b/files
 # Not as root: Apache listens on 8080 and runs as www-data, and so do drush and

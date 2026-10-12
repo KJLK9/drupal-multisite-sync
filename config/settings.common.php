@@ -41,3 +41,9 @@ if (basename($site_path) === 'site_b' && $api_url !== FALSE && $api_url !== '' &
   $config['import_engine.import_connection.site_a']['source']['configuration']['headers'] = ['Host' => $api_host];
 }
 unset($api_url, $api_host);
+
+// A cache that is shared between sites (Redis, Memcached, APCu) keeps what is
+// in it apart by this prefix. Nothing like that is in use: every site has a
+// database of its own, and so its own cache tables. The prefix is here so that
+// adding a shared cache later cannot mix up the sites.
+$settings['cache_prefix'] = basename($site_path);

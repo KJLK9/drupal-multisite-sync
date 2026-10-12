@@ -136,6 +136,54 @@ minute (the bootstrap job), and the image is about 1.2 GB, of which the code
 is 220 MB. These are figures for this data set on one machine, not a
 promise for more data.
 
+## Two sites in one pod: what keeps their caches apart
+
+Drupal multisite in Kubernetes has a name for going wrong: one site shows the
+other's data, or a cache that one site cleared is still full on the other.
+Here that cannot happen the usual ways, and this is why (checked in the
+running cluster, not only read):
+
+- **Every site has a database of its own** (`site_a`, `site_b`), and the cache
+  tables are in it. There is no cache that both sites share: no Redis, no
+  Memcached, no APCu (not installed). Clearing the cache of one site clears
+  tables of one database.
+- **The files are apart as well**: the volume holds `site_a/` and `site_b/`,
+  mounted on `sites/site_a/files` and `sites/site_b/files`, so the CSS and JS
+  aggregates and the compiled Twig of the sites are in separate directories.
+- **The hash salt differs per site** (it is in the environment per site), which
+  is what makes cached URLs, form tokens and aggregate names differ.
+- **The site is chosen by the host**, from `SITE_A_HOST` and `SITE_B_HOST`
+  (`sites.php`), and trusted host patterns are set from the same variables.
+  Requests that alternate between the two hosts on the same paths gave
+  the answers of the right site every time.
+- **A request for any other host is refused** by Apache (403), where it would
+  have gone to the site "default" and its installer. Only `/robots.txt` is
+  answered for every host, because the probes of Kubernetes ask by the address
+  of the pod.
+- **Every drush command in a job names its site** with `--uri`. In a pod, drush
+  without `--uri` acts on `default`: never leave it out.
+- **`cache_prefix` is set per site** in `settings.common.php`, so that if a
+  shared cache is added later (Redis, Memcached) the sites keep their entries
+  apart without anyone having to remember it.
+
+What would change that picture, and what to do then:
+
+- **More than one web pod.** The files volume must be shared by all of them
+  (`ReadWriteMany`, or the aggregates and Twig files written to storage each
+  pod can read); today it is `ReadWriteOnce` with one pod. The database caches
+  and locks are already shared. Drupal makes a missing CSS or JS aggregate
+  again when it is asked for, so a pod that did not write it can serve it.
+- **A shared cache backend.** Give it the prefix above, and give each site its
+  own database number or key prefix; never let two sites write one namespace.
+- **Caching in front of the sites** (Cloudflare "Cache Everything", a CDN):
+  the two sites have their own hostnames, which keeps them apart, but HTML of
+  pages that depend on a login must not be cached there. The default of
+  Cloudflare, which caches static files only, is fine.
+- **A deploy.** The compiled container and the Twig files live on the volume
+  and in the database; a new image with new code needs the caches rebuilt.
+  The bootstrap job does that for both sites (`config:import`, `updatedb`,
+  `cache:rebuild`), and the web pods are replaced, not changed in place.
+
 ## What was and was not tried
 
 Tried: building the image, creating a k3d cluster, applying the local
