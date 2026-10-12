@@ -71,14 +71,13 @@ final class MappingStore {
       'target_type' => $targetType,
       'target_id' => $targetId,
       'hash' => $binary,
-      'last_seen_run' => $runId,
       // An item that is in the source is not gone.
       'gone' => 0,
     ];
     if ($changed) {
-      $update += ['last_changed_run' => $runId, 'changed' => $now];
+      $update += ['changed' => $now];
     }
-    $this->database->merge('import_mapping')
+    $merge = $this->database->merge('import_mapping')
       ->keys(['definition_id' => $definitionId, 'source_key' => $key])
       ->insertFields([
         'definition_id' => $definitionId,
@@ -93,7 +92,14 @@ final class MappingStore {
         'gone' => 0,
       ])
       ->updateFields($update)
-      ->execute();
+      // A run never takes back what a later one has seen: a dead item of an
+      // older run that is retried must not make the item look unseen, which
+      // the sweep of the later run would take for gone.
+      ->expression('last_seen_run', 'GREATEST(last_seen_run, :run)', [':run' => $runId]);
+    if ($changed) {
+      $merge->expression('last_changed_run', 'GREATEST(last_changed_run, :changed_run)', [':changed_run' => $runId]);
+    }
+    $merge->execute();
   }
 
   /**

@@ -17,6 +17,7 @@ use Drupal\import_engine\Storage\EventLog;
 use Drupal\import_engine\Storage\EventType;
 use Drupal\import_engine\Storage\ImportItem;
 use Drupal\import_engine\Storage\ItemStorage;
+use Drupal\import_engine\Run\RunStatus;
 use Drupal\import_engine\Storage\MappingStore;
 use Drupal\import_engine\Storage\Outcome;
 use Drupal\import_engine\Target\TargetException;
@@ -79,7 +80,7 @@ final class ProcessStage {
    */
   public function process(string $worker, int $limit = 50, string $pool = 'default', int $leaseSeconds = 300, ?int $now = NULL, ?int $deadline = NULL, ?callable $shouldStop = NULL): ProcessResult {
     $now ??= $this->time->getCurrentTime();
-    return $this->handleClaimed($this->items->claim($worker, $limit, $leaseSeconds, $pool, $now), $now, $deadline, $shouldStop);
+    return $this->handleClaimed($this->items->claim($worker, $limit, $leaseSeconds, $pool, $now), $now, $deadline, $shouldStop, $leaseSeconds);
   }
 
   /**
@@ -99,7 +100,7 @@ final class ProcessStage {
    */
   public function processItems(string $worker, array $ids, int $leaseSeconds = 300, ?int $now = NULL): ProcessResult {
     $now ??= $this->time->getCurrentTime();
-    return $this->handleClaimed($this->items->claimIds($worker, $ids, $leaseSeconds, $now), $now);
+    return $this->handleClaimed($this->items->claimIds($worker, $ids, $leaseSeconds, $now), $now, NULL, NULL, $leaseSeconds);
   }
 
   /**
@@ -113,12 +114,22 @@ final class ProcessStage {
    *   A timestamp after which no new item is started.
    * @param callable|null $shouldStop
    *   Asked before every item; when it returns TRUE no new item is started.
+   * @param int $leaseSeconds
+   *   How long a claim lasts. The claim of the items that are left is renewed
+   *   when a third of it has passed, so a batch that takes longer than the
+   *   lease does not hand its last items to another worker.
    */
-  private function handleClaimed(array $claimed, int $now, ?int $deadline = NULL, ?callable $shouldStop = NULL): ProcessResult {
-    $counts = ['created' => 0, 'updated' => 0, 'unchanged' => 0, 'retried' => 0, 'failed' => 0, 'lost' => 0];
+  private function handleClaimed(array $claimed, int $now, ?int $deadline = NULL, ?callable $shouldStop = NULL, int $leaseSeconds = 300): ProcessResult {
+    $counts = array_fill_keys(['created', 'updated', 'unchanged', 'retried', 'failed', 'lost', 'skipped'], 0);
     $runs = [];
     $cache = ['runs' => [], 'definitions' => [], 'plans' => []];
+    $renewed = $this->time->getCurrentTime();
     foreach ($claimed as $index => $item) {
+      $current = $this->time->getCurrentTime();
+      if ($current - $renewed >= intdiv($leaseSeconds, 3)) {
+        $this->items->renew(array_slice($claimed, $index), $leaseSeconds, $current);
+        $renewed = $current;
+      }
       if (($deadline !== NULL && $this->time->getCurrentTime() >= $deadline) || ($shouldStop !== NULL && $shouldStop())) {
         foreach (array_slice($claimed, $index) as $left) {
           $this->items->defer($left, $now, $now);
@@ -139,6 +150,7 @@ final class ProcessStage {
       $counts['failed'],
       $counts['lost'],
       array_values($runs),
+      $counts['skipped'],
     );
   }
 
@@ -153,13 +165,20 @@ final class ProcessStage {
    *   The current time.
    *
    * @return string
-   *   One of created, updated, unchanged, retried, failed or lost.
+   *   One of created, updated, unchanged, retried, failed, lost or skipped.
    */
   private function handle(ImportItem $item, array &$cache, int $now): string {
     $run = $cache['runs'][$item->runId] ??= $this->loadRun($item->runId);
     $definition = $run === NULL ? NULL : ($cache['definitions'][$run->getDefinitionId()] ??= ImportDefinition::load($run->getDefinitionId()));
     if ($run === NULL || $definition === NULL) {
       return $this->end($item, NULL, 'The run or the import of this item no longer exists.', $now);
+    }
+
+    // A worker can hold items of a run that is cancelled in the meantime: the
+    // cancel only skips what nobody had claimed. Writing them would change
+    // the target after the person said stop.
+    if ($this->isCancelled((int) $run->id())) {
+      return $this->items->complete($item, Outcome::Skipped, NULL, $now) ? 'skipped' : 'lost';
     }
 
     // An item that was claimed more often than allowed keeps failing in a way
@@ -196,28 +215,53 @@ final class ProcessStage {
     $payload = $item->payload ?? [];
 
     $values = $plan->map($payload);
-    $hash = $this->fingerprints->fingerprint($values);
+    // What is written depends on where it goes as well: the same values for
+    // another bundle or owner are another write.
+    $hash = $this->fingerprints->fingerprint($values + ['#target' => $definition->getTarget()['configuration']]);
     $known = $this->mapping->find($definition_id, $item->key);
 
-    if ($known !== NULL && $known->targetId !== NULL && $known->hash === $hash) {
+    if ($known !== NULL && $known->lastSeenRun > $run_id) {
+      // A later run has handled this key since: this is an item of an older
+      // run (a dead item that was retried). Its payload is older than what
+      // the target holds, and writing it would undo the later run.
+      $this->events->record($run_id, $definition_id, EventType::Skipped, $item->key, NULL, sprintf('Left alone: run %d handled this item after this run.', $known->lastSeenRun), $now);
+      return $this->items->complete($item, Outcome::Skipped, NULL, $now) ? 'skipped' : 'lost';
+    }
+
+    $existing_id = $known?->targetId;
+    $recreated = FALSE;
+    if ($known !== NULL && $existing_id !== NULL) {
+      if ($known->targetType !== NULL && $known->targetType !== $plan->target->entityTypeId()) {
+        // It was written as something else: that is not this target's to
+        // update (or delete), and its ID means something else here.
+        $existing_id = NULL;
+      }
+      elseif (!$plan->target->exists($existing_id)) {
+        // Deleted by hand: the hash says nothing about what is not there.
+        $existing_id = NULL;
+        $recreated = TRUE;
+      }
+    }
+
+    if ($known !== NULL && $existing_id !== NULL && $known->hash === $hash) {
       // The target already holds exactly this. An item that was unpublished
       // because it left the source is the only thing left to undo.
-      $restored = $known->gone && $plan->target->publish($known->targetId);
-      $this->mapping->record($definition_id, $item->key, (string) $known->targetType, $known->targetId, $hash, $run_id, $restored, $now);
+      $restored = $known->gone && $plan->target->publish($existing_id);
+      $this->mapping->record($definition_id, $item->key, (string) $known->targetType, $existing_id, $hash, $run_id, $restored, $now);
       if ($restored) {
-        $this->events->record($run_id, $definition_id, EventType::Updated, $item->key, $known->targetType . ':' . $known->targetId, 'Back in the source: published again.', $now);
+        $this->events->record($run_id, $definition_id, EventType::Updated, $item->key, $known->targetType . ':' . $existing_id, 'Back in the source: published again.', $now);
         return $this->items->complete($item, Outcome::Updated, $hash, $now) ? 'updated' : 'lost';
       }
       return $this->items->complete($item, Outcome::Unchanged, $hash, $now) ? 'unchanged' : 'lost';
     }
 
-    $result = $plan->target->save($values, $known?->targetId);
+    $result = $plan->target->save($values, $existing_id);
     if ($known !== NULL && $known->gone && !array_key_exists('status', $values)) {
       // It left the source, was unpublished and is back: show it again.
       $plan->target->publish($result->id);
     }
     $this->mapping->record($definition_id, $item->key, $result->type, $result->id, $hash, $run_id, TRUE, $now);
-    $this->events->record($run_id, $definition_id, $result->created ? EventType::Created : EventType::Updated, $item->key, $result->type . ':' . $result->id, NULL, $now);
+    $this->events->record($run_id, $definition_id, $result->created ? EventType::Created : EventType::Updated, $item->key, $result->type . ':' . $result->id, $recreated ? 'Made again: what it was written as had been deleted.' : NULL, $now);
 
     $outcome = $result->created ? Outcome::Created : Outcome::Updated;
     if (!$this->items->complete($item, $outcome, $hash, $now)) {
@@ -279,6 +323,19 @@ final class ProcessStage {
   private function loadRun(int $id): ?ImportRunInterface {
     $run = $this->entityTypeManager->getStorage('import_run')->load($id);
     return $run instanceof ImportRunInterface ? $run : NULL;
+  }
+
+  /**
+   * Returns whether a run was cancelled, read from the database each time.
+   */
+  private function isCancelled(int $runId): bool {
+    $count = $this->entityTypeManager->getStorage('import_run')->getQuery()
+      ->accessCheck(FALSE)
+      ->condition('id', $runId)
+      ->condition('status', RunStatus::Cancelled->value)
+      ->count()
+      ->execute();
+    return (int) $count > 0;
   }
 
   /**

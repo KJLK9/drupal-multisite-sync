@@ -28,6 +28,9 @@ final class ProcessResult {
    *   Items whose claim ran out before the worker was done with them.
    * @param list<int> $runIds
    *   The runs the items belong to.
+   * @param int $skipped
+   *   Items that were left alone: of a run that was cancelled, or of an older
+   *   run than the one that has handled the same key since.
    */
   public function __construct(
     public readonly int $claimed = 0,
@@ -38,6 +41,7 @@ final class ProcessResult {
     public readonly int $failed = 0,
     public readonly int $lost = 0,
     public readonly array $runIds = [],
+    public readonly int $skipped = 0,
   ) {
   }
 

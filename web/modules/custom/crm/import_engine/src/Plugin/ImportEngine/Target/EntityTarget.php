@@ -258,6 +258,25 @@ final class EntityTarget extends TargetPluginBase implements ContainerFactoryPlu
   }
 
   /**
+   * {@inheritdoc}
+   */
+  public function entityTypeId(): string {
+    return $this->entityType();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function exists(string $id): bool {
+    $storage = $this->entityTypeManager->getStorage($this->entityType());
+    $key = $storage->getEntityType()->getKey('id');
+    if ($key === FALSE) {
+      return FALSE;
+    }
+    return $storage->getQuery()->accessCheck(FALSE)->condition($key, $id)->count()->execute() > 0;
+  }
+
+  /**
    * Returns the configured entity type, which must be a content entity type.
    */
   private function entityType(): string {

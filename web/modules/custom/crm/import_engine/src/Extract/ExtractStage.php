@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\import_engine\Extract;
 
 use Drupal\Component\Datetime\TimeInterface;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Lock\LockBackendInterface;
 use Drupal\import_engine\ImportDefinitionInterface;
 use Drupal\import_engine\Key\InvalidKeyException;
@@ -65,6 +66,7 @@ final class ExtractStage {
     private readonly ProcessingFingerprint $processing,
     private readonly LockBackendInterface $lock,
     private readonly TimeInterface $time,
+    private readonly EntityTypeManagerInterface $entityTypeManager,
   ) {
   }
 
@@ -98,6 +100,14 @@ final class ExtractStage {
       return new ExtractResult(ExtractStatus::Busy, message: 'Another extraction of this import is running.');
     }
     try {
+      // What was passed in may be old: another process can have extracted, or
+      // finished, the run since it was loaded. Work from what is stored.
+      $stored = $this->entityTypeManager->getStorage('import_run')->loadUnchanged((int) $run->id());
+      if (!$stored instanceof ImportRunInterface || $stored->getStatus() !== $run->getStatus() || $stored->getPagesRead() !== $run->getPagesRead() || $stored->getCursor() !== $run->getCursor()) {
+        // Carrying on from the old position would write it over the new one.
+        // The caller loads the run again and calls again.
+        return new ExtractResult(ExtractStatus::Busy, message: 'The run was changed by another process since it was loaded; try again.');
+      }
       return $this->work($run, $definition, $source, $lock, $maxPages, $deadline);
     }
     finally {

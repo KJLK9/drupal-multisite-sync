@@ -89,6 +89,7 @@ services:
       - '@import_engine.processing_fingerprint'
       - '@lock.persistent'
       - '@datetime.time'
+      - '@entity_type.manager'
 
   import_engine.retry_policy:
     class: Drupal\import_engine\Retry\RetryPolicy

@@ -71,4 +71,19 @@ interface TargetInterface extends PluginInspectionInterface, ConfigurableInterfa
    */
   public function delete(string $id): bool;
 
+  /**
+   * Returns the type of what the target writes, as a save result names it.
+   *
+   * A mapping remembers it, so a target that is changed to write something
+   * else does not use the IDs of what it wrote before.
+   */
+  public function entityTypeId(): string;
+
+  /**
+   * Returns whether something with this ID exists.
+   *
+   * Without it an import cannot tell that what it wrote was deleted by hand.
+   */
+  public function exists(string $id): bool;
+
 }

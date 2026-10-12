@@ -20,5 +20,6 @@ enum EventType: int {
   case Dead = 6;
   case Requeued = 7;
   case Discarded = 8;
+  case Skipped = 9;
 
 }

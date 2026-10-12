@@ -171,6 +171,44 @@ final class ItemStorage {
   }
 
   /**
+   * Extends the claim on items a worker still holds.
+   *
+   * A batch is claimed at once and handled one item after another; when that
+   * takes longer than the lease, the items that are left would come back to
+   * another worker while the first still has them. Only items that are still
+   * claimed with the token they were claimed with are extended.
+   *
+   * @param list<\Drupal\import_engine\Storage\ImportItem> $items
+   *   The items the worker still holds.
+   * @param int $leaseSeconds
+   *   How long from now the claim lasts.
+   * @param int|null $now
+   *   The time, for tests.
+   *
+   * @return int
+   *   How many claims were extended.
+   */
+  public function renew(array $items, int $leaseSeconds, ?int $now = NULL): int {
+    $now ??= $this->time->getRequestTime();
+    $by_token = [];
+    foreach ($items as $item) {
+      if ($item->claimToken !== NULL) {
+        $by_token[$item->claimToken][] = $item->id;
+      }
+    }
+    $renewed = 0;
+    foreach ($by_token as $token => $ids) {
+      $renewed += (int) $this->database->update('import_item')
+        ->fields(['claimed_until' => $now + $leaseSeconds])
+        ->condition('id', $ids, 'IN')
+        ->condition('claimed_by', (string) $token)
+        ->condition('state', ItemState::Processing->value)
+        ->execute();
+    }
+    return $renewed;
+  }
+
+  /**
    * Marks a claimed item as handled; its payload is dropped.
    *
    * @param \Drupal\import_engine\Storage\ImportItem $item
