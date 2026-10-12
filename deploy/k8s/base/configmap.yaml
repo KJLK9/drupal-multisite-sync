@@ -1,0 +1,40 @@
+# What differs per environment and is not secret. The hostnames are replaced
+# by the overlays.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: site-config
+data:
+  SITE_A_HOST: site-a.example.invalid
+  SITE_B_HOST: site-b.example.invalid
+  SITE_A_DB_NAME: site_a
+  SITE_A_DB_USER: site_a
+  SITE_A_DB_HOST: mariadb
+  SITE_A_DB_PORT: "3306"
+  SITE_B_DB_NAME: site_b
+  SITE_B_DB_USER: site_b
+  SITE_B_DB_HOST: mariadb
+  SITE_B_DB_PORT: "3306"
+  # The ingress controller reaches the pods from inside the cluster; k3s and
+  # k3d use these ranges for pods.
+  REVERSE_PROXY_ADDRESSES: "10.0.0.0/8"
+  # How site B reaches site A from inside the cluster, without leaving it.
+  SITE_A_API_URL: http://web/graphql/catalog
+---
+# The scripts that create the databases on the first start of MariaDB.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mariadb-init
+data:
+  10-sites.sh: |
+    #!/bin/bash
+    set -euo pipefail
+    mariadb -uroot -p"${MARIADB_ROOT_PASSWORD}" <<SQL
+    CREATE DATABASE IF NOT EXISTS site_a CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+    CREATE DATABASE IF NOT EXISTS site_b CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+    CREATE USER IF NOT EXISTS 'site_a'@'%' IDENTIFIED BY '${SITE_A_DB_PASSWORD}';
+    CREATE USER IF NOT EXISTS 'site_b'@'%' IDENTIFIED BY '${SITE_B_DB_PASSWORD}';
+    GRANT ALL ON site_a.* TO 'site_a'@'%';
+    GRANT ALL ON site_b.* TO 'site_b'@'%';
+    SQL

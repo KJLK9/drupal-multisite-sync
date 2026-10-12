@@ -15,3 +15,6 @@ settings.ddev.php
 .env.local
 # Drupal creates these in the config sync directories.
 config/*/sync/.htaccess
+
+# Written by deploy/tunnel.sh
+deploy/k8s/overlays/tunnel-generated/

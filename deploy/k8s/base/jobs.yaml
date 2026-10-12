@@ -1,0 +1,101 @@
+# Installs the sites from their configuration and seeds site A. Run again
+# after a change of the configuration: what exists is left alone.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: bootstrap
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        fsGroup: 33
+      containers:
+        - name: bootstrap
+          image: import-engine
+          command: ["/opt/import-engine/bootstrap.sh"]
+          envFrom:
+            - configMapRef: {name: site-config}
+            - secretRef: {name: site-secrets}
+          volumeMounts:
+            - {name: files, mountPath: /var/www/html/web/sites/site_a/files, subPath: site_a}
+            - {name: files, mountPath: /var/www/html/web/sites/site_b/files, subPath: site_b}
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {memory: 768Mi}
+      volumes:
+        - name: files
+          persistentVolumeClaim: {claimName: site-files}
+---
+# The run set of the catalog on a schedule (docs/scheduling.md). One run per
+# import at a time is guaranteed by the engine; Forbid keeps the job history
+# tidy as well.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: import-catalog
+spec:
+  schedule: "15 * * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 3300
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            fsGroup: 33
+          containers:
+            - name: drush
+              image: import-engine
+              command: ["sh", "-c", "drush --uri=http://$SITE_B_HOST import:run-set catalog --max-time=3000"]
+              envFrom:
+                - configMapRef: {name: site-config}
+                - secretRef: {name: site-secrets}
+              volumeMounts:
+                - {name: files, mountPath: /var/www/html/web/sites/site_b/files, subPath: site_b}
+              resources:
+                requests: {cpu: 100m, memory: 256Mi}
+                limits: {memory: 768Mi}
+          volumes:
+            - name: files
+              persistentVolumeClaim: {claimName: site-files}
+---
+# Handles the queued items of site B. It stops when it has used most of its
+# memory and the Deployment starts it again, which is meant (ADR 0012).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: import-worker
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: import-worker}
+  template:
+    metadata:
+      labels: {app: import-worker}
+    spec:
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        fsGroup: 33
+      containers:
+        - name: drush
+          image: import-engine
+          command: ["sh", "-c", "drush --uri=http://$SITE_B_HOST import:work --pool=default"]
+          envFrom:
+            - configMapRef: {name: site-config}
+            - secretRef: {name: site-secrets}
+          volumeMounts:
+            - {name: files, mountPath: /var/www/html/web/sites/site_b/files, subPath: site_b}
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+            limits: {memory: 512Mi}
+      volumes:
+        - name: files
+          persistentVolumeClaim: {claimName: site-files}

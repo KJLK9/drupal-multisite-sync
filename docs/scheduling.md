@@ -1,7 +1,9 @@
 # Scheduling imports
 
-Status: **a design that was not run.** The engine is built so that this works
-without further code; nothing below has been tried on a cluster. It is the
+Status: **a design.** The engine is built so that this works without further
+code. The manifests in `deploy/` (see [deploy.md](deploy.md)) put it into
+practice and have run on a local k3d cluster; the sketch below is the shorter
+version, and has not run anywhere else. It is the
 "design for, but do not build" item of the plan (requirement 7).
 
 ## What the engine gives a scheduler

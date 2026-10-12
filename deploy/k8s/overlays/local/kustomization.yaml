@@ -1,0 +1,37 @@
+# For a k3d cluster on a development machine: plain http on *.localhost, and
+# secrets that are only good for this. Nothing here is for a real server.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: import-engine
+resources:
+  - ../../base
+secretGenerator:
+  - name: site-secrets
+    literals:
+      - MARIADB_ROOT_PASSWORD=local-root-only
+      - SITE_A_DB_PASSWORD=local-site-a-only
+      - SITE_B_DB_PASSWORD=local-site-b-only
+      - SITE_A_HASH_SALT=local-hash-salt-site-a-not-a-secret-at-all
+      - SITE_B_HASH_SALT=local-hash-salt-site-b-not-a-secret-at-all
+      - SITE_A_API_KEY=local-demo-key-site-a-reader
+      - ADMIN_PASSWORD=admin-local
+      - DEMO_PASSWORD=demo-local
+generatorOptions:
+  disableNameSuffixHash: true
+patches:
+  - target: {kind: ConfigMap, name: site-config}
+    patch: |-
+      - op: replace
+        path: /data/SITE_A_HOST
+        value: site-a.import-engine.localhost
+      - op: replace
+        path: /data/SITE_B_HOST
+        value: site-b.import-engine.localhost
+  - target: {kind: Ingress, name: sites}
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: site-a.import-engine.localhost
+      - op: replace
+        path: /spec/rules/1/host
+        value: site-b.import-engine.localhost

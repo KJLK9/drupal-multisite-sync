@@ -1,0 +1,41 @@
+# For a real server with k3s, Traefik and cert-manager. Before applying:
+#   * replace the two hostnames below (DNS must point at the server),
+#   * create the secret (docs/deploy.md); it is not in git,
+#   * set the image to the one the workflow pushed.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+images:
+  - name: import-engine
+    newName: ghcr.io/kjlk9/import-engine
+    newTag: latest
+patches:
+  - target: {kind: ConfigMap, name: site-config}
+    patch: |-
+      - op: replace
+        path: /data/SITE_A_HOST
+        value: site-a.import-engine.example.com
+      - op: replace
+        path: /data/SITE_B_HOST
+        value: site-b.import-engine.example.com
+  - target: {kind: Ingress, name: sites}
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: site-a.import-engine.example.com
+      - op: replace
+        path: /spec/rules/1/host
+        value: site-b.import-engine.example.com
+      - op: add
+        path: /metadata/annotations
+        value:
+          cert-manager.io/cluster-issuer: letsencrypt
+          traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      - op: add
+        path: /spec/tls
+        value:
+          - secretName: sites-tls
+            hosts:
+              - site-a.import-engine.example.com
+              - site-b.import-engine.example.com

@@ -1,0 +1,76 @@
+# The files of both sites (uploads, generated CSS and JS, the Twig cache).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: site-files
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests: {storage: 2Gi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+spec:
+  selector: {app: web}
+  ports:
+    - {name: http, port: 80, targetPort: 80}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  replicas: 1
+  # A volume that one node mounts: the old pod goes before the new one starts.
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: web}
+  template:
+    metadata:
+      labels: {app: web}
+    spec:
+      securityContext:
+        fsGroup: 33
+      containers:
+        - name: web
+          image: import-engine
+          ports:
+            - {name: http, containerPort: 80}
+          envFrom:
+            - configMapRef: {name: site-config}
+            - secretRef: {name: site-secrets}
+          volumeMounts:
+            - {name: files, mountPath: /var/www/html/web/sites/site_a/files, subPath: site_a}
+            - {name: files, mountPath: /var/www/html/web/sites/site_b/files, subPath: site_b}
+          # A file that Apache serves itself: ready when Apache is, whatever
+          # the state of the sites.
+          readinessProbe:
+            httpGet: {path: /robots.txt, port: http}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /robots.txt, port: http}
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {memory: 768Mi}
+      volumes:
+        - name: files
+          persistentVolumeClaim: {claimName: site-files}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sites
+spec:
+  rules:
+    - host: site-a.example.invalid
+      http:
+        paths:
+          - {path: /, pathType: Prefix, backend: {service: {name: web, port: {name: http}}}}
+    - host: site-b.example.invalid
+      http:
+        paths:
+          - {path: /, pathType: Prefix, backend: {service: {name: web, port: {name: http}}}}

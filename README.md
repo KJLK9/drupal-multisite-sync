@@ -89,7 +89,11 @@ The interface is under Configuration, System, **Import engine** on site B
 (`https://site-b.ddev.site/admin/config/system/import-engine`): imports (with a
 wizard), connections, run sets, runs, the dead letter queue, circuit breakers
 and settings. Scheduling imports (cron, a scheduled job, Kubernetes) is
-described in [docs/scheduling.md](docs/scheduling.md).
+described in [docs/scheduling.md](docs/scheduling.md), and running both sites
+in Kubernetes (a Dockerfile, manifests, one command to try it on a laptop with
+k3d) in [docs/deploy.md](docs/deploy.md); making it reachable from the internet
+from a home machine through a Cloudflare Tunnel is in
+[docs/tunnel.md](docs/tunnel.md).
 
 Site A serves `http://site-a.ddev.site/graphql/catalog` and `/jsonapi/...`,
 authenticated with the key in the `api-key` header (keys in query strings are
@@ -116,8 +120,11 @@ curl -H "api-key: $KEY" "http://site-a.ddev.site/graphql/catalog?query={customer
 Say it before it is asked. The interface (the wizard with its AJAX, dragging
 rows, the CSS) is covered by Kernel tests of what the server builds, not by a
 test in a browser; nothing runs JavaScript in CI. The mail reporter has not
-sent to a real mail server. Scheduling in Kubernetes is a design, not
-something that was run. Database partitioning of the history is not built in,
+sent to a real mail server. The Kubernetes setup has run on a k3d cluster on a
+development machine (both sites installed, the imports scheduled by a CronJob),
+and was made reachable from the internet through a Cloudflare Tunnel with
+Cloudflare Access in front, but not on a real server, with cert-manager
+certificates, or from the image pushed by the workflow. Database partitioning of the history is not built in,
 on purpose ([ADR 0009](docs/decisions/0009-storage-layout.md)).
 
 ## How this was made, and the part AI played
