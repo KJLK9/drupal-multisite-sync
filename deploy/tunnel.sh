@@ -40,7 +40,7 @@ write_overlay() {
 }
 
 secret_value() {
-  $K get secret site-secrets -o jsonpath="{.data.$1}" | base64 -d
+  $K get secret bootstrap-secret -o jsonpath="{.data.$1}" | base64 -d
 }
 
 case "${1:-up}" in
@@ -60,15 +60,33 @@ case "${1:-up}" in
 
     kubectl --context "$CTX" create namespace import-engine
     rand() { openssl rand -hex "$1"; }
-    $K create secret generic site-secrets \
-      --from-literal=MARIADB_ROOT_PASSWORD="$(rand 16)" \
-      --from-literal=SITE_A_DB_PASSWORD="$(rand 16)" \
-      --from-literal=SITE_B_DB_PASSWORD="$(rand 16)" \
-      --from-literal=SITE_A_HASH_SALT="$(rand 32)" \
-      --from-literal=SITE_B_HASH_SALT="$(rand 32)" \
-      --from-literal=SITE_A_API_KEY="$(rand 24)" \
-      --from-literal=ADMIN_PASSWORD="$(rand 12)" \
-      --from-literal=DEMO_PASSWORD="$(rand 6)"
+    # One secret per workload, with only what it needs. The values are made
+    # once, so that where a variable is in more than one they are the same.
+    ROOT_PW="$(rand 16)"; A_DB="$(rand 16)"; B_DB="$(rand 16)"
+    A_SALT="$(rand 32)"; B_SALT="$(rand 32)"; API_KEY="$(rand 24)"
+    ADMIN_PW="$(rand 12)"; DEMO_PW="$(rand 6)"
+    $K create secret generic mariadb-secret \
+      --from-literal=MARIADB_ROOT_PASSWORD="$ROOT_PW" \
+      --from-literal=SITE_A_DB_PASSWORD="$A_DB" \
+      --from-literal=SITE_B_DB_PASSWORD="$B_DB"
+    $K create secret generic web-secret \
+      --from-literal=SITE_A_DB_PASSWORD="$A_DB" \
+      --from-literal=SITE_B_DB_PASSWORD="$B_DB" \
+      --from-literal=SITE_A_HASH_SALT="$A_SALT" \
+      --from-literal=SITE_B_HASH_SALT="$B_SALT" \
+      --from-literal=SITE_A_API_KEY="$API_KEY"
+    $K create secret generic site-b-secret \
+      --from-literal=SITE_B_DB_PASSWORD="$B_DB" \
+      --from-literal=SITE_B_HASH_SALT="$B_SALT" \
+      --from-literal=SITE_A_API_KEY="$API_KEY"
+    $K create secret generic bootstrap-secret \
+      --from-literal=SITE_A_DB_PASSWORD="$A_DB" \
+      --from-literal=SITE_B_DB_PASSWORD="$B_DB" \
+      --from-literal=SITE_A_HASH_SALT="$A_SALT" \
+      --from-literal=SITE_B_HASH_SALT="$B_SALT" \
+      --from-literal=SITE_A_API_KEY="$API_KEY" \
+      --from-literal=ADMIN_PASSWORD="$ADMIN_PW" \
+      --from-literal=DEMO_PASSWORD="$DEMO_PW"
     $K create secret generic tunnel-token --from-literal=token="$CLOUDFLARE_TUNNEL_TOKEN"
 
     write_overlay

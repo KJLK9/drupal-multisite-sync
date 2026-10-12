@@ -121,7 +121,7 @@
         "phpcbf": "phpcbf --standard=phpcs.xml.dist",
         "phpstan": "phpstan analyse --memory-limit=1G",
         "rector": "rector process --dry-run",
-        "test": "bash -c 'mkdir -p /tmp/php-opcache && PHP_INI_SCAN_DIR=:build/php.d exec vendor/bin/paratest -c phpunit.xml.dist --functional \"$@\"' --",
+        "test": "bash -c 'mkdir -p /tmp/php-opcache && PHP_INI_SCAN_DIR=:build/php.d exec vendor/bin/paratest -c phpunit.xml.dist --functional --processes=${PARATEST_PROCESSES:-6} \"$@\"' --",
         "check": [
             "@phpcs",
             "@phpstan",

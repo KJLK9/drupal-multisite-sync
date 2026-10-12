@@ -36,7 +36,7 @@ spec:
           ports:
             - {name: mysql, containerPort: 3306}
           envFrom:
-            - secretRef: {name: site-secrets}
+            - secretRef: {name: mariadb-secret}
           volumeMounts:
             - {name: data, mountPath: /var/lib/mysql}
             - {name: init, mountPath: /docker-entrypoint-initdb.d}

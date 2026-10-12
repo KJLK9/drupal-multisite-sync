@@ -14,6 +14,9 @@ products, product prices) exposed through a read-only GraphQL API.
   minute). One module or test: `ddev composer test -- web/modules/custom/crm/import_engine`
   or `... -- --filter testName`. Use these while working; run the whole suite
   before reporting done.
+  By default 6 processes, so that a development machine stays usable (12 is
+  about a third faster and makes a laptop freeze for the length of the run):
+  `PARATEST_PROCESSES=12 ddev composer test` for more.
 - `ddev composer test:unit`: only the Unit tests (a fraction of a second).
 - `ddev composer test:serial`: PHPUnit one test after the other, with readable
   output, for debugging. Slow with the database on disk.

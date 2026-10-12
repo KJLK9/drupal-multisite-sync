@@ -15,10 +15,16 @@ spec:
       containers:
         - name: bootstrap
           image: import-engine
+          securityContext:
+            runAsUser: 33
+            runAsGroup: 33
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
           command: ["/opt/import-engine/bootstrap.sh"]
           envFrom:
             - configMapRef: {name: site-config}
-            - secretRef: {name: site-secrets}
+            - secretRef: {name: bootstrap-secret}
           volumeMounts:
             - {name: files, mountPath: /var/www/html/web/sites/site_a/files, subPath: site_a}
             - {name: files, mountPath: /var/www/html/web/sites/site_b/files, subPath: site_b}
@@ -55,10 +61,16 @@ spec:
           containers:
             - name: drush
               image: import-engine
+              securityContext:
+                runAsUser: 33
+                runAsGroup: 33
+                runAsNonRoot: true
+                allowPrivilegeEscalation: false
+                capabilities: {drop: [ALL]}
               command: ["sh", "-c", "drush --uri=http://$SITE_B_HOST import:run-set catalog --max-time=3000"]
               envFrom:
                 - configMapRef: {name: site-config}
-                - secretRef: {name: site-secrets}
+                - secretRef: {name: site-b-secret}
               volumeMounts:
                 - {name: files, mountPath: /var/www/html/web/sites/site_b/files, subPath: site_b}
               resources:
@@ -90,10 +102,16 @@ spec:
       containers:
         - name: drush
           image: import-engine
+          securityContext:
+            runAsUser: 33
+            runAsGroup: 33
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
           command: ["sh", "-c", "drush --uri=http://$SITE_B_HOST import:work --pool=default"]
           envFrom:
             - configMapRef: {name: site-config}
-            - secretRef: {name: site-secrets}
+            - secretRef: {name: site-b-secret}
           volumeMounts:
             - {name: files, mountPath: /var/www/html/web/sites/site_b/files, subPath: site_b}
           resources:

@@ -17,6 +17,9 @@ The design is in [scheduling.md](scheduling.md); this is how it is run.
 
 ## How it fits together
 
+- **Not as root.** Apache listens on 8080 and runs as `www-data` (user 33),
+  like drush in the jobs, with no extra privileges and no capabilities. The
+  service still answers on port 80.
 - **One image, two sites.** The site is chosen by the hostname
   (`web/sites/sites.php`, which reads `SITE_A_HOST` and `SITE_B_HOST`).
   Nothing that differs between environments is in the image: the database,
@@ -81,19 +84,31 @@ the port.
 4. **The image.** The workflow `Image` pushes `ghcr.io/<owner>/import-engine`.
    Make the package public, or give the cluster a pull secret. Put the name in
    the production overlay.
-5. **The secret**, which is not in git:
+5. **The secrets**, which are not in git: one per workload, each with only
+   what that workload needs, so the web pod has neither the root password of
+   the database nor the admin password, and the worker and the cron job have
+   only site B's.
 
    ```bash
    kubectl create namespace import-engine
-   kubectl -n import-engine create secret generic site-secrets \
-     --from-literal=MARIADB_ROOT_PASSWORD="$(openssl rand -hex 16)" \
-     --from-literal=SITE_A_DB_PASSWORD="$(openssl rand -hex 16)" \
-     --from-literal=SITE_B_DB_PASSWORD="$(openssl rand -hex 16)" \
-     --from-literal=SITE_A_HASH_SALT="$(openssl rand -hex 32)" \
-     --from-literal=SITE_B_HASH_SALT="$(openssl rand -hex 32)" \
-     --from-literal=SITE_A_API_KEY="$(openssl rand -hex 24)" \
+   r() { openssl rand -hex "$1"; }
+   ROOT=$(r 16); A_DB=$(r 16); B_DB=$(r 16)
+   A_SALT=$(r 32); B_SALT=$(r 32); KEY=$(r 24)
+   N="kubectl -n import-engine create secret generic"
+   $N mariadb-secret --from-literal=MARIADB_ROOT_PASSWORD=$ROOT \
+     --from-literal=SITE_A_DB_PASSWORD=$A_DB --from-literal=SITE_B_DB_PASSWORD=$B_DB
+   $N web-secret --from-literal=SITE_A_DB_PASSWORD=$A_DB \
+     --from-literal=SITE_B_DB_PASSWORD=$B_DB --from-literal=SITE_A_HASH_SALT=$A_SALT \
+     --from-literal=SITE_B_HASH_SALT=$B_SALT --from-literal=SITE_A_API_KEY=$KEY
+   $N site-b-secret --from-literal=SITE_B_DB_PASSWORD=$B_DB \
+     --from-literal=SITE_B_HASH_SALT=$B_SALT --from-literal=SITE_A_API_KEY=$KEY
+   $N bootstrap-secret --from-literal=SITE_A_DB_PASSWORD=$A_DB \
+     --from-literal=SITE_B_DB_PASSWORD=$B_DB --from-literal=SITE_A_HASH_SALT=$A_SALT \
+     --from-literal=SITE_B_HASH_SALT=$B_SALT --from-literal=SITE_A_API_KEY=$KEY \
      --from-literal=ADMIN_PASSWORD="choose-a-long-one"
    ```
+
+   The two sites share one web pod, so that pod has the passwords of both.
 6. **Replace the hostnames** in `deploy/k8s/overlays/production/kustomization.yaml`
    and apply: `kubectl apply -k deploy/k8s/overlays/production`.
 7. **Wait** for `kubectl -n import-engine wait --for=condition=complete job/bootstrap`

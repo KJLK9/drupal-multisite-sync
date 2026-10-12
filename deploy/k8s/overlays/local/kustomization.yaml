@@ -5,10 +5,28 @@ kind: Kustomization
 namespace: import-engine
 resources:
   - ../../base
+# One secret per workload, with only what that workload needs (the values are
+# the same where a variable is in more than one).
 secretGenerator:
-  - name: site-secrets
+  - name: mariadb-secret
     literals:
       - MARIADB_ROOT_PASSWORD=local-root-only
+      - SITE_A_DB_PASSWORD=local-site-a-only
+      - SITE_B_DB_PASSWORD=local-site-b-only
+  - name: web-secret
+    literals:
+      - SITE_A_DB_PASSWORD=local-site-a-only
+      - SITE_B_DB_PASSWORD=local-site-b-only
+      - SITE_A_HASH_SALT=local-hash-salt-site-a-not-a-secret-at-all
+      - SITE_B_HASH_SALT=local-hash-salt-site-b-not-a-secret-at-all
+      - SITE_A_API_KEY=local-demo-key-site-a-reader
+  - name: site-b-secret
+    literals:
+      - SITE_B_DB_PASSWORD=local-site-b-only
+      - SITE_B_HASH_SALT=local-hash-salt-site-b-not-a-secret-at-all
+      - SITE_A_API_KEY=local-demo-key-site-a-reader
+  - name: bootstrap-secret
+    literals:
       - SITE_A_DB_PASSWORD=local-site-a-only
       - SITE_B_DB_PASSWORD=local-site-b-only
       - SITE_A_HASH_SALT=local-hash-salt-site-a-not-a-secret-at-all

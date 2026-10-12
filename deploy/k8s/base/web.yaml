@@ -15,7 +15,7 @@ metadata:
 spec:
   selector: {app: web}
   ports:
-    - {name: http, port: 80, targetPort: 80}
+    - {name: http, port: 80, targetPort: http}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -38,10 +38,16 @@ spec:
         - name: web
           image: import-engine
           ports:
-            - {name: http, containerPort: 80}
+            - {name: http, containerPort: 8080}
+          securityContext:
+            runAsUser: 33
+            runAsGroup: 33
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
           envFrom:
             - configMapRef: {name: site-config}
-            - secretRef: {name: site-secrets}
+            - secretRef: {name: web-secret}
           volumeMounts:
             - {name: files, mountPath: /var/www/html/web/sites/site_a/files, subPath: site_a}
             - {name: files, mountPath: /var/www/html/web/sites/site_b/files, subPath: site_b}

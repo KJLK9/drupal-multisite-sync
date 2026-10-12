@@ -15,7 +15,8 @@ cd "$(dirname "$0")/.."
 # Where a user-level install of k3d goes.
 export PATH="$HOME/.local/bin:$PATH"
 
-CLUSTER=import-engine
+CLUSTER="${CLUSTER:-import-engine}"
+PORT="${PORT:-8080}"
 IMAGE=import-engine:local
 K="kubectl --context k3d-${CLUSTER} -n import-engine"
 
@@ -23,7 +24,7 @@ case "${1:-up}" in
   up)
     docker build -f deploy/Dockerfile -t "$IMAGE" .
     k3d cluster get "$CLUSTER" >/dev/null 2>&1 || \
-      k3d cluster create "$CLUSTER" --port "127.0.0.1:8080:80@loadbalancer" --wait
+      k3d cluster create "$CLUSTER" --port "127.0.0.1:${PORT}:80@loadbalancer" --wait
     k3d image import "$IMAGE" -c "$CLUSTER"
     # A Job cannot be changed once it exists: replace it.
     $K delete job bootstrap --ignore-not-found
@@ -32,8 +33,8 @@ case "${1:-up}" in
     $K wait --for=condition=complete job/bootstrap --timeout=900s
     $K rollout status deployment/web --timeout=300s
     echo
-    echo "Site A: http://site-a.import-engine.localhost:8080"
-    echo "Site B: http://site-b.import-engine.localhost:8080 (admin / admin-local)"
+    echo "Site A: http://site-a.import-engine.localhost:${PORT}"
+    echo "Site B: http://site-b.import-engine.localhost:${PORT} (admin / admin-local)"
     ;;
   down)
     k3d cluster delete "$CLUSTER"

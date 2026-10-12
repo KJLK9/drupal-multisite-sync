@@ -34,5 +34,12 @@ COPY deploy/docker/bootstrap.sh deploy/docker/seed-site-a.php deploy/docker/seed
 RUN chmod +x /opt/import-engine/bootstrap.sh \
     && mkdir -p web/sites/site_a/files web/sites/site_b/files \
     && chown -R www-data:www-data web/sites/site_a/files web/sites/site_b/files
-ENV PATH="/var/www/html/vendor/bin:${PATH}"
-EXPOSE 80
+# Not as root: Apache listens on 8080 and runs as www-data, and so do drush and
+# the jobs (the Kubernetes manifests set the same user).
+RUN sed -ri 's/^Listen 80$/Listen 8080/' /etc/apache2/ports.conf \
+    && sed -ri 's/<VirtualHost \*:80>/<VirtualHost *:8080>/' /etc/apache2/sites-available/*.conf \
+    && mkdir -p /var/run/apache2 /var/lock/apache2 /var/log/apache2 \
+    && chown -R www-data:www-data /var/run/apache2 /var/lock/apache2 /var/log/apache2
+ENV PATH="/var/www/html/vendor/bin:${PATH}" HOME=/tmp
+USER www-data
+EXPOSE 8080
