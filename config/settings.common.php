@@ -5,13 +5,14 @@
  * Settings shared by all sites, required from config/<site>/settings.php.
  */
 
-// Hosts that are trusted: the site's own DDEV hostname (site_a ->
-// site-a.ddev.site) and, outside DDEV, the host in <SITE>_HOST (for example
+// Hosts that are trusted: in DDEV the site's own hostname (site_a ->
+// site-a.ddev.site), and the host in <SITE>_HOST (for example
 // SITE_A_HOST=site-a.import-engine.example.com), which is also how
 // web/sites/sites.php finds the site.
-$settings['trusted_host_patterns'] = [
-  '^' . preg_quote(str_replace('_', '-', basename($site_path)), '/') . '\.ddev\.site$',
-];
+$settings['trusted_host_patterns'] = [];
+if (getenv('IS_DDEV_PROJECT')) {
+  $settings['trusted_host_patterns'][] = '^' . preg_quote(str_replace('_', '-', basename($site_path)), '/') . '\.ddev\.site$';
+}
 $site_host = getenv(strtoupper(basename($site_path)) . '_HOST');
 if ($site_host !== FALSE && $site_host !== '') {
   $settings['trusted_host_patterns'][] = '^' . preg_quote($site_host, '/') . '$';
@@ -35,7 +36,7 @@ unset($proxies);
 // interface shows what is saved.
 $api_url = getenv('SITE_A_API_URL');
 $api_host = getenv('SITE_A_HOST');
-if ($api_url !== FALSE && $api_url !== '' && $api_host !== FALSE && $api_host !== '') {
+if (basename($site_path) === 'site_b' && $api_url !== FALSE && $api_url !== '' && $api_host !== FALSE && $api_host !== '') {
   $config['import_engine.import_connection.site_a']['source']['configuration']['url'] = $api_url;
   $config['import_engine.import_connection.site_a']['source']['configuration']['headers'] = ['Host' => $api_host];
 }

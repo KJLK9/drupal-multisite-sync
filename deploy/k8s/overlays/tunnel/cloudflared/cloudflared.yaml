@@ -14,6 +14,7 @@ spec:
     metadata:
       labels: {app: cloudflared}
     spec:
+      automountServiceAccountToken: false
       containers:
         - name: cloudflared
           image: cloudflare/cloudflared:latest

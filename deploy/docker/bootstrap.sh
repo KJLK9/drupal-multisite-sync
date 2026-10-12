@@ -1,7 +1,8 @@
 #!/bin/bash
 # Installs the two sites from their exported configuration, if they are not
 # installed yet, and gives site A its test data and the reader that site B
-# reads with. Safe to run again: what exists is left alone.
+# reads with. Safe to run again: a site that is installed gets the configuration
+# of the image imported, and the seed data is left alone.
 #
 # Needs in the environment: SITE_A_HOST, SITE_B_HOST, the SITE_*_DB_* and
 # SITE_*_HASH_SALT variables, SITE_A_API_KEY and ADMIN_PASSWORD, and
@@ -41,7 +42,10 @@ install_site() {
   local host="$1"
   wait_for_database "$host"
   if installed "$host"; then
-    echo "${host} is installed already."
+    # Installed: bring it up to date with the configuration in the image.
+    echo "${host} is installed; importing its configuration."
+    drush_site "$host" config:import -y
+    drush_site "$host" updatedb -y
     return
   fi
   echo "Installing ${host} from its configuration."

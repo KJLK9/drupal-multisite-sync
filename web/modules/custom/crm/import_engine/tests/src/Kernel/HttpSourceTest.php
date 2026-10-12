@@ -177,6 +177,92 @@ class HttpSourceTest extends HttpSourceTestBase {
   }
 
   /**
+   * A redirect is not followed: the key would go to the host it points at.
+   */
+  public function testRedirectIsNotFollowed(): void {
+    putenv(self::ENV_VAR . '=' . self::KEY);
+    $this->mockResponses([
+      new Response(302, ['Location' => 'https://elsewhere.test/graphql/catalog']),
+      $this->fixtureResponse(),
+    ]);
+
+    try {
+      $this->source()->fetchPage();
+      $this->fail('Expected a SourceException.');
+    }
+    catch (SourceException $exception) {
+      $this->assertFalse($exception->retryable);
+      $this->assertStringContainsString('HTTP 302, a redirect', $exception->getMessage());
+      $this->assertStringNotContainsString(self::KEY, $exception->getMessage());
+    }
+    // One request, to the configured host: the second answer was not asked for.
+    $this->assertCount(1, $this->history);
+    $this->assertFalse($this->history[0]['options']['allow_redirects']);
+  }
+
+  /**
+   * Addresses where cloud metadata lives are refused, and nothing is sent.
+   */
+  public function testMetadataAddressIsRefused(): void {
+    putenv(self::ENV_VAR . '=' . self::KEY);
+    $this->mockResponses([$this->fixtureResponse()]);
+
+    foreach (['http://169.254.169.254/latest/meta-data', 'http://[fe80::1]/x', 'ftp://example.test/x'] as $url) {
+      try {
+        $this->source(['url' => $url])->fetchPage();
+        $this->fail('Expected a SourceException for ' . $url);
+      }
+      catch (SourceException $exception) {
+        $this->assertFalse($exception->retryable, $url);
+      }
+    }
+    $this->assertSame([], $this->history);
+  }
+
+  /**
+   * A variable that is not a key cannot be sent anywhere, whatever the address.
+   */
+  public function testForbiddenVariableIsNotSent(): void {
+    putenv('SITE_B_DB_PASSWORD=database-secret');
+    $this->mockResponses([$this->fixtureResponse()]);
+    $authentication = [
+      'plugin' => 'api_key_header',
+      'configuration' => ['header' => 'api-key', 'env_var' => 'SITE_B_DB_PASSWORD'],
+    ];
+
+    try {
+      $this->source([], $authentication)->fetchPage();
+      $this->fail('Expected a SourceException.');
+    }
+    catch (SourceException $exception) {
+      $this->assertFalse($exception->retryable);
+      $this->assertStringContainsString('may not be used as a key', $exception->getMessage());
+      $this->assertStringNotContainsString('database-secret', $exception->getMessage());
+    }
+    finally {
+      putenv('SITE_B_DB_PASSWORD');
+    }
+    $this->assertSame([], $this->history);
+  }
+
+  /**
+   * A user name and password in the address does not end up in messages.
+   */
+  public function testUserInfoIsLeftOutOfMessages(): void {
+    putenv(self::ENV_VAR . '=' . self::KEY);
+    $this->mockResponses([new Response(404)]);
+
+    try {
+      $this->source(['url' => 'https://user:hunter2@site-a.test/graphql'])->fetchPage();
+      $this->fail('Expected a SourceException.');
+    }
+    catch (SourceException $exception) {
+      $this->assertStringContainsString('https://site-a.test/graphql', $exception->getMessage());
+      $this->assertStringNotContainsString('hunter2', $exception->getMessage());
+    }
+  }
+
+  /**
    * Without authentication no credentials are sent.
    */
   public function testNoAuthentication(): void {

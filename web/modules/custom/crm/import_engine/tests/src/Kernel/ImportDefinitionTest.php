@@ -87,6 +87,21 @@ class ImportDefinitionTest extends KernelTestBase {
   }
 
   /**
+   * Returns the source of a valid definition, with other settings.
+   *
+   * @param array<string, mixed> $changes
+   *   Settings that replace those of the valid source.
+   *
+   * @return array<string, mixed>
+   *   The source.
+   */
+  protected static function sourceWith(array $changes): array {
+    $source = self::validValues()['source'];
+    $source['configuration'] = $changes + $source['configuration'];
+    return $source;
+  }
+
+  /**
    * A definition is saved, loaded and read back through typed getters.
    */
   public function testSaveAndLoad(): void {
@@ -258,6 +273,27 @@ class ImportDefinitionTest extends KernelTestBase {
       'unknown target plugin' => [
         ['target' => ['plugin' => 'carrier_pigeon', 'configuration' => []]],
         'target.plugin',
+      ],
+      'a user name and password in the URL' => [
+        ['source' => self::sourceWith(['url' => 'https://user:hunter2@site-a.test/graphql'])],
+        'source.configuration.url',
+      ],
+      'a credential in the headers' => [
+        ['source' => self::sourceWith(['headers' => ['Authorization' => 'Bearer abc']])],
+        'source.configuration.headers.Authorization',
+      ],
+      'a key in a header by another name' => [
+        ['source' => self::sourceWith(['headers' => ['X-Api-Key' => 'abc']])],
+        'source.configuration.headers.X-Api-Key',
+      ],
+      'a variable that is the database password' => [
+        [
+          'authentication' => [
+            'plugin' => 'api_key_header',
+            'configuration' => ['header' => 'api-key', 'env_var' => 'SITE_B_DB_PASSWORD'],
+          ],
+        ],
+        'authentication.configuration.env_var',
       ],
       'unknown source plugin' => [
         ['source' => ['plugin' => 'carrier_pigeon', 'configuration' => []]],

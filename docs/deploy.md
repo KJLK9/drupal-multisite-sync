@@ -27,13 +27,15 @@ The design is in [scheduling.md](scheduling.md); this is how it is run.
   `config/<site>/sync` (the connection, the three imports and the run set of
   site B included) is what the sites are. Site A gets test data and an account
   `catalog_reader` whose key is the one site B sends, so the two agree without
-  copying anything. Run it again and what exists is left alone.
+  copying anything. Run it again and an installed site only gets the configuration of the
+  image imported (and its updates run); the data is left alone.
 - **Imports run on their own.** A CronJob runs the run set `catalog` every
   hour, and a worker handles queued items. That is the design of
   [scheduling.md](scheduling.md), running.
 - **Behind TLS.** The ingress ends TLS. Drupal trusts the forwarded headers
-  only from `REVERSE_PROXY_ADDRESSES` (the pod ranges of the cluster) and only
-  answers to the hosts it is configured for.
+  only from `REVERSE_PROXY_ADDRESSES` (the pod ranges of the cluster; narrow
+  it to the ingress or tunnel pod where the cluster allows) and only answers to
+  the hosts in `SITE_A_HOST` and `SITE_B_HOST` (the DDEV names only in DDEV).
 
 ## On this machine, with k3d
 
@@ -58,8 +60,9 @@ kubectl --context k3d-import-engine -n import-engine create job --from=cronjob/i
 kubectl --context k3d-import-engine -n import-engine logs -f job/run-1
 ```
 
-The passwords and keys of this overlay are fixed and public. They are for a
-cluster that only this machine can reach.
+The passwords and keys of this overlay are fixed and public. The cluster
+listens on 127.0.0.1 only, so it is for this machine alone; do not publish
+the port.
 
 ## On a server
 

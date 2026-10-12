@@ -21,6 +21,8 @@ use Drupal\import_engine\Page\PageFingerprint;
 use Drupal\import_engine\Pagination\PaginationInterface;
 use Drupal\import_engine\Pagination\PaginationPluginManager;
 use Drupal\import_engine\Path\PathResolver;
+use Drupal\import_engine\Http\TargetGuard;
+use Drupal\import_engine\Secret\ForbiddenSecretException;
 use Drupal\import_engine\Secret\MissingSecretException;
 use Drupal\import_engine\Source\Severity;
 use Drupal\import_engine\Source\SourceCheck;
@@ -414,7 +416,7 @@ class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInter
     try {
       return $this->authentication->apply($request);
     }
-    catch (MissingSecretException $exception) {
+    catch (MissingSecretException | ForbiddenSecretException $exception) {
       throw SourceException::permanent($exception->getMessage(), $exception);
     }
   }
@@ -428,11 +430,20 @@ class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInter
    */
   private function send(RequestSpec $request, string $label): ResponseInterface {
     $timeout = (int) $this->configuration['timeout'];
+    try {
+      TargetGuard::assertAllowed($request->url);
+    }
+    catch (SourceException $exception) {
+      throw SourceException::permanent($label . ': ' . $exception->getMessage(), $exception);
+    }
     $options = $request->toGuzzleOptions() + [
       'timeout' => $timeout,
       'connect_timeout' => $timeout,
       // Status codes are judged here, not turned into exceptions.
       'http_errors' => FALSE,
+      // A redirect is not followed: it would send the key, in a header Guzzle
+      // does not know to hold a secret, to whatever host it points at.
+      'allow_redirects' => FALSE,
     ];
     try {
       $response = $this->httpClient->request($request->method, $request->url, $options);
@@ -449,6 +460,9 @@ class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInter
     if ($status >= 200 && $status < 300) {
       return $response;
     }
+    if ($status >= 300 && $status < 400) {
+      throw SourceException::permanent(sprintf('%s: HTTP %d, a redirect. Redirects are not followed; use the address it leads to.', $label, $status));
+    }
     $retryable = $status === 408 || $status === 429 || $status >= 500;
     $message = sprintf('%s: HTTP %d.', $label, $status);
     throw $retryable ? SourceException::transient($message) : SourceException::permanent($message);
@@ -460,7 +474,9 @@ class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInter
    * A next-page link can carry tokens in its query, so it is never printed.
    */
   private function describe(RequestSpec $request): string {
-    return (string) strtok($request->url, '?#');
+    // Without the query and fragment, and without a user name and password.
+    $address = (string) strtok($request->url, '?#');
+    return (string) preg_replace('#^([a-z][a-z0-9+.-]*://)[^/@]*@#i', '$1', $address);
   }
 
   /**

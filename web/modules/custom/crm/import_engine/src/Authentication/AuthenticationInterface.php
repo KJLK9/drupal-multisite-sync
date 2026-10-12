@@ -19,6 +19,8 @@ interface AuthenticationInterface extends PluginInspectionInterface, Configurabl
    *
    * @throws \Drupal\import_engine\Secret\MissingSecretException
    *   When a secret the plugin needs is not available.
+   * @throws \Drupal\import_engine\Secret\ForbiddenSecretException
+   *   When the plugin is set to read a variable that may not hold a key.
    */
   public function apply(RequestSpec $request): RequestSpec;
 

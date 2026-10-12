@@ -23,7 +23,7 @@ case "${1:-up}" in
   up)
     docker build -f deploy/Dockerfile -t "$IMAGE" .
     k3d cluster get "$CLUSTER" >/dev/null 2>&1 || \
-      k3d cluster create "$CLUSTER" --port "8080:80@loadbalancer" --wait
+      k3d cluster create "$CLUSTER" --port "127.0.0.1:8080:80@loadbalancer" --wait
     k3d image import "$IMAGE" -c "$CLUSTER"
     # A Job cannot be changed once it exists: replace it.
     $K delete job bootstrap --ignore-not-found

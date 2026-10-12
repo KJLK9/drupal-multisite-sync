@@ -21,6 +21,7 @@ spec:
     metadata:
       labels: {app: mariadb}
     spec:
+      automountServiceAccountToken: false
       containers:
         - name: mariadb
           image: mariadb:11.8

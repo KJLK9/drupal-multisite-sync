@@ -13,7 +13,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends mariadb-client unzip git \
     && rm -rf /var/lib/apt/lists/* \
     && install-php-extensions gd opcache pdo_mysql zip intl \
-    && a2enmod rewrite headers remoteip \
+    && a2enmod rewrite headers \
     && sed -ri 's!/var/www/html!/var/www/html/web!g' /etc/apache2/sites-available/*.conf /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf \
     && sed -ri 's!AllowOverride None!AllowOverride All!' /etc/apache2/apache2.conf
 

@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Drupal\Tests\import_engine\Unit;
 
 use Drupal\import_engine\Http\RequestSpec;
+use Drupal\import_engine\Secret\ForbiddenSecretException;
 use Drupal\import_engine\Secret\MissingSecretException;
 use Drupal\import_engine\Secret\SecretResolver;
 use Drupal\Tests\UnitTestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 
 /**
@@ -84,6 +86,60 @@ class RequestAndSecretTest extends UnitTestCase {
     }
     finally {
       putenv($name);
+    }
+  }
+
+  /**
+   * Only names that say they hold a key for an API may be used.
+   *
+   * @param string $name
+   *   The variable name.
+   * @param bool $allowed
+   *   Whether it may be used.
+   */
+  #[DataProvider('names')]
+  public function testWhichNamesMayBeUsed(string $name, bool $allowed): void {
+    $this->assertSame($allowed, SecretResolver::isAllowedName($name));
+  }
+
+  /**
+   * Names and whether they may be used as a key.
+   *
+   * @return array<string, array{string, bool}>
+   *   The names.
+   */
+  public static function names(): array {
+    return [
+      'a site key' => ['SITE_A_API_KEY', TRUE],
+      'a token' => ['PARTNER_TOKEN', TRUE],
+      'a secret' => ['CRM_SECRET', TRUE],
+      'a plain key' => ['CATALOG_KEY', TRUE],
+      'the database password' => ['SITE_B_DB_PASSWORD', FALSE],
+      'a hash salt' => ['SITE_B_HASH_SALT', FALSE],
+      'the admin password' => ['ADMIN_PASSWORD', FALSE],
+      'the root password' => ['MARIADB_ROOT_PASSWORD', FALSE],
+      'a key about the database' => ['SITE_A_DB_KEY', FALSE],
+      'a key about a password' => ['PASSWORD_API_KEY', FALSE],
+      'something else' => ['PATH', FALSE],
+      'a name that is not upper case' => ['site_a_api_key', FALSE],
+      'only the ending' => ['_KEY', FALSE],
+    ];
+  }
+
+  /**
+   * A forbidden name is refused before the environment is looked at.
+   */
+  public function testForbiddenNameIsNeverRead(): void {
+    putenv('SITE_B_DB_PASSWORD=database-secret');
+    try {
+      (new SecretResolver())->get('SITE_B_DB_PASSWORD');
+      $this->fail('Expected a ForbiddenSecretException.');
+    }
+    catch (ForbiddenSecretException $exception) {
+      $this->assertStringNotContainsString('database-secret', $exception->getMessage());
+    }
+    finally {
+      putenv('SITE_B_DB_PASSWORD');
     }
   }
 

@@ -8,6 +8,7 @@ spec:
   backoffLimit: 3
   template:
     spec:
+      automountServiceAccountToken: false
       restartPolicy: OnFailure
       securityContext:
         fsGroup: 33
@@ -47,6 +48,7 @@ spec:
       activeDeadlineSeconds: 3300
       template:
         spec:
+          automountServiceAccountToken: false
           restartPolicy: Never
           securityContext:
             fsGroup: 33
@@ -81,6 +83,7 @@ spec:
     metadata:
       labels: {app: import-worker}
     spec:
+      automountServiceAccountToken: false
       terminationGracePeriodSeconds: 60
       securityContext:
         fsGroup: 33

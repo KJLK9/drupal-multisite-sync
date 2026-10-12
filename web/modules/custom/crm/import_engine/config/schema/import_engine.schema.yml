@@ -179,7 +179,7 @@ import_engine.source.http:
         Regex:
           # No query string or fragment: parameters go in "query", so secrets
           # and paging values never end up in URLs in messages.
-          pattern: '/^https?:\/\/[^?#\s]+$/'
+          pattern: '/^https?:\/\/[^\/?#\s@]+(?:\/[^?#\s]*)?$/'
           message: 'The URL must start with http:// or https:// and have no query string; use the query setting.'
     method:
       type: string
@@ -190,6 +190,8 @@ import_engine.source.http:
       type: sequence
       requiredKey: false
       label: 'Headers'
+      constraints:
+        NoSecretHeaders: ~
       sequence:
         type: string
         label: 'Header value'
@@ -268,6 +270,9 @@ import_engine.authentication.api_key_header:
         Regex:
           pattern: '/^[A-Z][A-Z0-9_]*$/'
           message: 'An environment variable name is upper case letters, digits and underscores.'
+        # Only names that say they hold a key (ADR 0024).
+        Callback:
+          callback: ['Drupal\import_engine\Secret\SecretResolver', 'validateName']
 
 # A target plugin; its configuration is typed per plugin.
 import_engine.target_reference:
@@ -450,8 +455,8 @@ import_engine.source.graphql:
       constraints:
         NotBlank: ~
         Regex:
-          pattern: '/^https?:\/\/[^?#\s]+$/'
-          message: 'The URL must start with http:// or https:// and have no query string.'
+          pattern: '/^https?:\/\/[^\/?#\s@]+(?:\/[^?#\s]*)?$/'
+          message: 'The URL must start with http:// or https://, have no user name and password, and no query string.'
     query:
       type: string
       label: 'GraphQL query'
@@ -468,6 +473,8 @@ import_engine.source.graphql:
       type: sequence
       requiredKey: false
       label: 'Headers'
+      constraints:
+        NoSecretHeaders: ~
       sequence:
         type: string
         label: 'Header value'
@@ -781,8 +788,8 @@ import_engine.connection_source.graphql:
       constraints:
         NotBlank: ~
         Regex:
-          pattern: '/^https?:\/\/[^?#\s]+$/'
-          message: 'The URL must start with http:// or https:// and have no query string.'
+          pattern: '/^https?:\/\/[^\/?#\s@]+(?:\/[^?#\s]*)?$/'
+          message: 'The URL must start with http:// or https://, have no user name and password, and no query string.'
     headers:
       type: import_engine.connection_headers
     timeout:
@@ -791,6 +798,8 @@ import_engine.connection_source.graphql:
 import_engine.connection_headers:
   type: sequence
   label: 'Headers'
+  constraints:
+    NoSecretHeaders: ~
   sequence:
     type: string
     label: 'Header value'

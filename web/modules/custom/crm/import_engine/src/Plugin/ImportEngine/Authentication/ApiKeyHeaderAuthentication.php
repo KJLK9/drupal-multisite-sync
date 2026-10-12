@@ -105,7 +105,7 @@ final class ApiKeyHeaderAuthentication extends AuthenticationPluginBase implemen
     $form['env_var'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Environment variable'),
-      '#description' => $this->t('The NAME of the environment variable that holds the key, for example SITE_A_API_KEY. The key itself is never stored in the configuration.'),
+      '#description' => $this->t('The NAME of the environment variable that holds the key, for example SITE_A_API_KEY. It must end in _API_KEY, _TOKEN, _SECRET or _KEY, and cannot be about the database, a password or a salt. The key itself is never stored in the configuration.'),
       '#default_value' => $this->configuration['env_var'],
       '#required' => TRUE,
     ];
