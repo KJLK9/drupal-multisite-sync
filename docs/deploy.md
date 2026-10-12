@@ -152,6 +152,3 @@ A sequence that shows what the engine is for, about ten minutes:
    back.
 7. **Idempotence**: run it again and see that nothing changed; change a
    customer on site A and run again to see one update.
-
-
-CLOUDFLARE_TUNNEL_TOKEN=eyJhIjoiZDVjMGI3ODRkODE1MTFiZDQ1ZThiMDk5M2Q3YTE0ODQiLCJ0IjoiN2FiMWJlNDMtZjhlOC00ODgyLTk0M2EtZWFhZWVhNTY3YzZjIiwicyI6Ik56WTFNV1U1T1dJdFltSXlaaTAwTURnekxUa3dZMkl0TlRJd1kyUXpaV001TkRFMyJ9 TUNNEL_DOMAIN=kjloo.dev deploy/tunnel.sh up
