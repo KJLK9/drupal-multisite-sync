@@ -16,6 +16,7 @@ use Drupal\import_engine\Storage\ItemState;
 use Drupal\import_engine\Storage\ItemStorage;
 use Drupal\import_engine_ui\DeadLetter\DeadLetterOperations;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 /**
  * The dead letter queue: items that ran out of attempts, with their errors.
@@ -131,6 +132,7 @@ final class DeadLetterForm extends FormBase {
    *   The form state.
    */
   public function submitForm(array &$form, FormStateInterface $form_state): void {
+    $this->assertMayAdminister();
     // The buttons have their own handlers; this is the confirmation step.
     $ids = $form_state->get('confirm_discard');
     if (is_array($ids) && ($form_state->getTriggeringElement()['#name'] ?? '') === 'confirm') {
@@ -150,6 +152,7 @@ final class DeadLetterForm extends FormBase {
    *   The form state.
    */
   public function submitRetry(array &$form, FormStateInterface $form_state): void {
+    $this->assertMayAdminister();
     $ids = $this->selected($form_state);
     if ($ids === []) {
       return;
@@ -167,6 +170,7 @@ final class DeadLetterForm extends FormBase {
    *   The form state.
    */
   public function submitProcess(array &$form, FormStateInterface $form_state): void {
+    $this->assertMayAdminister();
     $ids = $this->selected($form_state);
     if ($ids === []) {
       return;
@@ -189,6 +193,7 @@ final class DeadLetterForm extends FormBase {
    *   The form state.
    */
   public function submitDiscard(array &$form, FormStateInterface $form_state): void {
+    $this->assertMayAdminister();
     $ids = $this->selected($form_state);
     if ($ids === []) {
       return;
@@ -305,6 +310,21 @@ final class DeadLetterForm extends FormBase {
       return [];
     }
     return Link::fromTextAndUrl($this->t('Edit payload'), Url::fromRoute('import_engine_ui.dead_letter_edit', ['item_id' => $id]))->toRenderable();
+  }
+
+  /**
+   * Refuses a person who may only look.
+   *
+   * The buttons are hidden for them, which is a convenience; what they may do
+   * is decided here as well.
+   *
+   * @throws \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException
+   *   When the person may not administer import runs.
+   */
+  private function assertMayAdminister(): void {
+    if (!$this->currentUser()->hasPermission('administer import runs')) {
+      throw new AccessDeniedHttpException();
+    }
   }
 
 }

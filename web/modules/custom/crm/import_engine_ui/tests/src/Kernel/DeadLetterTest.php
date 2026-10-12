@@ -19,6 +19,7 @@ use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\Session;
 use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -323,6 +324,48 @@ class DeadLetterTest extends NodeTestBase {
     $this->assertFalse($manager->checkNamedRoute('import_engine_ui.dead_letter_edit', ['item_id' => $ids[0]], $viewer));
     $this->assertTrue($manager->checkNamedRoute('import_engine_ui.dead_letter_edit', ['item_id' => $ids[0]], $admin));
     $this->assertFalse($manager->checkNamedRoute('import_engine_ui.dead_letter', [], $this->createUser()));
+  }
+
+  /**
+   * A person who may only look cannot use the handlers of the buttons.
+   *
+   * The buttons are hidden for them; a request made by hand has no button to
+   * hide.
+   */
+  public function testViewerCannotUseTheHandlers(): void {
+    $ids = $this->deadItems();
+    $this->setUpCurrentUser(['name' => 'viewer'], ['view import runs']);
+    $form_object = $this->container->get('class_resolver')->getInstanceFromDefinition(DeadLetterForm::class);
+
+    foreach (['submitRetry', 'submitProcess', 'submitDiscard'] as $handler) {
+      $state = new FormState();
+      $state->setValues(['items' => array_combine($ids, $ids)]);
+      $form = [];
+      try {
+        $form_object->$handler($form, $state);
+        $this->fail($handler . ' must refuse a viewer.');
+      }
+      catch (AccessDeniedHttpException) {
+        $this->addToAssertionCount(1);
+      }
+    }
+    // Nothing changed.
+    $this->assertSame(ItemState::Dead, $this->items->find($ids[0])?->state);
+  }
+
+  /**
+   * Only a dead item, or one waiting for a retry, can have its payload edited.
+   */
+  public function testPendingItemCannotBeEdited(): void {
+    $this->extractRows([['id' => 1, 'name' => 'Acme', 'code' => 'A']]);
+    $pending = $this->items->listItems(NULL, ItemState::Pending, 10);
+    $this->assertCount(1, $pending);
+    $state = new FormState();
+    $state->addBuildInfo('args', [$pending[0]->id]);
+
+    $this->expectException(NotFoundHttpException::class);
+
+    $this->container->get('form_builder')->buildForm(DeadLetterEditForm::class, $state);
   }
 
 }

@@ -18,9 +18,9 @@ use Drupal\Core\Session\AccountInterface;
  * named after the entity type: "view product", "edit product",
  * "delete product" and "create product", and the entity type's admin
  * permission grants everything. Unpublished entities are only visible to
- * administrators, in entity access checks and, through
- * \Drupal\published_access\Hook\QueryAccessHooks, in entity queries with
- * access checking enabled.
+ * administrators, and only they can change or delete them, in entity access
+ * checks and, through \Drupal\published_access\Hook\QueryAccessHooks, in
+ * entity queries with access checking enabled.
  */
 class PublishedEntityAccessControlHandler extends EntityAccessControlHandler {
 
@@ -36,10 +36,27 @@ class PublishedEntityAccessControlHandler extends EntityAccessControlHandler {
     $type = $this->entityTypeId;
     return match ($operation) {
       'view' => $this->checkViewAccess($entity, $account),
-      'update' => AccessResult::allowedIfHasPermission($account, "edit $type"),
-      'delete' => AccessResult::allowedIfHasPermission($account, "delete $type"),
+      'update' => $this->checkChangeAccess($entity, $account, "edit $type"),
+      'delete' => $this->checkChangeAccess($entity, $account, "delete $type"),
       default => AccessResult::neutral()->cachePerPermissions(),
     };
+  }
+
+  /**
+   * Checks access to change or delete: not for what cannot even be seen.
+   *
+   * An unpublished entity is only for administrators, so a person who may edit
+   * the type but not see unpublished entities does not edit or delete one by
+   * its address either.
+   */
+  protected function checkChangeAccess(EntityInterface $entity, AccountInterface $account, string $permission): AccessResultInterface {
+    if ($entity instanceof EntityPublishedInterface && !$entity->isPublished()) {
+      return AccessResult::neutral('Unpublished.')
+        ->addCacheableDependency($entity)
+        ->cachePerPermissions();
+    }
+    return AccessResult::allowedIfHasPermission($account, $permission)
+      ->addCacheableDependency($entity);
   }
 
   /**

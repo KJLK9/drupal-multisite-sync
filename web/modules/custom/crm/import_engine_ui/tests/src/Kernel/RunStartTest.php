@@ -209,6 +209,38 @@ class RunStartTest extends NodeTestBase {
   }
 
   /**
+   * A request that leaves out the button does not start a disabled import.
+   *
+   * Hiding the button is for the person; what runs is decided on submit, and by
+   * the starter, which every way of starting a run goes through.
+   */
+  public function testDisabledImportIsNotStartedWithoutTheButton(): void {
+    $definition = $this->httpImport([$this->answer([1])]);
+    $definition->setStatus(FALSE)->save();
+    $this->messages();
+
+    // Submitted with no button at all.
+    $this->submit($definition, ['op' => '']);
+
+    $this->assertStringContainsString('is disabled', $this->messages()['error'][0] ?? '');
+    $this->assertNull($this->container->get('import_engine.run_manager')->latest('customers'));
+    $this->assertNull($this->container->get('import_engine.run_starter')->activeRunId('customers'));
+  }
+
+  /**
+   * The starter refuses a disabled import, whoever asks.
+   */
+  public function testStarterRefusesDisabledImport(): void {
+    $definition = $this->httpImport([$this->answer([1])]);
+    $definition->setStatus(FALSE)->save();
+
+    $this->expectException(\RuntimeException::class);
+    $this->expectExceptionMessage('is disabled');
+
+    $this->container->get('import_engine.run_starter')->start($definition, Trigger::Drush);
+  }
+
+  /**
    * A source that is down stops the run, and the run can be continued.
    */
   public function testOutageStopsTheRunAndItContinues(): void {

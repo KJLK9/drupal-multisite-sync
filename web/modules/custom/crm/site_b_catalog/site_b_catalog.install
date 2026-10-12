@@ -1,0 +1,39 @@
+<?php
+
+/**
+ * @file
+ * Install and update code of the catalog of site B.
+ */
+
+use Drupal\Core\Utility\UpdateException;
+
+/**
+ * Adds the unique keys of the account and agreement tables.
+ *
+ * The keys come from the storage schema (CatalogStorageSchema), which Drupal's
+ * detection of entity changes does not follow. A site that had the entity
+ * types before the keys were added gets them here: the number of an account
+ * and the pair of account and item of an agreement are unique, in the database
+ * as well as in validation.
+ */
+function site_b_catalog_update_10001(): string {
+  $schema = \Drupal::database()->schema();
+  $keys = [
+    'account' => ['account__number', ['number']],
+    'agreement' => ['agreement__account_item', ['account', 'item']],
+  ];
+  $added = [];
+  foreach ($keys as $table => [$name, $columns]) {
+    if (!$schema->tableExists($table) || $schema->indexExists($table, $name)) {
+      continue;
+    }
+    try {
+      $schema->addUniqueKey($table, $name, $columns);
+    }
+    catch (\Exception $exception) {
+      throw new UpdateException(sprintf('The unique key %s could not be added to %s, probably because it already holds duplicates. Remove those, and run the update again. (%s)', $name, $table, $exception->getMessage()));
+    }
+    $added[] = $name;
+  }
+  return $added === [] ? 'The unique keys were there already.' : 'Added the unique keys: ' . implode(', ', $added) . '.';
+}

@@ -91,6 +91,14 @@ final class RunSetForm extends FormBase {
     foreach ($this->entityTypes->getStorage('import_definition')->loadMultiple() as $definition) {
       $options[(string) $definition->id()] = (string) $definition->label();
     }
+    // An import that is in the set but no longer exists (a configuration import
+    // can remove one) stays on its row, marked, instead of being dropped by the
+    // next save without a word.
+    foreach ($saved as $id) {
+      if (!isset($options[$id])) {
+        $options[$id] = $this->t('@id (does not exist)', ['@id' => $id]);
+      }
+    }
     asort($options);
     $form['imports'] = [
       '#type' => 'table',
@@ -117,7 +125,7 @@ final class RunSetForm extends FormBase {
           '#title' => $this->t('Order'),
           '#title_display' => 'invisible',
           '#default_value' => $i,
-          '#delta' => 50,
+          '#delta' => max(50, $rows),
           '#attributes' => ['class' => ['import-set-weight']],
         ],
       ];

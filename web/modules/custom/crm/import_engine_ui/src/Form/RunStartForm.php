@@ -135,6 +135,11 @@ final class RunStartForm extends ConfirmFormBase {
       return;
     }
     $form_state->setRedirectUrl($this->getCancelUrl());
+    // The button is hidden for a disabled import, but a request can omit it.
+    if (!$this->definition->status()) {
+      $this->messenger()->addError($this->t('The import @label is disabled.', ['@label' => (string) $this->definition->label()]));
+      return;
+    }
     $run_id = $this->activeRun;
     if ($run_id === NULL) {
       try {

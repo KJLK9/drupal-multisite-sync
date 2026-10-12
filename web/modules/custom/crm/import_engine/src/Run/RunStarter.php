@@ -37,8 +37,14 @@ final class RunStarter {
    *
    * @throws \Drupal\import_engine\Run\RunAlreadyActiveException
    *   When the import has a run that is not finished.
+   * @throws \RuntimeException
+   *   When the import is disabled: a screen that hides its button is not the
+   *   only thing that keeps a disabled import from running.
    */
   public function start(ImportDefinitionInterface $definition, Trigger $trigger, ?int $uid = NULL, bool $fullRun = FALSE): ImportRun {
+    if (!$definition->status()) {
+      throw new \RuntimeException(sprintf('The import "%s" is disabled.', $definition->id()));
+    }
     $name = 'import_engine:start:' . $definition->id();
     // The lock keeps two requests from both finding no active run.
     if (!$this->lock->acquire($name, 30)) {

@@ -237,6 +237,13 @@ class RelationsTest extends CatalogTestBase {
     $this->assertFalse($published->access('update', $viewer));
     $this->assertTrue($published->access('update', $this->createUserWith(['edit account'])));
     $this->assertFalse($published->access('delete', $viewer));
+    // What cannot be seen cannot be changed or deleted by its address either.
+    $editor = $this->createUserWith(['view account', 'edit account', 'delete account']);
+    $this->assertTrue($published->access('update', $editor));
+    $this->assertFalse($hidden->access('update', $editor), 'Unpublished is for administrators, also to edit.');
+    $this->assertFalse($hidden->access('delete', $editor), 'Unpublished is for administrators, also to delete.');
+    $this->assertTrue($hidden->access('update', $admin));
+    $this->assertTrue($hidden->access('delete', $admin));
     $this->assertTrue($this->container->get('entity_type.manager')->getAccessControlHandler('account')->createAccess(NULL, $this->createUserWith(['create account'])));
 
     // Lists agree with access.

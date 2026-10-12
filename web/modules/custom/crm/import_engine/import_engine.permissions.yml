@@ -10,4 +10,5 @@ administer import runs:
 
 view import runs:
   title: 'View import runs'
-  description: 'See import runs, their items and events.'
+  description: 'See import runs, their items (keys and error messages) and events, the dead letter queue and the circuit breakers.'
+  restrict access: true

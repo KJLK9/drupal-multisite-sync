@@ -8,6 +8,7 @@ use Drupal\Core\DependencyInjection\AutowireTrait;
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
+use Drupal\import_engine\Storage\ItemState;
 use Drupal\import_engine\Storage\ItemStorage;
 use Drupal\import_engine_ui\DeadLetter\DeadLetterOperations;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -57,7 +58,9 @@ final class DeadLetterEditForm extends FormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state, int|string $item_id = 0): array {
     $item = $this->items->find((int) $item_id);
-    if ($item === NULL || $item->payload === NULL) {
+    // Only an item that is dead or waiting for a retry is edited: a pending
+    // one may be in the hands of a worker already.
+    if ($item === NULL || $item->payload === NULL || !in_array($item->state, [ItemState::Dead, ItemState::Retrying], TRUE)) {
       throw new NotFoundHttpException();
     }
     $form_state->set('item_id', $item->id);

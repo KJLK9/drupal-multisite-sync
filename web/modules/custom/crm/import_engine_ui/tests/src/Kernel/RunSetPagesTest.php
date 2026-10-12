@@ -321,4 +321,48 @@ class RunSetPagesTest extends KernelTestBase {
     $this->assertInstanceOf(RunSetBatch::class, $this->container->get('import_engine_ui.run_set_batch'));
   }
 
+  /**
+   * An import that is in the set but gone is shown, not dropped without a word.
+   */
+  public function testMissingImportStaysVisible(): void {
+    $this->submit($this->values([['accounts', 0], ['items', 1]]));
+    // A configuration import removed the import, and the set still lists it.
+    ImportRunSet::load('catalog')?->set('imports', ['accounts', 'ghost'])->save();
+    $state = new FormState();
+    $state->addBuildInfo('args', [ImportRunSet::load('catalog')]);
+
+    $form = $this->container->get('form_builder')->buildForm(RunSetForm::class, $state);
+
+    $this->assertSame('ghost', $form['imports'][1]['import']['#default_value']);
+    $this->assertStringContainsString('does not exist', (string) $form['imports'][1]['import']['#options']['ghost']);
+  }
+
+  /**
+   * The order widget has room for as many rows as there are.
+   */
+  public function testWeightsCoverAllRows(): void {
+    $state = new FormState();
+    $state->set('rows', 80);
+
+    $form = $this->container->get('form_builder')->buildForm(RunSetForm::class, $state);
+
+    $this->assertGreaterThanOrEqual(80, $form['imports'][79]['weight']['#delta']);
+  }
+
+  /**
+   * The run now link of a set is only for those who may run.
+   */
+  public function testRunLinkOnlyForThoseWhoMayRun(): void {
+    $this->submit($this->values([['accounts', 0]]));
+    $controller = $this->container->get('class_resolver')->getInstanceFromDefinition(RunSetController::class);
+
+    $this->setUpCurrentUser(['name' => 'manager'], ['administer import definitions']);
+    $links = $controller->list()['table']['#rows'][0][4]['data']['#links'];
+    $this->assertSame(['edit', 'delete'], array_keys($links));
+
+    $this->setUpCurrentUser(['name' => 'operator'], ['administer import definitions', 'administer import runs']);
+    $links = $controller->list()['table']['#rows'][0][4]['data']['#links'];
+    $this->assertSame(['run', 'edit', 'delete'], array_keys($links));
+  }
+
 }

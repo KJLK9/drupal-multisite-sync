@@ -39,7 +39,7 @@ final class DefinitionController extends ControllerBase {
         [
           'data' => [
             '#type' => 'operations',
-            '#links' => [
+            '#links' => $this->allowed([
               'edit' => [
                 'title' => $this->t('Edit'),
                 'url' => Url::fromRoute('import_engine_ui.definition_edit', ['import_definition' => $definition->id()]),
@@ -60,7 +60,7 @@ final class DefinitionController extends ControllerBase {
                   'import_definition' => $definition->id(),
                 ]),
               ],
-            ],
+            ]),
           ],
         ],
       ];
@@ -79,8 +79,27 @@ final class DefinitionController extends ControllerBase {
         '#rows' => $rows,
         '#empty' => $this->t('There are no imports yet.'),
       ],
-      '#cache' => ['tags' => ['config:import_engine.import_definition_list']],
+      '#cache' => [
+        'tags' => ['config:import_engine.import_definition_list'],
+        'contexts' => ['user.permissions'],
+      ],
     ];
+  }
+
+  /**
+   * Keeps the operations that the person may use.
+   *
+   * "Run now" and the dead letter queue need other permissions than the list
+   * does; a link to a page that says "access denied" is not an operation.
+   *
+   * @param array<string, array<string, mixed>> $links
+   *   The operations, each with a URL.
+   *
+   * @return array<string, array<string, mixed>>
+   *   The operations that lead somewhere the person may go.
+   */
+  private function allowed(array $links): array {
+    return array_filter($links, static fn (array $link): bool => $link['url'] instanceof Url && $link['url']->access());
   }
 
 }

@@ -455,7 +455,17 @@ class DefinitionWizardTest extends NodeTestBase {
     $this->assertCount(1, $rows);
     $row = $rows[0];
     $this->assertSame(['Accounts', 'accounts', 'http', 'entity: node/account'], array_slice($row, 0, 4));
-    $this->assertSame(['edit', 'run', 'runs', 'delete'], array_keys($row[5]['data']['#links']));
+    // Without the permission to see runs there is no link to the dead letter
+    // queue, which would only say "access denied".
+    $this->assertSame(['edit', 'run', 'delete'], array_keys($row[5]['data']['#links']));
+    $this->setUpCurrentUser(['name' => 'carol'], [
+      'administer import definitions',
+      'administer import runs',
+      'view import runs',
+    ]);
+    $this->assertSame(['edit', 'run', 'runs', 'delete'], array_keys($controller->list()['table']['#rows'][0][5]['data']['#links']));
+    $this->setUpCurrentUser(['name' => 'dave'], ['administer import definitions']);
+    $this->assertSame(['edit', 'delete'], array_keys($controller->list()['table']['#rows'][0][5]['data']['#links']));
 
     $manager = $this->container->get('access_manager');
     $this->assertTrue($manager->checkNamedRoute('import_engine_ui.definitions', [], $this->createUser(['administer import definitions'])));
@@ -1355,6 +1365,54 @@ class DefinitionWizardTest extends NodeTestBase {
 
     // HTTP shares its headers and timeout, so it does offer.
     $this->assertArrayHasKey('new_connection', $form);
+  }
+
+  /**
+   * A new import cannot take the ID of one that exists, by the back door.
+   *
+   * Leaving step 1 by the menu takes the machine name as it was typed, without
+   * its check for a name that is taken.
+   */
+  public function testTakenIdIsRefusedWhenLeavingByTheMenu(): void {
+    $state = $this->toLastStep();
+    $this->press($this->press($state, [], 'add_reporter'), $this->step5(), 'save');
+    $original = ImportDefinition::load('accounts');
+    $this->assertSame('Customers from site A.', $original?->getDescription());
+    $this->messages();
+
+    // A new import: a free name, step 2, and back to step 1 to change it.
+    $values = $this->step1();
+    $values['id'] = 'fresh';
+    $state = $this->press(NULL, $values, 'next');
+    $state = $this->jump($state, $this->plainStep2(), 1);
+    $taken = $this->step1();
+    $taken['description'] = 'Another import entirely.';
+    $state = $this->jump($state, $taken, 5);
+    $this->assertSame(5, $state->get('step'));
+    $state = $this->press($state, $this->step5(), 'save');
+
+    $this->assertSame(1, $state->get('step'), 'The save sends the person to the step that has the problem.');
+    $this->assertSame('Customers from site A.', ImportDefinition::load('accounts')?->getDescription(), 'The import that exists is not replaced.');
+    $messages = $this->messages();
+    $this->assertArrayNotHasKey('status', $messages);
+    $form = $this->showForm($state);
+    $this->assertStringContainsString('exists already', (string) json_encode($form['summary'] ?? []));
+  }
+
+  /**
+   * A path from the source is shown as text, whatever it contains.
+   */
+  public function testPathButtonShowsThePathAsText(): void {
+    $method = new \ReflectionMethod(DefinitionWizardForm::class, 'pathButton');
+    $form = $this->container->get('class_resolver')->getInstanceFromDefinition(DefinitionWizardForm::class);
+
+    $button = $method->invoke($form, 'a<b>x</b><a href="https://evil.test">y</a>');
+
+    $html = (string) $this->container->get('renderer')->renderInIsolation($button);
+    $this->assertStringNotContainsString('<b>', $html);
+    $this->assertStringNotContainsString('href="https://evil.test"', $html);
+    $this->assertStringContainsString('&lt;b&gt;x&lt;/b&gt;', $html);
+    $this->assertStringContainsString('data-path=', $html);
   }
 
 }

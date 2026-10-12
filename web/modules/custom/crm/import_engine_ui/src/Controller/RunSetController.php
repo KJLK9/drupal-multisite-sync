@@ -44,6 +44,8 @@ final class RunSetController extends ControllerBase {
           'url' => Url::fromRoute('import_engine_ui.run_set_delete', ['import_run_set' => $id]),
         ],
       ];
+      // Running a set needs another permission than managing it.
+      $links = array_filter($links, static fn (array $link): bool => $link['url']->access());
       $rows[] = [
         $set->label(),
         $id,
@@ -65,7 +67,10 @@ final class RunSetController extends ControllerBase {
         '#rows' => $rows,
         '#empty' => $this->t('There are no run sets yet.'),
       ],
-      '#cache' => ['tags' => $storage->getEntityType()->getListCacheTags()],
+      '#cache' => [
+        'tags' => $storage->getEntityType()->getListCacheTags(),
+        'contexts' => ['user.permissions'],
+      ],
     ];
   }
 

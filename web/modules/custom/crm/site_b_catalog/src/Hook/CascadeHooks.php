@@ -61,10 +61,16 @@ final class CascadeHooks {
       return;
     }
     $storage = $this->entityTypeManager->getStorage('agreement');
-    do {
-      $ids = $storage->getQuery()->accessCheck(FALSE)->condition($field, $id)->range(0, self::BATCH)->execute();
+    $previous = NULL;
+    while (($ids = $storage->getQuery()->accessCheck(FALSE)->condition($field, $id)->range(0, self::BATCH)->execute()) !== []) {
+      // The same agreements again: a delete did not take, and going on would
+      // never end. The ones that are left are found by the next check.
+      if ($ids === $previous) {
+        throw new \RuntimeException(sprintf('Agreements of %s %s could not be deleted.', $field, (string) $id));
+      }
       $storage->delete($storage->loadMultiple($ids));
-    } while ($ids !== []);
+      $previous = $ids;
+    }
   }
 
 }

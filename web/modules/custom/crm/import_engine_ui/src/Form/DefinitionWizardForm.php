@@ -13,6 +13,7 @@ use Drupal\Core\Form\FormBase;
 use Drupal\Core\TypedData\TypedDataInterface;
 use Drupal\Core\TypedData\ComplexDataInterface;
 use Drupal\Core\Render\Element;
+use Drupal\Core\Render\Markup;
 use Drupal\Core\Form\FormState;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Form\SubformState;
@@ -143,7 +144,7 @@ final class DefinitionWizardForm extends FormBase {
     $form['#attached']['library'][] = 'import_engine_ui/wizard';
 
     $current = $this->values($form_state);
-    $problems = $this->problemsByStep($this->entityFromValues($current), ($current['id'] ?? '') === '');
+    $problems = $this->problemsByStep($this->entityFromValues($current), ($current['id'] ?? '') === '', $this->idIsTaken($form_state, $current));
     $form['steps'] = $this->stepMenu($form_state, $step, $problems);
     $summary = $this->problemSummary($form_state, $problems);
     if ($summary !== []) {
@@ -814,7 +815,8 @@ final class DefinitionWizardForm extends FormBase {
     return [
       '#type' => 'html_tag',
       '#tag' => 'button',
-      '#value' => $path,
+      // A path comes from the source; shown as text, whatever it contains.
+      '#value' => Markup::create(Html::escape($path)),
       '#attributes' => ['type' => 'button', 'class' => ['import-wizard-path', 'link'], 'data-path' => $path],
     ];
   }
@@ -1174,14 +1176,21 @@ final class DefinitionWizardForm extends FormBase {
    *   The definition, from entityFromValues() when it is not complete.
    * @param bool $idMissing
    *   Whether the import has no ID yet.
+   * @param bool $idTaken
+   *   Whether the import is new and another import has its ID. The machine
+   *   name field checks that on step 1, but a person who leaves that step by
+   *   the menu takes the field as it is.
    *
    * @return array<int, list<string>>
    *   The problems, in words, by the step they belong to.
    */
-  private function problemsByStep(ImportDefinition $definition, bool $idMissing = FALSE): array {
+  private function problemsByStep(ImportDefinition $definition, bool $idMissing = FALSE, bool $idTaken = FALSE): array {
     $problems = [];
     if ($idMissing) {
       $problems[1][] = (string) $this->t('Machine name: give the import a name, and so a machine name.');
+    }
+    if ($idTaken) {
+      $problems[1][] = (string) $this->t('Machine name: an import with the machine name @id exists already. Choose another.', ['@id' => (string) $definition->id()]);
     }
     try {
       $typed = $definition->getTypedData();
@@ -1805,7 +1814,7 @@ final class DefinitionWizardForm extends FormBase {
       }
     }
 
-    $problems = $this->problemsByStep($definition, ($values['id'] ?? '') === '');
+    $problems = $this->problemsByStep($definition, ($values['id'] ?? '') === '', $this->idIsTaken($form_state, $values));
     if ($problems !== []) {
       // The summary at the top lists them; the first step with a problem opens.
       $form_state->set('attempted_save', TRUE);
@@ -1816,6 +1825,19 @@ final class DefinitionWizardForm extends FormBase {
     $definition->save();
     $this->messenger()->addStatus($this->t('The import @label is saved.', ['@label' => (string) $definition->label()]));
     $form_state->setRedirectUrl(Url::fromRoute('import_engine_ui.definitions'));
+  }
+
+  /**
+   * Returns whether a new import has the ID of one that exists.
+   *
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   * @param array<string, mixed> $values
+   *   The values of the import.
+   */
+  private function idIsTaken(FormStateInterface $form_state, array $values): bool {
+    $id = (string) ($values['id'] ?? '');
+    return (bool) $form_state->get('is_new') && $id !== '' && $this->exists($id);
   }
 
   /**
