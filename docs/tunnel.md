@@ -74,10 +74,13 @@ and the One-time PIN login method.
 ## What a visitor with the demo account can do
 
 The `demo` account (role *Import viewer*) can open the overview, the runs with
-their items and events, the dead letter queue and the circuit breakers, and
-cannot change anything. It cannot see the imports, connections, run sets and
-settings screens: those need `administer import definitions`. To show those,
-log in as `admin` yourself.
+their items and events, the dead letter queue and the circuit breakers, and the
+**Catalog** (the accounts, items and agreements that were imported, with their
+detail pages), and cannot change anything. It cannot see the imports,
+connections, run sets and settings screens: those need
+`administer import definitions`. To show those, log in as `admin` yourself
+(`deploy/tunnel.sh passwords` shows both passwords, on the machine that runs
+the cluster).
 
 ## Things to know
 

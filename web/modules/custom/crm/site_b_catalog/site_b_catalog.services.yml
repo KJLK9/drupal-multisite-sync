@@ -1,0 +1,5 @@
+services:
+  site_b_catalog.route_subscriber:
+    class: Drupal\site_b_catalog\Routing\CatalogRouteSubscriber
+    tags:
+      - {name: event_subscriber}

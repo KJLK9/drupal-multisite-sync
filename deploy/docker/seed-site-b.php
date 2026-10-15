@@ -5,9 +5,9 @@
  * Gives site B a read-only account for showing the engine to someone.
  *
  * Run with: drush php:script seed-site-b.php (DEMO_PASSWORD in the
- * environment). The account can see imports, runs, the dead letter queue and
- * the circuit breakers, and cannot change anything: it has no permission to
- * administer.
+ * environment). The account can see runs, the dead letter queue, the circuit
+ * breakers and the lists of the catalog (accounts, items and agreements), and
+ * cannot change anything: it has no permission to administer.
  */
 
 use Drupal\user\Entity\Role;
@@ -23,7 +23,15 @@ if (Role::load('import_viewer') === NULL) {
   Role::create(['id' => 'import_viewer', 'label' => 'Import viewer'])->save();
 }
 $role = Role::load('import_viewer');
-foreach (['view import runs', 'view the administration theme', 'access administration pages'] as $permission) {
+foreach ([
+  'view import runs',
+  'view the administration theme',
+  'access administration pages',
+  'access catalog lists',
+  'view account',
+  'view item',
+  'view agreement',
+] as $permission) {
   $role->grantPermission($permission);
 }
 $role->save();

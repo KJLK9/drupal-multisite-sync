@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\site_b_catalog\Kernel;
 
+use Drupal\site_b_catalog\Entity\Account;
 use Drupal\Tests\user\Traits\UserCreationTrait;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
@@ -81,6 +82,29 @@ class NavigationTest extends CatalogTestBase {
     // To see one account is not to list them: the lists are administration.
     $this->assertFalse($manager->checkNamedRoute('site_b_catalog.overview', [], $this->createUser(['view account'])));
     $this->assertFalse($manager->checkNamedRoute('site_b_catalog.overview', [], $this->createUser([])));
+    // Unless the person may look at the lists, which is not to change anything.
+    $this->assertTrue($manager->checkNamedRoute('site_b_catalog.overview', [], $this->createUser(['access catalog lists'])));
+  }
+
+  /**
+   * Looking at the lists is possible without administering, and only looking.
+   */
+  public function testListsCanBeLookedAt(): void {
+    $manager = $this->container->get('access_manager');
+    $viewer = $this->createUser(['access catalog lists', 'view account', 'view item', 'view agreement']);
+
+    foreach (['account', 'item', 'agreement'] as $type) {
+      $this->assertTrue($manager->checkNamedRoute("entity.$type.collection", [], $viewer), $type);
+      $this->assertFalse($manager->checkNamedRoute("entity.$type.add_form", [], $viewer), "$type: no adding");
+      $this->assertFalse($manager->checkNamedRoute("entity.$type.collection", [], $this->createUser(["view $type"])), "$type: viewing is not listing");
+      $this->assertFalse($manager->checkNamedRoute("entity.$type.collection", [], $this->createUser([])), $type);
+    }
+    // What is in a list follows the entity: nothing to change.
+    $account = Account::create(['name' => 'Acme', 'number' => 'C-1', 'status' => 1]);
+    $account->save();
+    $this->assertTrue($account->access('view', $viewer));
+    $this->assertFalse($account->access('update', $viewer));
+    $this->assertFalse($account->access('delete', $viewer));
   }
 
 }

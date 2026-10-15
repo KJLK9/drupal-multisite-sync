@@ -33,3 +33,7 @@ delete agreement:
   title: 'Delete agreements'
 create agreement:
   title: 'Create agreements'
+
+access catalog lists:
+  title: 'See the lists of accounts, items and agreements'
+  description: 'Open the lists of the catalog and read what is in them, without being able to change anything. To see an entity this needs its "view" permission as well.'

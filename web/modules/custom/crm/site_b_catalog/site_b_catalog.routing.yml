@@ -9,4 +9,4 @@ site_b_catalog.overview:
     # The lists are for those who administer the type (that is how the entity
     # types make them); any one of the three is enough, and the page lists what
     # the person may open.
-    _permission: 'administer account+administer item+administer agreement'
+    _permission: 'administer account+administer item+administer agreement+access catalog lists'
