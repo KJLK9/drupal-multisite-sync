@@ -8,6 +8,7 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\AutowireTrait;
 use Drupal\Core\Url;
 use Drupal\import_engine\ImportRunSetInterface;
+use Drupal\import_engine\Schedule\ScheduleRules;
 
 /**
  * Lists the run sets.
@@ -51,6 +52,7 @@ final class RunSetController extends ControllerBase {
         $id,
         implode(' → ', $set->getImports()),
         $set->stopsOnErrors() ? $this->t('Failures and items that went wrong') : $this->t('Failures'),
+        ScheduleRules::describe($set->getSchedule()) ?: '-',
         ['data' => ['#type' => 'operations', '#links' => $links]],
       ];
     }
@@ -62,6 +64,7 @@ final class RunSetController extends ControllerBase {
           $this->t('ID'),
           $this->t('Imports, in order'),
           $this->t('Stops at'),
+          $this->t('Schedule'),
           $this->t('Operations'),
         ],
         '#rows' => $rows,

@@ -28,6 +28,7 @@ final class NavigationHooks {
     'import_engine_ui.definition_edit' => 'import_engine_ui.definitions',
     'import_engine_ui.definition_delete' => 'import_engine_ui.definitions',
     'import_engine_ui.definition_run' => 'import_engine_ui.definitions',
+    'import_engine_ui.definition_unlock' => 'import_engine_ui.definitions',
     'import_engine_ui.connection_add' => 'import_engine_ui.connections',
     'import_engine_ui.connection_edit' => 'import_engine_ui.connections',
     'import_engine_ui.connection_delete' => 'import_engine_ui.connections',

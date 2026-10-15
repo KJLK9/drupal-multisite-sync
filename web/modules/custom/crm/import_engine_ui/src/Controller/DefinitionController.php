@@ -8,6 +8,7 @@ use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\DependencyInjection\AutowireTrait;
 use Drupal\Core\Url;
 use Drupal\import_engine\ImportDefinitionInterface;
+use Drupal\import_engine\Schedule\ScheduleRules;
 
 /**
  * Lists the import definitions.
@@ -35,6 +36,7 @@ final class DefinitionController extends ControllerBase {
         $definition->id(),
         $definition->getSource()['plugin'],
         $target['plugin'] . (isset($configuration['entity_type']) ? ': ' . $configuration['entity_type'] . '/' . ($configuration['bundle'] ?? '') : ''),
+        ScheduleRules::describe($definition->getSchedule()) ?: '-',
         $definition->status() ? $this->t('enabled') : $this->t('disabled'),
         [
           'data' => [
@@ -73,6 +75,7 @@ final class DefinitionController extends ControllerBase {
           $this->t('ID'),
           $this->t('Source'),
           $this->t('Target'),
+          $this->t('Schedule'),
           $this->t('Status'),
           $this->t('Operations'),
         ],

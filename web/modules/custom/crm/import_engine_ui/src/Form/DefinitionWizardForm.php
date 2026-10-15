@@ -29,6 +29,8 @@ use Drupal\import_engine\Mapper\MapperPluginManager;
 use Drupal\import_engine\Connection\ConnectionResolver;
 use Drupal\import_engine\ImportConnectionInterface;
 use Drupal\import_engine\Mapper\MappingSuggester;
+use Drupal\import_engine\Schedule\ScheduleRules;
+use Drupal\import_engine_ui\Lock\WizardLock;
 use Drupal\import_engine\Source\SourceSampler;
 use Drupal\import_engine\Target\TargetField;
 use Drupal\import_engine\Target\TargetInterface;
@@ -53,6 +55,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 final class DefinitionWizardForm extends FormBase {
 
   use AutowireTrait;
+  use ScheduleFormTrait;
 
   /**
    * The steps, by number.
@@ -105,6 +108,8 @@ final class DefinitionWizardForm extends FormBase {
     protected MappingSuggester $suggester,
     #[Autowire(service: 'import_engine.connection_resolver')]
     protected ConnectionResolver $connections,
+    #[Autowire(service: 'import_engine_ui.wizard_lock')]
+    protected WizardLock $lock,
   ) {
   }
 
@@ -129,6 +134,13 @@ final class DefinitionWizardForm extends FormBase {
    *   The form.
    */
   public function buildForm(array $form, FormStateInterface $form_state, ?ImportDefinitionInterface $import_definition = NULL): array {
+    // One person at a time edits an import; every step renews the lock.
+    if ($import_definition !== NULL) {
+      $holder = $this->lock->acquire((string) $import_definition->id(), $this->currentUser());
+      if ($holder !== NULL) {
+        return $this->lockedForm($import_definition, $holder);
+      }
+    }
     if ($form_state->get('definition') === NULL) {
       $form_state->set('definition', $this->initialValues($import_definition));
       $form_state->set('is_new', $import_definition === NULL);
@@ -199,6 +211,48 @@ final class DefinitionWizardForm extends FormBase {
       '#title' => $this->t('Cancel'),
       '#url' => Url::fromRoute('import_engine_ui.definitions'),
       '#attributes' => ['class' => ['dialog-cancel']],
+    ];
+    return $form;
+  }
+
+  /**
+   * Builds what is shown to a person who cannot edit an import now.
+   *
+   * @param \Drupal\import_engine\ImportDefinitionInterface $definition
+   *   The import.
+   * @param array{uid: int, name: string, since: int, until: int} $holder
+   *   Who is editing it.
+   *
+   * @return array<string, mixed>
+   *   The form: a message and the ways on.
+   */
+  private function lockedForm(ImportDefinitionInterface $definition, array $holder): array {
+    $form = ['#cache' => ['max-age' => 0]];
+    $form['locked'] = [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['messages', 'messages--warning']],
+      'text' => [
+        '#markup' => '<p>' . $this->t('The import @label is being edited by @name, since @time. One person at a time can edit an import, so that what one changes is not overwritten by the other. The lock ends when they save, or after @minutes minutes without a step.', [
+          '@label' => (string) $definition->label(),
+          '@name' => $holder['name'],
+          '@time' => gmdate('H:i', $holder['since']) . ' UTC',
+          '@minutes' => (string) intdiv(WizardLock::SECONDS, 60),
+        ]) . '</p>',
+      ],
+    ];
+    $form['actions'] = ['#type' => 'actions'];
+    $form['actions']['back'] = [
+      '#type' => 'link',
+      '#title' => $this->t('Back to the list'),
+      '#url' => Url::fromRoute('import_engine_ui.definitions'),
+      '#attributes' => ['class' => ['button']],
+    ];
+    $form['actions']['takeover'] = [
+      '#type' => 'link',
+      '#title' => $this->t('Take over editing'),
+      '#url' => Url::fromRoute('import_engine_ui.definition_unlock', ['import_definition' => $definition->id()]),
+      '#attributes' => ['class' => ['button', 'button--danger']],
+      '#access' => $this->currentUser()->hasPermission('administer import definitions'),
     ];
     return $form;
   }
@@ -548,6 +602,7 @@ final class DefinitionWizardForm extends FormBase {
       '#min' => 0,
       '#max' => 100,
     ];
+    $form['schedule'] = $this->scheduleElement($values['schedule'] ?? ScheduleRules::none());
     $form['pool'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Worker pool'),
@@ -1470,6 +1525,15 @@ final class DefinitionWizardForm extends FormBase {
    *   The form state.
    */
   public function validateForm(array &$form, FormStateInterface $form_state): void {
+    // Somebody may have taken the import over since the last step.
+    $edited = $form_state->getBuildInfo()['args'][0] ?? NULL;
+    if ($edited instanceof ImportDefinitionInterface) {
+      $holder = $this->lock->acquire((string) $edited->id(), $this->currentUser());
+      if ($holder !== NULL) {
+        $form_state->setErrorByName('', $this->t('@name has taken over editing this import. Nothing of what you changed was saved; open the import again to see what it is now.', ['@name' => $holder['name']]));
+        return;
+      }
+    }
     $button = (string) ($form_state->getTriggeringElement()['#name'] ?? '');
     $step = (int) $form_state->get('step');
     $skipped = in_array($button, ['suggest_mapping', 'add_reporter', 'previous', 'save_connection'], TRUE)
@@ -1597,6 +1661,7 @@ final class DefinitionWizardForm extends FormBase {
       $values['delete_policy'] = (string) ($in['delete_policy'] ?? '');
       $values['delete_threshold_percent'] = (int) ($in['delete_threshold_percent'] ?? 0);
       $values['pool'] = (string) ($in['pool'] ?? '');
+      $values['schedule'] = $this->scheduleFrom((array) ($in['schedule'] ?? []));
       $resilience = (array) ($in['resilience'] ?? []);
       $values['resilience'] = [
         'max_attempts' => (int) ($resilience['max_attempts'] ?? 0),
@@ -1823,6 +1888,7 @@ final class DefinitionWizardForm extends FormBase {
     }
 
     $definition->save();
+    $this->lock->release((string) $definition->id(), $this->currentUser());
     $this->messenger()->addStatus($this->t('The import @label is saved.', ['@label' => (string) $definition->label()]));
     $form_state->setRedirectUrl(Url::fromRoute('import_engine_ui.definitions'));
   }

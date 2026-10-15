@@ -10,6 +10,7 @@ use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
 use Drupal\import_engine\ImportRunSetInterface;
+use Drupal\import_engine\Schedule\ScheduleRules;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
@@ -21,6 +22,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 final class RunSetForm extends FormBase {
 
   use AutowireTrait;
+  use ScheduleFormTrait;
 
   /**
    * The set that is changed; none when one is added.
@@ -138,6 +140,7 @@ final class RunSetForm extends FormBase {
       '#submit' => ['::addRow'],
       '#ajax' => ['callback' => '::ajaxRows', 'wrapper' => 'import-set-imports'],
     ];
+    $form['schedule'] = $this->scheduleElement($import_run_set?->getSchedule() ?? ScheduleRules::none());
     $form['stop_on_errors'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Also stop when items of an import went wrong'),
@@ -223,7 +226,7 @@ final class RunSetForm extends FormBase {
       $this->entityTypes->getStorage('import_run_set')->create($values)->save();
     }
     else {
-      foreach (['label', 'description', 'imports', 'stop_on_errors'] as $key) {
+      foreach (['label', 'description', 'imports', 'stop_on_errors', 'schedule'] as $key) {
         $this->set->set($key, $values[$key]);
       }
       $this->set->save();
@@ -257,6 +260,7 @@ final class RunSetForm extends FormBase {
       'description' => trim((string) $form_state->getValue('description')),
       'imports' => array_column($rows, 'import'),
       'stop_on_errors' => (bool) $form_state->getValue('stop_on_errors'),
+      'schedule' => $this->scheduleFrom((array) $form_state->getValue('schedule')),
     ];
   }
 

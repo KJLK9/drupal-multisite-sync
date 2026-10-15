@@ -24,6 +24,26 @@ IMAGE=import-engine:local
 CTX="k3d-${CLUSTER}"
 K="kubectl --context ${CTX} -n import-engine"
 
+# Waits for the bootstrap job to complete, or fails as soon as it has failed
+# (waiting for "complete" alone would wait the whole time for a job that gave up).
+wait_for_bootstrap() {
+  local end=$((SECONDS + 900))
+  while [ "$SECONDS" -lt "$end" ]; do
+    if [ "$($K get job bootstrap -o jsonpath='{.status.succeeded}' 2>/dev/null)" = "1" ]; then
+      return 0
+    fi
+    if [ "$($K get job bootstrap -o jsonpath='{.status.failed}' 2>/dev/null || true)" != "" ] && \
+       [ "$($K get job bootstrap -o jsonpath='{.status.conditions[?(@.type=="Failed")].status}' 2>/dev/null)" = "True" ]; then
+      echo "The bootstrap job failed:" >&2
+      $K logs job/bootstrap --tail=20 >&2 || true
+      return 1
+    fi
+    sleep 5
+  done
+  echo "The bootstrap job did not finish in 15 minutes." >&2
+  return 1
+}
+
 # The hostnames: from the environment, or derived from the domain.
 set_hosts() {
   if [ -z "${SITE_A_HOST:-}" ] || [ -z "${SITE_B_HOST:-}" ]; then
@@ -92,7 +112,7 @@ case "${1:-up}" in
     write_overlay
     kubectl --context "$CTX" apply -k deploy/k8s/overlays/tunnel-generated
     $K rollout status statefulset/mariadb --timeout=300s
-    $K wait --for=condition=complete job/bootstrap --timeout=900s
+    wait_for_bootstrap
     $K rollout status deployment/web --timeout=300s
     $K rollout status deployment/cloudflared --timeout=120s
     echo

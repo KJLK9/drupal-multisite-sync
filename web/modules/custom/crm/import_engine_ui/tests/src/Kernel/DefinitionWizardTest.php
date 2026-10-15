@@ -17,6 +17,7 @@ use Drupal\import_engine\Entity\ImportDefinition;
 use Drupal\import_engine\Run\Trigger;
 use Drupal\import_engine_ui\Controller\DefinitionController;
 use Drupal\import_engine_ui\Form\DefinitionDeleteForm;
+use Drupal\import_engine_ui\Form\DefinitionUnlockForm;
 use Drupal\import_engine_ui\Form\DefinitionWizardForm;
 use Drupal\Tests\import_engine\Kernel\NodeTestBase;
 use Drupal\Tests\user\Traits\UserCreationTrait;
@@ -454,18 +455,18 @@ class DefinitionWizardTest extends NodeTestBase {
     $rows = $controller->list()['table']['#rows'];
     $this->assertCount(1, $rows);
     $row = $rows[0];
-    $this->assertSame(['Accounts', 'accounts', 'http', 'entity: node/account'], array_slice($row, 0, 4));
+    $this->assertSame(['Accounts', 'accounts', 'http', 'entity: node/account', '-'], array_slice($row, 0, 5));
     // Without the permission to see runs there is no link to the dead letter
     // queue, which would only say "access denied".
-    $this->assertSame(['edit', 'run', 'delete'], array_keys($row[5]['data']['#links']));
+    $this->assertSame(['edit', 'run', 'delete'], array_keys($row[6]['data']['#links']));
     $this->setUpCurrentUser(['name' => 'carol'], [
       'administer import definitions',
       'administer import runs',
       'view import runs',
     ]);
-    $this->assertSame(['edit', 'run', 'runs', 'delete'], array_keys($controller->list()['table']['#rows'][0][5]['data']['#links']));
+    $this->assertSame(['edit', 'run', 'runs', 'delete'], array_keys($controller->list()['table']['#rows'][0][6]['data']['#links']));
     $this->setUpCurrentUser(['name' => 'dave'], ['administer import definitions']);
-    $this->assertSame(['edit', 'delete'], array_keys($controller->list()['table']['#rows'][0][5]['data']['#links']));
+    $this->assertSame(['edit', 'delete'], array_keys($controller->list()['table']['#rows'][0][6]['data']['#links']));
 
     $manager = $this->container->get('access_manager');
     $this->assertTrue($manager->checkNamedRoute('import_engine_ui.definitions', [], $this->createUser(['administer import definitions'])));
@@ -1413,6 +1414,166 @@ class DefinitionWizardTest extends NodeTestBase {
     $this->assertStringNotContainsString('href="https://evil.test"', $html);
     $this->assertStringContainsString('&lt;b&gt;x&lt;/b&gt;', $html);
     $this->assertStringContainsString('data-path=', $html);
+  }
+
+  /**
+   * The schedule is chosen on the last step, and saved with the import.
+   */
+  public function testScheduleIsSaved(): void {
+    $state = $this->toLastStep();
+    $values = $this->step5() + ['schedule' => ['enabled' => 1, 'every' => '120', 'start' => '75']];
+    $state = $this->press($state, [], 'add_reporter');
+    $this->press($state, $values, 'save');
+
+    $definition = ImportDefinition::load('accounts');
+    $this->assertSame(['enabled' => TRUE, 'every' => 120, 'start' => 75], $definition?->getSchedule());
+    $this->assertSame([], array_filter(
+      array_map(static fn ($violation): string => $violation->getPropertyPath(), iterator_to_array($definition->getTypedData()->validate())),
+    ));
+    $controller = $this->container->get('class_resolver')->getInstanceFromDefinition(DefinitionController::class);
+    $this->assertSame('every 2 hour(s) from 01:15 UTC', $controller->list()['table']['#rows'][0][4]);
+  }
+
+  /**
+   * Without a schedule the import has none, and a made-up one is not kept.
+   */
+  public function testNoScheduleAndNonsenseSchedule(): void {
+    $state = $this->toLastStep();
+    $state = $this->press($state, [], 'add_reporter');
+    $this->press($state, $this->step5(), 'save');
+    $this->assertFalse(ImportDefinition::load('accounts')?->getSchedule()['enabled']);
+
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $state = $this->jump($state, $this->plainStep2(), 5);
+    $values = $this->step5() + ['schedule' => ['enabled' => 1, 'every' => '7', 'start' => '1000000']];
+    $stored = $this->jump($state, $values, 1);
+
+    $schedule = $stored->get('definition')['schedule'];
+    $this->assertSame(60, $schedule['every'], 'A period that is not a choice becomes hourly.');
+    $this->assertSame(0, $schedule['start'], 'A start outside the day becomes midnight.');
+  }
+
+  /**
+   * The people of the tests, by name, made once.
+   *
+   * @var array<string, \Drupal\user\UserInterface>
+   */
+  protected array $people = [];
+
+  /**
+   * Makes a person the current user.
+   *
+   * @param string $name
+   *   The name.
+   * @param list<string> $permissions
+   *   Their permissions, when they are made.
+   */
+  protected function actAs(string $name, array $permissions): void {
+    $this->people[$name] ??= $this->createUser($permissions, $name);
+    $this->setCurrentUser($this->people[$name]);
+  }
+
+  /**
+   * Saves an import that exists, and returns it.
+   */
+  protected function savedImport(): ImportDefinition {
+    $state = $this->toLastStep();
+    $this->press($this->press($state, [], 'add_reporter'), $this->step5(), 'save');
+    $this->messages();
+    $definition = ImportDefinition::load('accounts');
+    $this->assertNotNull($definition);
+    return $definition;
+  }
+
+  /**
+   * One person at a time edits an import; the second is shown who has it.
+   */
+  public function testSecondPersonCannotEditAnImportInUse(): void {
+    $definition = $this->savedImport();
+    $this->actAs('anna', ['administer import definitions']);
+    $first = $this->container->get('form_builder')->getForm(DefinitionWizardForm::class, $definition);
+    $this->assertArrayHasKey('steps', $first, 'The first person gets the wizard.');
+
+    $this->actAs('ben', ['administer import definitions']);
+    $form = $this->container->get('form_builder')->getForm(DefinitionWizardForm::class, $definition);
+
+    $this->assertArrayNotHasKey('steps', $form);
+    $this->assertStringContainsString('anna', (string) $form['locked']['text']['#markup']);
+    $this->assertSame('import_engine_ui.definitions', $form['actions']['back']['#url']->getRouteName());
+    $this->assertSame('import_engine_ui.definition_unlock', $form['actions']['takeover']['#url']->getRouteName());
+    $this->assertTrue($form['actions']['takeover']['#access']);
+  }
+
+  /**
+   * A new import has no lock: there is nothing yet to overwrite.
+   */
+  public function testNewImportIsNotLocked(): void {
+    $this->actAs('anna', ['administer import definitions']);
+    $this->assertArrayHasKey('steps', $this->container->get('form_builder')->getForm(DefinitionWizardForm::class));
+
+    $this->actAs('ben', ['administer import definitions']);
+    $this->assertArrayHasKey('steps', $this->container->get('form_builder')->getForm(DefinitionWizardForm::class));
+  }
+
+  /**
+   * Saving gives the lock up, so the next person can edit.
+   */
+  public function testSavingReleasesTheLock(): void {
+    $definition = $this->savedImport();
+    $this->actAs('anna', ['administer import definitions', 'administer import runs']);
+    $values = $this->step1();
+    $values['label'] = 'Renamed';
+    $this->press(NULL, $values, 'save', [$definition]);
+    $this->assertSame('Renamed', ImportDefinition::load('accounts')?->label());
+
+    $this->actAs('ben', ['administer import definitions']);
+    $form = $this->container->get('form_builder')->getForm(DefinitionWizardForm::class, ImportDefinition::load('accounts'));
+
+    $this->assertArrayHasKey('steps', $form, 'Anna saved, so Ben can edit.');
+  }
+
+  /**
+   * Someone who lost the lock to a takeover does not overwrite the other.
+   */
+  public function testTakenOverEditorSavesNothing(): void {
+    $definition = $this->savedImport();
+    $this->actAs('anna', ['administer import definitions']);
+    $this->container->get('form_builder')->getForm(DefinitionWizardForm::class, $definition);
+
+    // Ben takes over, while Anna still has the wizard open.
+    $this->actAs('ben', ['administer import definitions']);
+    $this->container->get('import_engine_ui.wizard_lock')->takeOver('accounts', $this->container->get('current_user'));
+
+    $this->actAs('anna', ['administer import definitions']);
+    $values = $this->step1();
+    $values['label'] = 'Anna was here';
+    $state = $this->press(NULL, $values, 'save', [$definition]);
+
+    $this->assertNotSame([], $state->getErrors());
+    $this->assertSame('Accounts', ImportDefinition::load('accounts')?->label(), 'Nothing of Anna was saved.');
+  }
+
+  /**
+   * The person who takes over gets the wizard and the other is locked out.
+   */
+  public function testUnlockFormTakesOver(): void {
+    $definition = $this->savedImport();
+    $this->actAs('anna', ['administer import definitions']);
+    $this->container->get('form_builder')->getForm(DefinitionWizardForm::class, $definition);
+
+    $this->actAs('ben', ['administer import definitions']);
+    $state = new FormState();
+    $state->addBuildInfo('args', [$definition]);
+    $form = $this->container->get('form_builder')->buildForm(DefinitionUnlockForm::class, $state);
+    $this->assertStringContainsString('anna', (string) $form['description']['#markup']);
+    $state = new FormState();
+    $state->addBuildInfo('args', [$definition]);
+    $state->setValues(['op' => 'Take over']);
+    $this->container->get('form_builder')->submitForm(DefinitionUnlockForm::class, $state);
+
+    $this->assertArrayHasKey('steps', $this->container->get('form_builder')->getForm(DefinitionWizardForm::class, $definition));
+    $this->actAs('anna', ['administer import definitions']);
+    $this->assertArrayNotHasKey('steps', $this->container->get('form_builder')->getForm(DefinitionWizardForm::class, $definition));
   }
 
 }

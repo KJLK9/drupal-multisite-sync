@@ -211,7 +211,8 @@ class RunSetPagesTest extends KernelTestBase {
     $page = $this->container->get('class_resolver')->getInstanceFromDefinition(RunSetController::class)->list();
 
     $this->assertSame('accounts → items → agreements', $page['table']['#rows'][0][2]);
-    $this->assertSame(['run', 'edit', 'delete'], array_keys($page['table']['#rows'][0][4]['data']['#links']));
+    $this->assertSame('-', $page['table']['#rows'][0][4], 'No schedule.');
+    $this->assertSame(['run', 'edit', 'delete'], array_keys($page['table']['#rows'][0][5]['data']['#links']));
   }
 
   /**
@@ -357,12 +358,31 @@ class RunSetPagesTest extends KernelTestBase {
     $controller = $this->container->get('class_resolver')->getInstanceFromDefinition(RunSetController::class);
 
     $this->setUpCurrentUser(['name' => 'manager'], ['administer import definitions']);
-    $links = $controller->list()['table']['#rows'][0][4]['data']['#links'];
+    $links = $controller->list()['table']['#rows'][0][5]['data']['#links'];
     $this->assertSame(['edit', 'delete'], array_keys($links));
 
     $this->setUpCurrentUser(['name' => 'operator'], ['administer import definitions', 'administer import runs']);
-    $links = $controller->list()['table']['#rows'][0][4]['data']['#links'];
+    $links = $controller->list()['table']['#rows'][0][5]['data']['#links'];
     $this->assertSame(['run', 'edit', 'delete'], array_keys($links));
+  }
+
+  /**
+   * A run set has a schedule, kept with it and shown in the list.
+   */
+  public function testScheduleOfSet(): void {
+    $this->submit($this->values([['accounts', 0], ['items', 1]], [
+      'schedule' => ['enabled' => 1, 'every' => '60', 'start' => '15'],
+    ]));
+
+    $set = ImportRunSet::load('catalog');
+    $this->assertSame(['enabled' => TRUE, 'every' => 60, 'start' => 15], $set?->getSchedule());
+    $page = $this->container->get('class_resolver')->getInstanceFromDefinition(RunSetController::class)->list();
+    $this->assertSame('every 1 hour(s) from 00:15 UTC', $page['table']['#rows'][0][4]);
+
+    // Changed to not run by itself: the box is not ticked, which sends nothing.
+    $off = ['schedule' => ['enabled' => NULL, 'every' => '60', 'start' => '15']];
+    $this->submit($this->values([['accounts', 0], ['items', 1]], $off), 'catalog');
+    $this->assertFalse(ImportRunSet::load('catalog')?->getSchedule()['enabled']);
   }
 
 }

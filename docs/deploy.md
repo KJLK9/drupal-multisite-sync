@@ -56,11 +56,14 @@ Then, in a browser or with curl (`*.localhost` points at this machine):
   the interface under Configuration, System, Import engine.
 - Site A: http://site-a.import-engine.localhost:8080
 
-Run the catalog by hand instead of waiting for the hour:
+Imports and run sets run by themselves when their schedule says so: the job
+`import-due` asks every 15 minutes what is due (the run set `catalog` is
+scheduled for a quarter past every hour). To run the catalog now, by hand:
 
 ```bash
-kubectl --context k3d-import-engine -n import-engine create job --from=cronjob/import-catalog run-1
-kubectl --context k3d-import-engine -n import-engine logs -f job/run-1
+W=$(kubectl --context k3d-import-engine -n import-engine get pod -l app=web -o name | head -1)
+kubectl --context k3d-import-engine -n import-engine exec $W -- \
+  drush --uri=http://site-b.import-engine.localhost import:run-set catalog
 ```
 
 The passwords and keys of this overlay are fixed and public. The cluster

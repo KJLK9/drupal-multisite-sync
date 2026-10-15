@@ -35,15 +35,17 @@ spec:
         - name: files
           persistentVolumeClaim: {claimName: site-files}
 ---
-# The run set of the catalog on a schedule (docs/scheduling.md). One run per
-# import at a time is guaranteed by the engine; Forbid keeps the job history
-# tidy as well.
+# What is due, every quarter of an hour (docs/scheduling.md). The imports and
+# run sets have their own schedules (in the configuration, or in the interface);
+# this job only asks what is due now, which is how often anything can run. One
+# run per import at a time is guaranteed by the engine; Forbid keeps the job
+# history tidy as well.
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: import-catalog
+  name: import-due
 spec:
-  schedule: "15 * * * *"
+  schedule: "*/15 * * * *"
   concurrencyPolicy: Forbid
   startingDeadlineSeconds: 300
   successfulJobsHistoryLimit: 3
@@ -51,7 +53,9 @@ spec:
   jobTemplate:
     spec:
       backoffLimit: 0
-      activeDeadlineSeconds: 3300
+      # Stops before the next quarter; what is not over is continued by the
+      # next call, and by the worker.
+      activeDeadlineSeconds: 870
       template:
         spec:
           automountServiceAccountToken: false
@@ -67,7 +71,7 @@ spec:
                 runAsNonRoot: true
                 allowPrivilegeEscalation: false
                 capabilities: {drop: [ALL]}
-              command: ["sh", "-c", "drush --uri=http://$SITE_B_HOST import:run-set catalog --max-time=3000"]
+              command: ["sh", "-c", "drush --uri=http://$SITE_B_HOST import:run-due --max-time=840"]
               envFrom:
                 - configMapRef: {name: site-config}
                 - secretRef: {name: site-b-secret}

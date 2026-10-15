@@ -101,7 +101,7 @@ final class DefinitionDeleteForm extends ConfirmFormBase {
    * {@inheritdoc}
    */
   public function getDescription(): TranslatableMarkup {
-    return $this->t('The definition is deleted. Its runs and the items it wrote stay as they are.');
+    return $this->t('The import is deleted together with its runs, its queue, its events and the record of which source items became which entities. What it wrote to the site (the content) stays; a new import with the same name starts from nothing.');
   }
 
   /**
