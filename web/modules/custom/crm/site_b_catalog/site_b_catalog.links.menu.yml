@@ -1,17 +1,26 @@
+# A top-level item of its own: the navigation shows the children of the
+# administration menu, and the entities are not content (nodes).
+site_b_catalog.overview:
+  title: 'Catalog'
+  description: 'The accounts, items and agreements of site B, imported from site A.'
+  route_name: site_b_catalog.overview
+  parent: system.admin
+  weight: -8
+
 entity.account.collection:
   title: 'Accounts'
   description: 'The accounts of site B, imported from site A.'
   route_name: entity.account.collection
-  parent: system.admin_content
+  parent: site_b_catalog.overview
 
 entity.item.collection:
   title: 'Items'
   description: 'The items of site B, imported from site A.'
   route_name: entity.item.collection
-  parent: system.admin_content
+  parent: site_b_catalog.overview
 
 entity.agreement.collection:
   title: 'Agreements'
   description: 'The agreements of site B, imported from site A.'
   route_name: entity.agreement.collection
-  parent: system.admin_content
+  parent: site_b_catalog.overview

@@ -1,0 +1,12 @@
+# The page that lists the three entity types of the catalog, so that they can
+# be found: they are not nodes and are not on the content page.
+site_b_catalog.overview:
+  path: '/admin/site-b'
+  defaults:
+    _controller: '\Drupal\system\Controller\SystemController::systemAdminMenuBlockPage'
+    _title: 'Catalog'
+  requirements:
+    # The lists are for those who administer the type (that is how the entity
+    # types make them); any one of the three is enough, and the page lists what
+    # the person may open.
+    _permission: 'administer account+administer item+administer agreement'

@@ -39,3 +39,25 @@ entity.agreement.delete_form:
   route_name: entity.agreement.delete_form
   base_route: entity.agreement.canonical
   weight: 10
+
+# The three lists side by side, with the overview.
+site_b_catalog.tab_overview:
+  title: 'Overview'
+  route_name: site_b_catalog.overview
+  base_route: site_b_catalog.overview
+  weight: -10
+site_b_catalog.tab_accounts:
+  title: 'Accounts'
+  route_name: entity.account.collection
+  base_route: site_b_catalog.overview
+  weight: -9
+site_b_catalog.tab_items:
+  title: 'Items'
+  route_name: entity.item.collection
+  base_route: site_b_catalog.overview
+  weight: -8
+site_b_catalog.tab_agreements:
+  title: 'Agreements'
+  route_name: entity.agreement.collection
+  base_route: site_b_catalog.overview
+  weight: -7

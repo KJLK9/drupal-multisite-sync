@@ -20,7 +20,9 @@ the names differ and the shapes differ, so the imports have something to map.
   entity references, both required), `price` (money, required), `title`,
   `source_id`, published flag.
 
-They have no bundles. Each has its own list, forms and permissions
+They have no bundles. They are not nodes, so they are not on the content page:
+they are under **Catalog** in the administration (`/admin/site-b`), with a tab
+for each list. Each has its own list, forms and permissions
 (`view account`, `edit account`, ... and `administer account`), and uses the
 access handler of `published_access`: unpublished entities are only for
 administrators.
