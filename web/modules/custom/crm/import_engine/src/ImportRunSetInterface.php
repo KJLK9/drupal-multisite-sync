@@ -38,4 +38,13 @@ interface ImportRunSetInterface extends ConfigEntityInterface {
    */
   public function stopsOnErrors(): bool;
 
+  /**
+   * Returns the schedule of the set.
+   *
+   * @return array{enabled: bool, every: int, start: int}
+   *   Whether it runs by itself, every how many minutes, and from which minute
+   *   of the day (UTC), in whole quarters of an hour.
+   */
+  public function getSchedule(): array;
+
 }

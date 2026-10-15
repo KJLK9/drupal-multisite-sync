@@ -23,6 +23,7 @@ use Drupal\import_engine\Run\RunStarter;
 use Drupal\import_engine\Run\RunStatus;
 use Drupal\import_engine\Run\Trigger;
 use Drupal\import_engine\RunSet\RunSetRunner;
+use Drupal\import_engine\Schedule\Scheduler;
 use Drupal\import_engine\RunSet\SetProgress;
 use Drupal\import_engine\RunSet\SetState;
 use Drupal\import_engine\Storage\ItemStorage;
@@ -64,6 +65,8 @@ final class ImportCommands extends DrushCommands {
     private readonly TimeInterface $time,
     #[Autowire(service: 'import_engine.run_set_runner')]
     private readonly RunSetRunner $setRunner,
+    #[Autowire(service: 'import_engine.scheduler')]
+    private readonly Scheduler $scheduler,
   ) {
     parent::__construct();
   }
@@ -138,6 +141,38 @@ final class ImportCommands extends DrushCommands {
       default => (string) $progress->message,
     });
     return CommandResult::exitCode($progress->exitCode());
+  }
+
+  /**
+   * Runs what is due in this quarter of an hour.
+   *
+   * Call it every 15 minutes (a Kubernetes CronJob, or the system cron):
+   * imports and run sets that have a schedule are started when it is their
+   * time, and a run that is not over is continued. A second call in the same
+   * quarter starts nothing again. Exit codes: 0 everything that was due
+   * completed (or nothing was due), 1 something failed, 2 something is not
+   * over yet.
+   *
+   * @param array<string, mixed> $options
+   *   The command options.
+   */
+  #[CLI\Command(name: 'import:run-due')]
+  #[CLI\Option(name: 'max-time', description: 'Stop after this many seconds in all; 0 for no limit.')]
+  #[CLI\Option(name: 'batch', description: 'Items to claim at a time.')]
+  #[CLI\Usage(name: 'drush import:run-due --max-time=840', description: 'Run what is due, and stop before the next quarter.')]
+  public function runDue(array $options = ['max-time' => 0, 'batch' => 50]): CommandResult {
+    $now = $this->time->getCurrentTime();
+    $budget = RunBudget::ofSeconds((int) $options['max-time'], $now);
+    $budget->stopOnSignals();
+    $result = $this->scheduler->runDue($now, $budget, $this->workerName(), max(1, (int) $options['batch']));
+
+    if ($result->outcomes === []) {
+      $this->io()->writeln('Nothing is due.');
+    }
+    foreach ($result->outcomes as $outcome) {
+      $this->io()->writeln(sprintf('%s %s: %s%s', $outcome['kind'], $outcome['id'], str_replace('_', ' ', $outcome['status']), $outcome['message'] === NULL ? '' : ' (' . $outcome['message'] . ')'));
+    }
+    return CommandResult::exitCode($result->exitCode);
   }
 
   /**

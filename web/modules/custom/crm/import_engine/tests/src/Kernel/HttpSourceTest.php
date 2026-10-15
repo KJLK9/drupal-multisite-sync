@@ -263,6 +263,118 @@ class HttpSourceTest extends HttpSourceTestBase {
   }
 
   /**
+   * A response larger than the limit is refused, and not held in memory.
+   */
+  public function testResponseLargerThanTheLimitIsRefused(): void {
+    $this->setSetting('import_engine_max_response_bytes', 2048);
+    putenv(self::ENV_VAR . '=' . self::KEY);
+    $rows = array_map(static fn (int $i): array => ['id' => $i, 'name' => str_repeat('x', 100)], range(1, 100));
+    $json = json_encode(['data' => ['customers' => ['items' => $rows]]], JSON_THROW_ON_ERROR);
+    // Without a Content-Length, so that the body has to be read to know.
+    $this->mockResponses([new Response(200, ['Content-Type' => 'application/json'], $json)]);
+
+    try {
+      $this->source()->fetchPage();
+      $this->fail('Expected a SourceException.');
+    }
+    catch (SourceException $exception) {
+      $this->assertFalse($exception->retryable);
+      $this->assertStringContainsString('larger than', $exception->getMessage());
+      $this->assertStringContainsString('import_engine_max_response_bytes', $exception->getMessage());
+    }
+  }
+
+  /**
+   * A response that says it is too large is refused before it is read.
+   */
+  public function testContentLengthOverTheLimitIsRefused(): void {
+    $this->setSetting('import_engine_max_response_bytes', 2048);
+    putenv(self::ENV_VAR . '=' . self::KEY);
+    $this->mockResponses([new Response(200, ['Content-Type' => 'application/json', 'Content-Length' => '999999'], '{}')]);
+
+    $this->expectException(SourceException::class);
+    $this->expectExceptionMessage('larger than');
+
+    $this->source()->fetchPage();
+  }
+
+  /**
+   * A response within the limit is read as before.
+   */
+  public function testResponseWithinTheLimitIsRead(): void {
+    putenv(self::ENV_VAR . '=' . self::KEY);
+    $this->mockResponses([$this->fixtureResponse()]);
+
+    $page = $this->source()->fetchPage();
+
+    $this->assertNotEmpty($page->items);
+  }
+
+  /**
+   * Retry-After, as seconds or a date, is passed on, with a limit.
+   *
+   * @param array<string, string> $headers
+   *   The headers of the response.
+   * @param int|null $expected
+   *   The seconds that are honoured, or none.
+   */
+  #[DataProvider('retryAfterHeaders')]
+  public function testRetryAfter(array $headers, ?int $expected): void {
+    putenv(self::ENV_VAR . '=' . self::KEY);
+    $this->mockResponses([new Response(429, $headers)]);
+
+    try {
+      $this->source()->fetchPage();
+      $this->fail('Expected a SourceException.');
+    }
+    catch (SourceException $exception) {
+      $this->assertTrue($exception->retryable);
+      if ($expected === NULL) {
+        $this->assertNull($exception->retryAfter);
+      }
+      else {
+        // A date is relative to now; a test may start after the provider.
+        $this->assertEqualsWithDelta($expected, $exception->retryAfter, 300);
+        $this->assertStringContainsString('asks to wait', $exception->getMessage());
+      }
+    }
+  }
+
+  /**
+   * Headers and what is honoured of them.
+   *
+   * @return array<string, array{array<string, string>, int|null}>
+   *   The headers and the seconds.
+   */
+  public static function retryAfterHeaders(): array {
+    return [
+      'seconds' => [['Retry-After' => '120'], 120],
+      'a date' => [['Retry-After' => gmdate('D, d M Y H:i:s', time() + 1800) . ' GMT'], 1800],
+      'more than an hour is cut to an hour' => [['Retry-After' => '86400'], 3600],
+      'a date in the past' => [['Retry-After' => 'Wed, 21 Oct 2015 07:28:00 GMT'], NULL],
+      'nonsense' => [['Retry-After' => 'soon'], NULL],
+      'none' => [[], NULL],
+      'zero' => [['Retry-After' => '0'], NULL],
+    ];
+  }
+
+  /**
+   * A 503 with Retry-After counts the same as a 429.
+   */
+  public function testRetryAfterOnServiceUnavailable(): void {
+    putenv(self::ENV_VAR . '=' . self::KEY);
+    $this->mockResponses([new Response(503, ['Retry-After' => '45'])]);
+
+    try {
+      $this->source()->fetchPage();
+      $this->fail('Expected a SourceException.');
+    }
+    catch (SourceException $exception) {
+      $this->assertSame(45, $exception->retryAfter);
+    }
+  }
+
+  /**
    * Without authentication no credentials are sent.
    */
   public function testNoAuthentication(): void {

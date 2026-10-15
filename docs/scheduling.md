@@ -30,12 +30,40 @@ is there:
   and a lease; a worker that dies loses its claim after the lease and its
   items come back.
 
+## Schedules on imports and run sets
+
+An import or a run set has a schedule of its own: **every so many minutes,
+from a time of day**, in whole quarters of an hour and in UTC. Every 60 minutes
+from 00:15 is a quarter past every hour; every 1440 minutes from 02:00 is daily
+at two. The choices for "every" are 15, 30, 60, 120, 180, 240, 360, 480, 720 and
+1440 minutes: the periods that fit a day, so that every day looks the same. It
+is set on the last step of the wizard and in the form of a run set, and shows
+in their lists.
+
+Nothing in the engine keeps time. **One job, every 15 minutes, asks what is
+due**: `drush import:run-due` (the CronJob `import-due` in `deploy/`, or
+`*/15 * * * *` in a system cron). It looks at the quarter of an hour it is in
+and:
+
+- starts what is due there, run sets first; an import that is in a run set that
+  is due is left to the set, so that the order of the set holds;
+- **starts nothing twice**: a second call in the same quarter (a cron that ran
+  twice, a job that was started again by hand) does nothing;
+- **continues a run that is not over** instead of starting another;
+- works for as long as `--max-time` allows (840 seconds, so that it is done
+  before the next quarter) and gives the exit codes of the other commands: `0`
+  completed or nothing due, `1` something failed, `2` something is not over, and
+  the next call, or a worker, goes on with it.
+
+A quarter that no call falls in is not made up for: the next one that is due
+runs. That is the price of a schedule that is nothing but "what is due now".
+
 ## Three ways to start runs
 
 | | Starts a run | Good for |
 |---|---|---|
 | **Cron** | No: only continues runs that are going, if `cron_resume_seconds` is above 0 (Settings). | Picking up what a stopped run left. |
-| **A scheduled drush command** | Yes: `import:run-set catalog` from the system scheduler. | One server; the simplest thing that works. |
+| **A scheduled drush command** | Yes: `import:run-due` every 15 minutes from the system scheduler, which starts what has a schedule; or `import:run-set catalog` for one fixed set. | One server; the simplest thing that works. |
 | **A Kubernetes CronJob per import or set** | Yes. | Separate schedules, resources and failure alerts per import. |
 
 ## Kubernetes sketch
@@ -103,8 +131,5 @@ Points to decide when this is built:
   the Deployment restarts it, which is the intended way to deal with growth.
 - **Alerts** belong on exit code 1 of the job and on the circuit breaker
   (`drush import:breaker`), not on the number of retries.
-- **A schedule on the definition** (a cron expression stored with the import,
-  and something that creates the CronJobs from it) is the one thing that would
-  still need to be built.
 - **Secrets** come from the environment, as for the web pods: the database,
   the hash salt and the API key never go in the image or in config.

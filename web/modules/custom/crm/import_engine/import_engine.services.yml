@@ -61,6 +61,10 @@ services:
     class: Drupal\import_engine\Storage\RetentionPurger
     arguments: ['@config.factory', '@import_engine.item_storage', '@import_engine.event_log', '@database', '@entity_type.manager', '@datetime.time']
 
+  import_engine.definition_cleaner:
+    class: Drupal\import_engine\Storage\DefinitionCleaner
+    arguments: ['@database', '@entity_type.manager']
+
   import_engine.mapping_store:
     class: Drupal\import_engine\Storage\MappingStore
     arguments: ['@database', '@datetime.time']
@@ -72,6 +76,15 @@ services:
   import_engine.run_starter:
     class: Drupal\import_engine\Run\RunStarter
     arguments: ['@entity_type.manager', '@lock.persistent']
+
+  import_engine.scheduler:
+    class: Drupal\import_engine\Schedule\Scheduler
+    arguments:
+      - '@entity_type.manager'
+      - '@state'
+      - '@import_engine.run_starter'
+      - '@import_engine.run_driver'
+      - '@import_engine.run_set_runner'
 
   import_engine.run_set_runner:
     class: Drupal\import_engine\RunSet\RunSetRunner

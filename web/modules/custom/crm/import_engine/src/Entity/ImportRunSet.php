@@ -35,6 +35,7 @@ use Drupal\import_engine\ImportRunSetInterface;
     'description',
     'imports',
     'stop_on_errors',
+    'schedule',
   ],
 )]
 class ImportRunSet extends ConfigEntityBase implements ImportRunSetInterface {
@@ -67,6 +68,13 @@ class ImportRunSet extends ConfigEntityBase implements ImportRunSetInterface {
   protected bool $stop_on_errors = FALSE;
 
   /**
+   * When the set runs by itself, if it does.
+   *
+   * @var array{enabled: bool, every: int, start: int}
+   */
+  protected array $schedule = ['enabled' => FALSE, 'every' => 60, 'start' => 0];
+
+  /**
    * {@inheritdoc}
    */
   public function getDescription(): string {
@@ -85,6 +93,13 @@ class ImportRunSet extends ConfigEntityBase implements ImportRunSetInterface {
    */
   public function stopsOnErrors(): bool {
     return $this->stop_on_errors;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getSchedule(): array {
+    return $this->schedule;
   }
 
 }

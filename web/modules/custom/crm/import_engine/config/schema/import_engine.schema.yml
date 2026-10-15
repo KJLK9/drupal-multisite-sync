@@ -134,6 +134,10 @@ import_engine.import_definition.*:
         Regex:
           pattern: '/^[a-z][a-z0-9_]*$/'
           message: 'The pool must be a machine name.'
+    schedule:
+      type: import_engine.schedule
+      requiredKey: false
+      label: 'Schedule'
 
 # A source plugin; its configuration is typed per plugin.
 import_engine.source_reference:
@@ -851,3 +855,31 @@ import_engine.import_run_set.*:
     stop_on_errors:
       type: boolean
       label: 'Stop when items went wrong'
+    schedule:
+      type: import_engine.schedule
+      requiredKey: false
+      label: 'Schedule'
+
+# When something runs by itself: every so many minutes, from a time of day.
+# Whole quarters of an hour, UTC (see ScheduleRules).
+import_engine.schedule:
+  type: mapping
+  label: 'Schedule'
+  mapping:
+    enabled:
+      type: boolean
+      label: 'Runs by itself'
+    every:
+      type: integer
+      label: 'Every how many minutes'
+      constraints:
+        Choice: [15, 30, 60, 120, 180, 240, 360, 480, 720, 1440]
+    start:
+      type: integer
+      label: 'From which minute of the day (UTC)'
+      constraints:
+        Range:
+          min: 0
+          max: 1425
+        Callback:
+          callback: ['Drupal\import_engine\Schedule\ScheduleRules', 'validateStart']

@@ -138,4 +138,13 @@ interface ImportDefinitionInterface extends ConfigEntityInterface {
    */
   public function getPool(): string;
 
+  /**
+   * Returns the schedule of the import.
+   *
+   * @return array{enabled: bool, every: int, start: int}
+   *   Whether it runs by itself, every how many minutes, and from which minute
+   *   of the day (UTC), in whole quarters of an hour.
+   */
+  public function getSchedule(): array;
+
 }

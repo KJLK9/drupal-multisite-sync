@@ -8,6 +8,7 @@ use Drupal\import_engine\Form\TextLists;
 use Drupal\Core\Form\FormStateInterface;
 use Psr\Http\Message\ResponseInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\Core\Site\Settings;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\import_engine\Attribute\ImportSource;
 use Drupal\import_engine\Authentication\AuthenticationInterface;
@@ -59,6 +60,16 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
   required_keys: ['url'],
 )]
 class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInterface {
+
+  /**
+   * The largest response that is read, unless settings.php says otherwise.
+   */
+  public const DEFAULT_MAX_RESPONSE = 20971520;
+
+  /**
+   * The most seconds of a Retry-After that are honoured.
+   */
+  private const MAX_RETRY_AFTER = 3600;
 
   /**
    * How many items a check returns as samples.
@@ -209,9 +220,10 @@ class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInter
     $label = $request->method . ' ' . $this->describe($request);
     $response = $this->send($request, $label);
 
+    $body = $this->readBody($response, $label);
     try {
       $data = $this->decoder->decode(
-        (string) $response->getBody(),
+        $body,
         $response->getHeaderLine('Content-Type'),
         $this->responseFormat(),
         $this->csvDelimiter(),
@@ -444,6 +456,8 @@ class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInter
       // A redirect is not followed: it would send the key, in a header Guzzle
       // does not know to hold a secret, to whatever host it points at.
       'allow_redirects' => FALSE,
+      // The body is read here, up to a limit, not all at once.
+      'stream' => TRUE,
     ];
     try {
       $response = $this->httpClient->request($request->method, $request->url, $options);
@@ -465,7 +479,74 @@ class HttpSource extends SourcePluginBase implements ContainerFactoryPluginInter
     }
     $retryable = $status === 408 || $status === 429 || $status >= 500;
     $message = sprintf('%s: HTTP %d.', $label, $status);
-    throw $retryable ? SourceException::transient($message) : SourceException::permanent($message);
+    if (!$retryable) {
+      throw SourceException::permanent($message);
+    }
+    $wait = $this->retryAfter($response);
+    if ($wait !== NULL) {
+      $message .= sprintf(' The server asks to wait %d seconds.', $wait);
+    }
+    throw SourceException::transient($message, NULL, $wait);
+  }
+
+  /**
+   * Returns the seconds a response asks to wait, if it says so.
+   *
+   * The Retry-After header is a number of seconds or a date. A server that
+   * asks for a day would stop an import for a day, so what is honoured is at
+   * most an hour; and an answer that is in the past is nothing to wait for.
+   */
+  private function retryAfter(ResponseInterface $response): ?int {
+    $header = trim($response->getHeaderLine('Retry-After'));
+    if ($header === '') {
+      return NULL;
+    }
+    if (ctype_digit($header)) {
+      $seconds = (int) $header;
+    }
+    else {
+      $time = strtotime($header);
+      if ($time === FALSE) {
+        return NULL;
+      }
+      $seconds = $time - time();
+    }
+    return $seconds > 0 ? min($seconds, self::MAX_RETRY_AFTER) : NULL;
+  }
+
+  /**
+   * Reads the body of a response, up to the limit.
+   *
+   * Without a limit a server (or a mistake in the address) can answer with
+   * more than there is memory for. A compressed answer is counted as it is
+   * after decompression, which is what takes the memory.
+   *
+   * @throws \Drupal\import_engine\Source\SourceException
+   *   A permanent one, when the body is larger than the limit.
+   */
+  private function readBody(ResponseInterface $response, string $label): string {
+    $limit = $this->maxResponseBytes();
+    $message = sprintf('%s: the response is larger than %d MB. Ask for fewer items per page, or raise import_engine_max_response_bytes in settings.php.', $label, intdiv($limit, 1048576));
+    $length = $response->getHeaderLine('Content-Length');
+    if ($length !== '' && ctype_digit($length) && (int) $length > $limit && $response->getHeaderLine('Content-Encoding') === '') {
+      throw SourceException::permanent($message);
+    }
+    $body = $response->getBody();
+    $data = '';
+    while (!$body->eof()) {
+      $data .= $body->read(65536);
+      if (strlen($data) > $limit) {
+        throw SourceException::permanent($message);
+      }
+    }
+    return $data;
+  }
+
+  /**
+   * Returns the largest response that is read, in bytes.
+   */
+  private function maxResponseBytes(): int {
+    return max(1024, (int) Settings::get('import_engine_max_response_bytes', self::DEFAULT_MAX_RESPONSE));
   }
 
   /**

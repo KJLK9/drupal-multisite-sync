@@ -21,15 +21,23 @@ final class SourceException extends \RuntimeException {
     string $message,
     public readonly bool $retryable,
     ?\Throwable $previous = NULL,
+    public readonly ?int $retryAfter = NULL,
   ) {
     parent::__construct($message, 0, $previous);
   }
 
   /**
    * Creates an exception for a failure that may go away by itself.
+   *
+   * @param string $message
+   *   What went wrong.
+   * @param \Throwable|null $previous
+   *   The cause.
+   * @param int|null $retryAfter
+   *   The seconds the server asked to wait before calling again, if it did.
    */
-  public static function transient(string $message, ?\Throwable $previous = NULL): self {
-    return new self($message, TRUE, $previous);
+  public static function transient(string $message, ?\Throwable $previous = NULL, ?int $retryAfter = NULL): self {
+    return new self($message, TRUE, $previous, $retryAfter);
   }
 
   /**

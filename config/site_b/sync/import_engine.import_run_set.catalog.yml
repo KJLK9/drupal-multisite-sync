@@ -10,3 +10,7 @@ imports:
   - items
   - agreements
 stop_on_errors: false
+schedule:
+  enabled: true
+  every: 60
+  start: 15

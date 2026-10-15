@@ -91,6 +91,42 @@ final class BreakerStore {
   }
 
   /**
+   * Opens the breaker for the time the server asked to be left alone.
+   *
+   * A server that answers "too many requests, try again in 60 seconds" has said
+   * how long to wait: waiting that long, and not counting failures until the
+   * threshold, is what it asks. An open breaker stays open until the later of
+   * the two moments.
+   *
+   * @return bool
+   *   Whether this call opened a breaker that was not open.
+   */
+  public function openFor(string $endpoint, int $seconds, int $now): bool {
+    $this->ensure($endpoint, $now);
+    $record = $this->get($endpoint);
+    if ($record->state === BreakerState::Open) {
+      $this->database->update('import_breaker')
+        ->fields(['next_probe' => max($record->nextProbe, $now + $seconds), 'changed' => $now])
+        ->condition('endpoint', $endpoint)
+        ->condition('state', BreakerState::Open->value)
+        ->execute();
+      return FALSE;
+    }
+    return $this->database->update('import_breaker')
+      ->fields([
+        'state' => BreakerState::Open->value,
+        'trips' => max(1, $record->trips + 1),
+        'opened' => $now,
+        'next_probe' => $now + max(1, $seconds),
+        'probe_until' => 0,
+        'changed' => $now,
+      ])
+      ->condition('endpoint', $endpoint)
+      ->condition('state', [BreakerState::Closed->value, BreakerState::HalfOpen->value], 'IN')
+      ->execute() === 1;
+  }
+
+  /**
    * Counts a success: failures start over, and a half open breaker closes.
    *
    * @return bool

@@ -300,4 +300,39 @@ class BreakerTest extends ExtractTestBase {
     $this->assertSame(6, $this->items->countByState((int) $run->id())['pending']);
   }
 
+  /**
+   * A server that says how long to wait is left alone for that long.
+   *
+   * One answer is enough to open the breaker, not three, and it stays open for
+   * what the server asked, not for the base cooldown.
+   */
+  public function testRetryAfterOpensTheBreakerForThatLong(): void {
+    $source = new FakeSource($this->pagesOf(3, 2));
+    $source->endpoint = 'fake.test';
+    $source->down = SourceException::transient('HTTP 429', NULL, 300);
+    $guarded = $this->guard($source);
+
+    $this->attempt($guarded);
+
+    $record = $this->store->get('fake.test');
+    $this->assertSame(BreakerState::Open, $record->state, 'One answer opens it.');
+    $this->assertSame($this->now + 300, $record->nextProbe, 'For the time the server asked.');
+    // While it is open nothing is sent.
+    $source->down = NULL;
+    $this->assertStringContainsString('is open', (string) $this->attempt($guarded));
+  }
+
+  /**
+   * A second request to wait extends the time, never shortens it.
+   */
+  public function testRetryAfterNeverShortensAnOpenBreaker(): void {
+    $this->store->openFor('fake.test', 300, $this->now);
+
+    $this->store->openFor('fake.test', 30, $this->now + 10);
+    $this->assertSame($this->now + 300, $this->store->get('fake.test')->nextProbe);
+
+    $this->store->openFor('fake.test', 600, $this->now + 10);
+    $this->assertSame($this->now + 610, $this->store->get('fake.test')->nextProbe);
+  }
+
 }

@@ -52,6 +52,7 @@ use Drupal\import_engine\Storage\ImportDefinitionStorage;
     'breaker',
     'reporters',
     'pool',
+    'schedule',
   ],
 )]
 class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInterface {
@@ -168,6 +169,13 @@ class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInter
    * The worker pool that processes this import's items.
    */
   protected string $pool = 'default';
+
+  /**
+   * When the import runs by itself, if it does.
+   *
+   * @var array{enabled: bool, every: int, start: int}
+   */
+  protected array $schedule = ['enabled' => FALSE, 'every' => 60, 'start' => 0];
 
   /**
    * {@inheritdoc}
@@ -306,6 +314,13 @@ class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInter
    */
   public function getPool(): string {
     return $this->pool;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getSchedule(): array {
+    return $this->schedule;
   }
 
 }

@@ -114,7 +114,11 @@ final class CircuitBreaker {
   public function after(SourceInterface $source, ?SourceException $failure, int $threshold, int $cooldown, int $now): void {
     $endpoint = $source->getEndpoint();
     if ($failure !== NULL && $failure->retryable) {
-      if ($this->store->recordFailure($endpoint, $threshold, $cooldown, $now)) {
+      // The server said how long to wait: that is the cooldown.
+      $opened = $failure->retryAfter !== NULL
+        ? $this->store->openFor($endpoint, $failure->retryAfter, $now)
+        : $this->store->recordFailure($endpoint, $threshold, $cooldown, $now);
+      if ($opened) {
         $this->logger->error('The circuit breaker for @endpoint opened: @message', [
           '@endpoint' => $endpoint,
           '@message' => $failure->getMessage(),
