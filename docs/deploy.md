@@ -184,8 +184,10 @@ What would change that picture, and what to do then:
   Cloudflare, which caches static files only, is fine.
 - **A deploy.** The compiled container and the Twig files live on the volume
   and in the database; a new image with new code needs the caches rebuilt.
-  The bootstrap job does that for both sites (`config:import`, `updatedb`,
-  `cache:rebuild`), and the web pods are replaced, not changed in place.
+  The bootstrap job does that for both sites (`cache:rebuild` first, then
+  `config:import` and `updatedb`, then `cache:rebuild` again). The first rebuild
+  matters: a configuration import with the cached entity types of the old code
+  drops a setting that the new code added, and the web pods are replaced, not changed in place.
 
 ## What was and was not tried
 

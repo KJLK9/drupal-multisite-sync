@@ -54,6 +54,10 @@ install_site() {
   if installed "$host"; then
     # Installed: bring it up to date with the configuration in the image.
     echo "${host} is installed; importing its configuration."
+    # The caches first: the definitions of the entity types are cached, and a
+    # configuration import with the definitions of the old code drops what the
+    # new code added (a setting of a config entity that it does not know yet).
+    drush_site "$host" cache:rebuild
     drush_site "$host" config:import -y
     drush_site "$host" updatedb -y
     return
