@@ -77,13 +77,27 @@ class DefinitionSummary {
     $url = (string) ($configuration['url'] ?? '');
     $where = match (TRUE) {
       $connection !== NULL && $connection !== '' => $this->t('the connection "@name"', ['@name' => $connection]),
-      $url !== '' => $url,
+      $url !== '' => $this->withoutSecrets($url),
       default => $this->t('a @plugin source', ['@plugin' => $definition->getSource()['plugin']]),
     };
     $path = (string) ($configuration['items_path'] ?? '');
     return (string) ($path === ''
       ? $this->t('Reads items from @where.', ['@where' => (string) $where])
       : $this->t('Reads items from @where, from "@path" in the answer.', ['@where' => (string) $where, '@path' => $path]));
+  }
+
+  /**
+   * Shortens an address to its scheme and host.
+   *
+   * A path or query may hold a key (?api_key=...), and a summary is read by
+   * more people than the secret was meant for.
+   */
+  private function withoutSecrets(string $url): string {
+    $parts = parse_url($url);
+    if (!is_array($parts) || !isset($parts['host'])) {
+      return (string) $this->t('an address');
+    }
+    return ($parts['scheme'] ?? 'https') . '://' . $parts['host'] . (isset($parts['port']) ? ':' . $parts['port'] : '') . '/…';
   }
 
   /**

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\import_engine_ui\Kernel;
 
+use Drupal\import_engine\Entity\ImportDefinition;
 use Drupal\import_engine_ui\Controller\HelpController;
+use Drupal\import_engine_ui\Help\DefinitionSummary;
 use Drupal\import_engine_ui\Help\Glossary;
 use Drupal\Tests\import_engine\Kernel\NodeTestBase;
 use PHPUnit\Framework\Attributes\Group;
@@ -47,6 +49,28 @@ class HelpPageTest extends NodeTestBase {
       $this->assertStringContainsString('id="' . $id . '"', $html);
       $this->assertStringContainsString((string) $term->term, $html);
     }
+  }
+
+  /**
+   * The summary names the host of a source, not a key in its address.
+   */
+  public function testSummaryLeavesOutSecretsInTheAddress(): void {
+    $definition = ImportDefinition::create([
+      'id' => 'x',
+      'label' => 'X',
+      'source' => [
+        'plugin' => 'http',
+        'configuration' => ['url' => 'https://api.example.com/v1/items?api_key=SECRET123'],
+      ],
+    ]);
+    $summary = $this->container->get('import_engine_ui.definition_summary');
+    $this->assertInstanceOf(DefinitionSummary::class, $summary);
+
+    $text = implode("\n", $summary->sentences($definition));
+
+    $this->assertStringContainsString('https://api.example.com', $text);
+    $this->assertStringNotContainsString('SECRET123', $text);
+    $this->assertStringNotContainsString('api_key', $text);
   }
 
   /**

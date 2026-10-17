@@ -135,8 +135,11 @@ final class ReferenceMapper extends MapperPluginBase implements ContainerFactory
     if ($record === NULL || $record->targetId === NULL) {
       return match ($when_missing) {
         'ignore' => NULL,
-        'error' => throw new MappingException(sprintf('The item "%s" of the import "%s" is not imported, and this field does not wait for it.', trim($value), $definition)),
-        default => throw new DependencyNotReadyException(sprintf('The item "%s" of the import "%s" is not imported yet.', trim($value), $definition)),
+        // The key of the item the value refers to is personal data now and
+        // then (an email address, a customer number); messages end up in the
+        // events and are kept, so they say which import, not which item.
+        'error' => throw new MappingException(sprintf('The item it refers to, of the import "%s", is not imported, and this field does not wait for it.', $definition)),
+        default => throw new DependencyNotReadyException(sprintf('The item it refers to, of the import "%s", is not imported yet.', $definition)),
       };
     }
     return ['target_id' => $record->targetId];

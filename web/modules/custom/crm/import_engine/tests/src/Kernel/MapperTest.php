@@ -288,7 +288,8 @@ class MapperTest extends StorageTestBase {
       $this->fail('Expected a DependencyNotReadyException.');
     }
     catch (DependencyNotReadyException $exception) {
-      $this->assertStringContainsString('"P-2" of the import "products" is not imported yet', $exception->getMessage());
+      $this->assertStringContainsString('of the import "products", is not imported yet', $exception->getMessage());
+      $this->assertStringNotContainsString('P-2', $exception->getMessage(), 'The key of the item is not in the message.');
     }
 
     try {

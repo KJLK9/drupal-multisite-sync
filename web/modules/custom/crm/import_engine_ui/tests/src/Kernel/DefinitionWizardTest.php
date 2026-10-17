@@ -993,7 +993,7 @@ class DefinitionWizardTest extends NodeTestBase {
     $form = $this->buildAt($state);
     $text = (string) $this->container->get('renderer')->renderRoot($form['summary_plain']);
 
-    $this->assertStringContainsString('Reads items from https://site-a.test/api/customers', $text);
+    $this->assertStringContainsString('Reads items from https://site-a.test/…', $text);
     $this->assertStringContainsString('An item is recognised by customer_code', $text);
     $this->assertStringContainsString('2 fields are filled', $text);
     $this->assertStringContainsString('title from name', $text);

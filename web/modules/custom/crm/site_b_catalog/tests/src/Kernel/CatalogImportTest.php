@@ -400,7 +400,8 @@ class CatalogImportTest extends CatalogTestBase {
     $run = $this->container->get('import_engine.run_manager')->latest('agreements');
     $this->assertNotNull($run);
     $dead = $this->container->get('import_engine.item_storage')->listItems([(int) $run->id()], ItemState::Dead, 10);
-    $this->assertStringContainsString('"C-002" of the import "accounts" is not imported yet', (string) $dead[0]->error);
+    $this->assertStringContainsString('of the import "accounts", is not imported yet', (string) $dead[0]->error);
+    $this->assertStringNotContainsString('C-002', (string) $dead[0]->error);
   }
 
 }

@@ -117,8 +117,17 @@ final class ImportPlan {
       catch (DependencyNotReadyException $exception) {
         $results[] = ['field' => $name, 'status' => 'waiting', 'value' => NULL, 'message' => $exception->getMessage()];
       }
-      catch (\Throwable $exception) {
+      catch (MappingException $exception) {
         $results[] = ['field' => $name, 'status' => 'failed', 'value' => NULL, 'message' => $exception->getMessage()];
+      }
+      catch (\Throwable) {
+        // Not a message meant for a person: it may name internals or values.
+        $results[] = [
+          'field' => $name,
+          'status' => 'failed',
+          'value' => NULL,
+          'message' => 'This field could not be mapped.',
+        ];
       }
     }
     return $results;

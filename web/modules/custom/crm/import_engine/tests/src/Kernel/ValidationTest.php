@@ -5,6 +5,11 @@ declare(strict_types=1);
 namespace Drupal\Tests\import_engine\Kernel;
 
 use Drupal\import_engine\Entity\ImportDefinition;
+use Drupal\import_engine\Mapper\MapperInterface;
+use Drupal\import_engine\Process\ImportPlan;
+use Drupal\import_engine\Target\TargetField;
+use Drupal\import_engine\Target\TargetInterface;
+use Drupal\import_engine\Validator\OnInvalid;
 use Drupal\import_engine\Run\RunStatus;
 use Drupal\import_engine\Run\Trigger;
 use Drupal\import_engine\Storage\EventType;
@@ -305,6 +310,62 @@ class ValidationTest extends NodeTestBase {
     $this->assertNull($empty[1]['value']);
 
     $this->assertSame('skipped', $preview('skip_item')[1]['status']);
+  }
+
+  /**
+   * An error that is not about the data is not shown to the person.
+   */
+  public function testPreviewHidesInternalErrors(): void {
+    $mapper = $this->createStub(MapperInterface::class);
+    $mapper->method('map')->willThrowException(new \RuntimeException('SQLSTATE secret detail'));
+    $plan = new ImportPlan($this->createStub(TargetInterface::class), [[
+      'field' => new TargetField('title', 'Title', 'string'),
+      'mapper' => $mapper,
+      'paths' => ['value' => 'name'],
+      'validators' => [],
+      'on_invalid' => OnInvalid::Fail,
+    ],
+    ], $this->container->get('import_engine.path_resolver'));
+
+    $rows = $plan->preview(['name' => 'Acme']);
+
+    $this->assertSame('failed', $rows[0]['status']);
+    $this->assertSame('This field could not be mapped.', $rows[0]['message']);
+  }
+
+  /**
+   * A value left empty in a field that is required fails the item, in words.
+   */
+  public function testEmptiedValueInRequiredFieldFailsTheItem(): void {
+    $values = $this->accounts();
+    $values['mapping'][0]['validators'] = $this->email();
+    $values['mapping'][0]['on_invalid'] = 'empty';
+    $run = $this->extractRows([['id' => 1, 'name' => 'not an address', 'code' => 'A']], $values);
+
+    $result = $this->process->process('w', 10, 'default', 600, 1000);
+
+    $this->assertSame(0, $result->created);
+    $this->assertSame(1, $result->failed);
+    $dead = $this->items->listItems([(int) $run->id()], ItemState::Dead, 10);
+    $this->assertCount(1, $dead);
+    $this->assertStringNotContainsString('not an address', (string) $dead[0]->error);
+    $this->assertNotSame('', (string) $dead[0]->error);
+  }
+
+  /**
+   * A template cannot be started, whatever the status says in the file.
+   */
+  public function testTemplateCannotBeStarted(): void {
+    $values = $this->accounts(['id' => 'tpl', 'label' => 'Template']);
+    $values['template'] = TRUE;
+    $values['status'] = TRUE;
+    $definition = $this->definition($values);
+    $definition->save();
+
+    $this->assertTrue($definition->isTemplate());
+    $this->assertFalse($definition->status());
+    $this->expectException(\RuntimeException::class);
+    $this->starter->start($definition, Trigger::Drush);
   }
 
   /**
