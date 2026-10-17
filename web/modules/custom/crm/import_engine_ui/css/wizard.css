@@ -182,3 +182,114 @@ button.import-wizard-path {
   cursor: pointer;
   text-decoration: underline;
 }
+
+/*
+ * The info icon after a word of jargon: a small round button; the explanation
+ * shows on hover and on keyboard focus, and is read by a screen reader.
+ */
+.import-info {
+  position: relative;
+  display: inline-block;
+  margin-inline-start: 0.25rem;
+  vertical-align: middle;
+}
+
+.import-info__icon {
+  box-sizing: border-box;
+  width: 1.1rem;
+  height: 1.1rem;
+  padding: 0;
+  border: 1px solid currentcolor;
+  border-radius: 50%;
+  background: transparent;
+  color: #55596b;
+  font: italic 700 0.7rem/1 Georgia, serif;
+  cursor: help;
+}
+
+.import-info__tip {
+  position: absolute;
+  z-index: 20;
+  inset-block-start: 1.5rem;
+  inset-inline-start: -0.5rem;
+  display: none;
+  width: max-content;
+  max-width: 20rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.4rem;
+  background: #1b1b1f;
+  color: #fff;
+  font: 400 0.85rem/1.4 sans-serif;
+  text-align: start;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 30%);
+}
+
+.import-info__tip a {
+  color: #9cc4ff;
+}
+
+.import-info:hover .import-info__tip,
+.import-info:focus-within .import-info__tip {
+  display: block;
+}
+
+.import-info__tip code {
+  color: #ffd98a;
+}
+
+.import-info__tip::before {
+  position: absolute;
+  inset-block-start: -0.5rem;
+  inset-inline: 0;
+  height: 0.5rem;
+  content: "";
+}
+
+.import-wizard-intro {
+  margin-block: 0 1.2rem;
+  color: #55596b;
+}
+
+.import-help {
+  max-width: 54rem;
+}
+
+.import-help__flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: stretch;
+  padding: 0;
+  margin: 1rem 0 2rem;
+  list-style: none;
+}
+
+.import-help__flow li {
+  flex: 1 1 9rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #c8cad4;
+  border-radius: 0.4rem;
+}
+
+.import-help__flow li:not(:last-child)::after {
+  float: inline-end;
+  margin-inline-end: -1.1rem;
+  content: "\2192";
+}
+
+.import-help__flow strong {
+  display: block;
+}
+
+.import-help dt {
+  margin-block-start: 1rem;
+  font-weight: 700;
+}
+
+.import-help dd {
+  margin-inline-start: 0;
+}
+
+.import-help dt:target {
+  background: #fff6d6;
+}

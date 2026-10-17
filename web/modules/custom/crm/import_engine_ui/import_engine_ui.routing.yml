@@ -260,3 +260,11 @@ import_engine_ui.definition_unlock:
     parameters:
       import_definition:
         type: 'entity:import_definition'
+
+import_engine_ui.help:
+  path: '/admin/config/system/import-engine/help'
+  defaults:
+    _controller: 'Drupal\import_engine_ui\Controller\HelpController::page'
+    _title: 'Help'
+  requirements:
+    _permission: 'view import runs'

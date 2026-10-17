@@ -31,3 +31,6 @@ services:
   import_engine_ui.wizard_lock:
     class: Drupal\import_engine_ui\Lock\WizardLock
     arguments: ['@keyvalue.expirable', '@datetime.time']
+
+  import_engine_ui.glossary:
+    class: Drupal\import_engine_ui\Help\Glossary

@@ -30,6 +30,7 @@ use Drupal\import_engine\Connection\ConnectionResolver;
 use Drupal\import_engine\ImportConnectionInterface;
 use Drupal\import_engine\Mapper\MappingSuggester;
 use Drupal\import_engine\Schedule\ScheduleRules;
+use Drupal\import_engine_ui\Help\Glossary;
 use Drupal\import_engine_ui\Lock\WizardLock;
 use Drupal\import_engine\Source\SourceSampler;
 use Drupal\import_engine\Validator\OnInvalid;
@@ -114,6 +115,8 @@ final class DefinitionWizardForm extends FormBase {
     protected WizardLock $lock,
     #[Autowire(service: 'plugin.manager.import_engine_validator')]
     protected ValidatorPluginManager $validators,
+    #[Autowire(service: 'import_engine_ui.glossary')]
+    protected Glossary $glossary,
   ) {
   }
 
@@ -158,6 +161,7 @@ final class DefinitionWizardForm extends FormBase {
     $form['#attributes']['class'][] = 'import-definition-wizard';
     $form['#attributes']['class'][] = 'import-engine-form';
     $form['#attached']['library'][] = 'import_engine_ui/wizard';
+    $form['#pre_render'][] = $this->addInfoIcons(...);
 
     $current = $this->values($form_state);
     $problems = $this->problemsByStep($this->entityFromValues($current), ($current['id'] ?? '') === '', $this->idIsTaken($form_state, $current));
@@ -172,6 +176,9 @@ final class DefinitionWizardForm extends FormBase {
         '@total' => (string) count(self::STEPS),
         '@title' => self::STEPS[$step],
       ]) . '</h2>',
+    ];
+    $form['intro_text'] = [
+      '#markup' => '<p class="import-wizard-intro">' . $this->stepIntro($step) . ' <a href="' . Url::fromRoute('import_engine_ui.help')->toString() . '">' . $this->t('Help') . '</a></p>',
     ];
 
     if ($step === 4) {
@@ -553,7 +560,12 @@ final class DefinitionWizardForm extends FormBase {
     ];
     $form['mapping'] = [
       '#type' => 'table',
-      '#header' => [$this->t('Field'), $this->t('Source'), $this->t('Mapper'), $this->t('Check')],
+      '#header' => [
+        $this->t('Field'),
+        ['data' => $this->glossary->labelWithIcon($this->t('Source'), $this->glossary->terms()['source'])],
+        ['data' => $this->glossary->labelWithIcon($this->t('Mapper'), $this->glossary->terms()['mapper'])],
+        ['data' => $this->glossary->labelWithIcon($this->t('Check'), $this->glossary->terms()['validator'])],
+      ],
       '#tree' => TRUE,
       '#prefix' => '<div id="import-wizard-mapping">',
       '#suffix' => '</div>',
@@ -586,6 +598,7 @@ final class DefinitionWizardForm extends FormBase {
     $form['status'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Enabled'),
+      '#description' => $this->t('Off: the import cannot be started and does not run on its schedule. A new import starts switched off; turn it on when you want it to run.'),
       '#default_value' => $values['status'],
     ];
     $form['delete_policy'] = [
@@ -2049,6 +2062,56 @@ final class DefinitionWizardForm extends FormBase {
   }
 
   /**
+   * Says in a sentence what a step is for.
+   *
+   * @param int $step
+   *   The step.
+   */
+  private function stepIntro(int $step): string {
+    return (string) match ($step) {
+      1 => $this->t('Where does the data come from? Give the import a name and the address of the source, then try it.'),
+      2 => $this->t('How does the import read all of it? Say how to ask for the next page, and how to log in if the source needs it.'),
+      3 => $this->t('What makes an item unique, and what content does it become?'),
+      4 => $this->t('Which value of the source goes into which field? Leave a field empty to leave it alone.'),
+      default => $this->t('What should happen when things go wrong, and should the import run now? A new import is off until you switch it on.'),
+    };
+  }
+
+  /**
+   * Puts an info icon after the label of every element that has a term.
+   *
+   * Done when the form is rendered, so that the labels the checks and the
+   * error messages read are the plain ones. An example of the term becomes
+   * the placeholder of an empty text field.
+   *
+   * @param array<mixed> $element
+   *   The form, or a part of it.
+   *
+   * @return array<mixed>
+   *   The same, with the icons.
+   */
+  public function addInfoIcons(array $element): array {
+    foreach (Element::children($element) as $key) {
+      $child = &$element[$key];
+      if (!is_array($child)) {
+        continue;
+      }
+      $parents = (array) ($child['#parents'] ?? [(string) $key]);
+      $name = (string) end($parents);
+      $term = $this->glossary->forField($name);
+      if ($term !== NULL && isset($child['#title']) && ($child['#title_display'] ?? '') !== 'invisible') {
+        $child['#title'] = $this->glossary->labelWithIcon($child['#title'], $term);
+        if ($term->example !== NULL && in_array($child['#type'] ?? '', ['textfield', 'textarea', 'url'], TRUE)
+          && empty($child['#default_value']) && !isset($child['#attributes']['placeholder'])) {
+          $child['#attributes']['placeholder'] = (string) $term->example;
+        }
+      }
+      $child = $this->addInfoIcons($child);
+    }
+    return $element;
+  }
+
+  /**
    * Returns the values to start from: those of the import, or the defaults.
    *
    * @return array<string, mixed>
@@ -2071,7 +2134,8 @@ final class DefinitionWizardForm extends FormBase {
     $values['source_key'] = [];
     $values['mapping'] = [];
     $values['reporters'] = [];
-    $values['status'] = TRUE;
+    // A new import is off until someone turns it on on purpose.
+    $values['status'] = FALSE;
     return $values;
   }
 

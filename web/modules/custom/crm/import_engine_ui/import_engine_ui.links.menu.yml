@@ -45,3 +45,10 @@ import_engine_ui.settings:
   description: 'How long the engine keeps items, events and runs, and what cron does.'
   parent: import_engine_ui.overview
   route_name: import_engine_ui.settings
+
+import_engine_ui.help:
+  title: 'Help'
+  description: 'What the import engine does, how to make a first import, and the words explained.'
+  parent: import_engine_ui.overview
+  route_name: import_engine_ui.help
+  weight: 100

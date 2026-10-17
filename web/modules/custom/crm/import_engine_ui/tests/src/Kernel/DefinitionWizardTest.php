@@ -865,6 +865,38 @@ class DefinitionWizardTest extends NodeTestBase {
   }
 
   /**
+   * A new import is switched off; turning it on is a choice.
+   */
+  public function testNewImportStartsSwitchedOff(): void {
+    $state = $this->toLastStep();
+    $form = $this->buildAt($state);
+    $this->assertFalse($form['status']['#default_value']);
+
+    $values = $this->step5();
+    unset($values['status']);
+    $this->press($state, $values, 'save');
+    $definition = ImportDefinition::load('accounts');
+    $this->assertNotNull($definition);
+    $this->assertFalse($definition->status());
+  }
+
+  /**
+   * Jargon keeps its place and gets an icon with the meaning; no label breaks.
+   */
+  public function testJargonHasInfoIcons(): void {
+    $state = $this->toLastStep();
+    $form = $this->buildAt($state);
+    $html = (string) $this->container->get('renderer')->renderRoot($form);
+
+    $this->assertStringContainsString('Circuit breaker', $html);
+    $this->assertStringContainsString('import-info__icon', $html);
+    $this->assertStringContainsString('What is Circuit breaker?', $html);
+    $this->assertStringContainsString('stops calling it for a while', $html);
+    $this->assertStringContainsString('/admin/config/system/import-engine/help#breaker', $html);
+    $this->assertStringContainsString('import-wizard-intro', $html);
+  }
+
+  /**
    * A box that is not ticked sends nothing; leaving a step counts it as off.
    */
   public function testUntickedBoxesAreOffWhenLeavingStep(): void {
