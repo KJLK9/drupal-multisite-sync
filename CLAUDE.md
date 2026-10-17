@@ -21,6 +21,9 @@ products, product prices) exposed through a read-only GraphQL API.
 - `ddev composer test:serial`: PHPUnit one test after the other, with readable
   output, for debugging. Slow with the database on disk.
 - `ddev composer check:fast`: phpcs + phpstan + rector + Unit tests
+- `ddev composer e2e`: Playwright tests of the screens (`e2e/`, see its README),
+  in a real browser against the local site B; not part of `check`. Run them
+  after changes to forms or pages.
 - `ddev drush @ddev.site_a cex` / `cim` / `cr`: config export / import / cache
   rebuild. Always target a site (`@ddev.site_a`, `@ddev.site_b`, see
   `drush/sites/ddev.site.yml`); plain `drush` hits the unused `default` site.

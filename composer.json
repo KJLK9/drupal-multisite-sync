@@ -130,6 +130,7 @@
         ],
         "test:unit": "phpunit -c phpunit.xml.dist --testsuite unit",
         "test:serial": "phpunit -c phpunit.xml.dist",
+        "e2e": "bash -c 'cd e2e && npm ci --no-audit --no-fund --silent && npx playwright install chromium && npx playwright test \"$@\"' --",
         "check:fast": [
             "@phpcs",
             "@phpstan",

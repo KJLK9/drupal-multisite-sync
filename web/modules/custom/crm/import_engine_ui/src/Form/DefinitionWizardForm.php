@@ -2226,7 +2226,8 @@ final class DefinitionWizardForm extends FormBase implements TrustedCallbackInte
    */
   private function plainSummary(array $values): array {
     $items = array_map(
-      static fn (string $line): array => ['#markup' => nl2br(Html::escape($line))],
+      // The sentences are made by t(), which has escaped what was put in.
+      static fn (string $line): array => ['#markup' => nl2br($line)],
       $this->summary->sentences($this->entityFromValues($values)),
     );
     return [

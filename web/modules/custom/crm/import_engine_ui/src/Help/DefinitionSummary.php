@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\import_engine_ui\Help;
 
 use Drupal\Core\StringTranslation\StringTranslationTrait;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\import_engine\DeletePolicy;
 use Drupal\import_engine\ImportDefinitionInterface;
 use Drupal\import_engine\Schedule\ScheduleRules;
@@ -82,8 +83,8 @@ class DefinitionSummary {
     };
     $path = (string) ($configuration['items_path'] ?? '');
     return (string) ($path === ''
-      ? $this->t('Reads items from @where.', ['@where' => (string) $where])
-      : $this->t('Reads items from @where, from "@path" in the answer.', ['@where' => (string) $where, '@path' => $path]));
+      ? $this->t('Reads items from @where.', ['@where' => $where])
+      : $this->t('Reads items from @where, from "@path" in the answer.', ['@where' => $where, '@path' => $path]));
   }
 
   /**
@@ -161,8 +162,8 @@ class DefinitionSummary {
   /**
    * Says what happens to an item that fails its check.
    */
-  private function onInvalid(string $value): string {
-    return (string) match (OnInvalid::tryFrom($value) ?? OnInvalid::Fail) {
+  private function onInvalid(string $value): TranslatableMarkup {
+    return match (OnInvalid::tryFrom($value) ?? OnInvalid::Fail) {
       OnInvalid::Fail => $this->t('the item fails'),
       OnInvalid::Empty => $this->t('the field is left empty'),
       OnInvalid::SkipItem => $this->t('the item is skipped'),
@@ -180,7 +181,7 @@ class DefinitionSummary {
       DeletePolicy::Ignore => $this->t('the content is left as it is'),
     };
     return (string) $this->t('When an item is no longer in the source, @what. If more than @limit% of the items disappear in one run, nothing is changed and the run reports an error.', [
-      '@what' => (string) $what,
+      '@what' => $what,
       '@limit' => (string) $limit,
     ]);
   }

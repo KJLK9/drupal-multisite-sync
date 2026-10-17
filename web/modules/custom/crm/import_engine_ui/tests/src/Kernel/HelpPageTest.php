@@ -74,6 +74,26 @@ class HelpPageTest extends NodeTestBase {
   }
 
   /**
+   * The sentences are safe HTML, escaped once: no markup, no double escaping.
+   */
+  public function testSummaryEscapesOnce(): void {
+    $definition = ImportDefinition::create([
+      'id' => 'x',
+      'label' => 'X',
+      'connection' => 'a"b<script>',
+      'source' => ['plugin' => 'http', 'configuration' => []],
+    ]);
+    $summary = $this->container->get('import_engine_ui.definition_summary');
+    $this->assertInstanceOf(DefinitionSummary::class, $summary);
+
+    $text = implode("\n", $summary->sentences($definition));
+
+    $this->assertStringNotContainsString('<script>', $text);
+    $this->assertStringContainsString('&lt;script&gt;', $text);
+    $this->assertStringNotContainsString('&amp;', $text);
+  }
+
+  /**
    * A term names the form elements that get its icon, once each.
    */
   public function testEveryFieldBelongsToOneTerm(): void {
