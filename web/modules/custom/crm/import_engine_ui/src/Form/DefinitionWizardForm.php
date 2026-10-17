@@ -1152,8 +1152,20 @@ final class DefinitionWizardForm extends FormBase {
 
     $sample = $form_state->get('source_sample');
     if (!is_array($sample)) {
+      if ($step === 4) {
+        $form['source_test']['#description'] = $form['source_test']['#description'] . ' ' . $this->t('Do this first: the real values then show next to every path you type below.');
+      }
       return;
     }
+    $examples = [];
+    foreach (array_slice($sample['paths'], 0, 500, TRUE) as $path => $info) {
+      $examples[(string) $path] = $info['example'];
+    }
+    $form['#attached']['drupalSettings']['importWizard'] = [
+      'examples' => $examples,
+      'example' => (string) $this->t('In the sample:'),
+      'missing' => (string) $this->t('This path is not in the sample items. Check the spelling, or click a path from the table.'),
+    ];
     $items = [];
     foreach ($sample['messages'] as $message) {
       $items[] = ['#markup' => '<strong>' . ucfirst((string) $message['severity']) . ':</strong> ' . Html::escape((string) $message['message'])];

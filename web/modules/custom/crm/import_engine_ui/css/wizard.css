@@ -293,3 +293,14 @@ button.import-wizard-path {
 .import-help dt:target {
   background: #fff6d6;
 }
+
+.import-wizard-example {
+  display: block;
+  min-height: 1.2em;
+  overflow-wrap: anywhere;
+  color: #1c6b3a;
+}
+
+.import-wizard-example--missing {
+  color: #9a5b00;
+}

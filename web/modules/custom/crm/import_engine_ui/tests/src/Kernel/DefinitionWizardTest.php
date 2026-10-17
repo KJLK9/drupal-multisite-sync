@@ -673,6 +673,27 @@ class DefinitionWizardTest extends NodeTestBase {
   }
 
   /**
+   * On the mapping step the sample's values go to the page, for the live note.
+   */
+  public function testMappingStepGetsExampleValues(): void {
+    $this->sourceReturns([['code' => 'C-1', 'name' => 'Acme']]);
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $state = $this->press($state, $this->plainStep2(), 'next');
+    $state = $this->press($state, $this->step3(), 'next');
+    $this->assertSame(4, $state->get('step'));
+
+    $before = $this->buildAt($state);
+    $this->assertStringContainsString('Do this first', (string) $before['source_test']['#description']);
+    $this->assertArrayNotHasKey('importWizard', $before['#attached']['drupalSettings'] ?? []);
+
+    $tried = $this->press($state, [], 'test_source');
+    $after = $this->buildAt($tried);
+    $settings = $after['#attached']['drupalSettings']['importWizard'];
+    $this->assertSame('Acme', $settings['examples']['name']);
+    $this->assertSame('C-1', $settings['examples']['code']);
+  }
+
+  /**
    * The suggestion fills in the fields that have no source, from the sample.
    */
   public function testMappingSuggestsPaths(): void {
