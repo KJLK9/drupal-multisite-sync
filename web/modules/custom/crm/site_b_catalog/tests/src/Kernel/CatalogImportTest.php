@@ -136,10 +136,10 @@ class CatalogImportTest extends CatalogTestBase {
         'first' => 'product.label',
         'second' => 'customer.label',
       ], ['separator' => ' for ', 'skip_empty' => TRUE]),
-      self::row('item', 'reference', ['id' => 'product.id'], ['definition' => 'items', 'required' => TRUE]),
+      self::row('item', 'reference', ['id' => 'product.id'], ['definition' => 'items', 'when_missing' => 'wait']),
       self::row('account', 'reference', [
         'id' => 'customer.customerNumber',
-      ], ['definition' => 'accounts', 'required' => TRUE]),
+      ], ['definition' => 'accounts', 'when_missing' => 'wait']),
       self::row('price', 'money', ['amount' => 'price.number', 'currency' => 'price.currencyCode']),
       self::row('source_id', 'string', ['value' => 'id']),
     ], $values['agreements'] ?? []);

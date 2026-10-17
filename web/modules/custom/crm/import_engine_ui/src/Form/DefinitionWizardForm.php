@@ -32,6 +32,8 @@ use Drupal\import_engine\Mapper\MappingSuggester;
 use Drupal\import_engine\Schedule\ScheduleRules;
 use Drupal\import_engine_ui\Lock\WizardLock;
 use Drupal\import_engine\Source\SourceSampler;
+use Drupal\import_engine\Validator\OnInvalid;
+use Drupal\import_engine\Validator\ValidatorPluginManager;
 use Drupal\import_engine\Target\TargetField;
 use Drupal\import_engine\Target\TargetInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -110,6 +112,8 @@ final class DefinitionWizardForm extends FormBase {
     protected ConnectionResolver $connections,
     #[Autowire(service: 'import_engine_ui.wizard_lock')]
     protected WizardLock $lock,
+    #[Autowire(service: 'plugin.manager.import_engine_validator')]
+    protected ValidatorPluginManager $validators,
   ) {
   }
 
@@ -549,7 +553,7 @@ final class DefinitionWizardForm extends FormBase {
     ];
     $form['mapping'] = [
       '#type' => 'table',
-      '#header' => [$this->t('Field'), $this->t('Source'), $this->t('Mapper')],
+      '#header' => [$this->t('Field'), $this->t('Source'), $this->t('Mapper'), $this->t('Check')],
       '#tree' => TRUE,
       '#prefix' => '<div id="import-wizard-mapping">',
       '#suffix' => '</div>',
@@ -816,7 +820,82 @@ final class DefinitionWizardForm extends FormBase {
         $row['mapper']['settings'] = $settings;
       }
     }
+    $row['validator'] = $this->validatorCell($selected, $parents, $saved, $form, $form_state);
     return $row;
+  }
+
+  /**
+   * Builds the cell in which a value is checked after it is mapped.
+   *
+   * One check per field here; a definition with more (written as config) keeps
+   * the others, see collectMapping().
+   *
+   * @param string $mapper
+   *   The chosen mapper.
+   * @param list<string> $parents
+   *   Where the row is in the form.
+   * @param array<string, mixed>|null $saved
+   *   The saved row, if there is one.
+   * @param array<mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return array<string, mixed>
+   *   The cell: the check, its settings and what to do with an invalid value.
+   */
+  private function validatorCell(string $mapper, array $parents, ?array $saved, array &$form, FormStateInterface $form_state): array {
+    $ids = $this->validators->idsForMapper($mapper);
+    $cell = ['#type' => 'container'];
+    if ($ids === []) {
+      return $cell;
+    }
+    $options = ['' => $this->t('- none -')];
+    foreach ($ids as $id) {
+      $options[$id] = (string) $this->validators->getDefinition($id)['label'];
+    }
+    $savedValidator = (array) ($saved['validators'][0] ?? []);
+    $selected = (string) ($this->input($form_state, [...$parents, 'validator', 'plugin']) ?? $savedValidator['plugin'] ?? '');
+    if (!isset($options[$selected])) {
+      $selected = '';
+    }
+    $cell['plugin'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Check'),
+      '#title_display' => 'invisible',
+      '#options' => $options,
+      '#default_value' => $selected,
+      '#ajax' => ['callback' => '::ajaxMapping', 'wrapper' => 'import-wizard-mapping', 'progress' => ['type' => 'none']],
+    ];
+    if ($selected === '') {
+      return $cell;
+    }
+    $validator = $this->validators->createInstance($selected, ($savedValidator['plugin'] ?? '') === $selected ? (array) ($savedValidator['settings'] ?? []) : []);
+    if ($validator instanceof PluginFormInterface) {
+      $settings = [
+        '#type' => 'details',
+        '#title' => $this->t('Settings'),
+        '#open' => FALSE,
+        '#parents' => [...$parents, 'validator', 'settings'],
+        '#array_parents' => [...$parents, 'validator', 'settings'],
+      ];
+      $settings = $validator->buildConfigurationForm($settings, SubformState::createForSubform($settings, $form, $form_state));
+      if (Element::children($settings) !== []) {
+        $this->deferRequired($settings);
+        $cell['settings'] = $settings;
+      }
+    }
+    $cell['on_invalid'] = [
+      '#type' => 'select',
+      '#title' => $this->t('If it is not valid'),
+      '#options' => [
+        OnInvalid::Fail->value => $this->t('Fail the item'),
+        OnInvalid::Empty->value => $this->t('Leave the field empty'),
+        OnInvalid::SkipItem->value => $this->t('Skip the item'),
+      ],
+      '#default_value' => (string) ($saved['on_invalid'] ?? OnInvalid::Fail->value),
+    ];
+    return $cell;
   }
 
   /**
@@ -1584,6 +1663,10 @@ final class DefinitionWizardForm extends FormBase {
       }
       $this->checkDeferredRequired($form['mapping'][$name]['mapper']['settings'] ?? [], $form_state);
       $this->validateSection(['mapping', (string) $name, 'mapper'], $this->mappers, $form, $form_state);
+      if ((string) ($row['validator']['plugin'] ?? '') !== '') {
+        $this->checkDeferredRequired($form['mapping'][$name]['validator']['settings'] ?? [], $form_state);
+        $this->validateSection(['mapping', (string) $name, 'validator'], $this->validators, $form, $form_state);
+      }
     }
   }
 
@@ -1815,6 +1898,27 @@ final class DefinitionWizardForm extends FormBase {
         'target_field' => (string) $name,
         'mapper' => ['plugin' => $section['plugin'], 'sources' => $sources, 'settings' => $section['configuration']],
       ];
+      $previousRow = [];
+      foreach ($previous as $candidate) {
+        if (($candidate['target_field'] ?? NULL) === (string) $name) {
+          $previousRow = $candidate;
+        }
+      }
+      // The form edits the first check; more of them (written as config) stay.
+      $checks = array_slice((array) ($previousRow['validators'] ?? []), 1);
+      if ((string) ($row['validator']['plugin'] ?? '') !== '') {
+        try {
+          $check = $this->collectSection(['mapping', (string) $name, 'validator'], $this->validators, $form, $in);
+        }
+        catch (\Throwable) {
+          $check = ['plugin' => (string) $row['validator']['plugin'], 'configuration' => []];
+        }
+        array_unshift($checks, ['plugin' => $check['plugin'], 'settings' => $check['configuration']]);
+      }
+      if ($checks !== []) {
+        $mapping[(string) $name]['validators'] = $checks;
+        $mapping[(string) $name]['on_invalid'] = (OnInvalid::tryFrom((string) ($row['validator']['on_invalid'] ?? '')) ?? OnInvalid::Fail)->value;
+      }
     }
     $ordered = [];
     foreach ($previous as $row) {

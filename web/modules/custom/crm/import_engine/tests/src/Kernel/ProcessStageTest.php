@@ -140,7 +140,7 @@ class ProcessStageTest extends NodeTestBase {
       'mapper' => [
         'plugin' => 'reference',
         'sources' => ['id' => 'item'],
-        'settings' => ['definition' => 'items', 'required' => TRUE],
+        'settings' => ['definition' => 'items', 'when_missing' => 'wait'],
       ],
     ];
     $values = $this->accounts();
@@ -174,7 +174,7 @@ class ProcessStageTest extends NodeTestBase {
       'mapper' => [
         'plugin' => 'reference',
         'sources' => ['id' => 'item'],
-        'settings' => ['definition' => 'items', 'required' => TRUE],
+        'settings' => ['definition' => 'items', 'when_missing' => 'wait'],
       ],
     ];
     $run = $this->extractRows([['id' => 1, 'name' => 'Acme', 'code' => 'A', 'item' => 'S-1']], $values);

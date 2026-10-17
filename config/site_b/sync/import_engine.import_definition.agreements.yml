@@ -64,7 +64,7 @@ mapping:
         id: product.id
       settings:
         definition: items
-        required: true
+        when_missing: wait
   -
     target_field: account
     mapper:
@@ -73,7 +73,7 @@ mapping:
         id: customer.customerNumber
       settings:
         definition: accounts
-        required: true
+        when_missing: wait
   -
     target_field: price
     mapper:
@@ -103,3 +103,7 @@ resilience:
   dlq_enabled: true
   max_repeated_pages: 3
 pool: default
+schedule:
+  enabled: false
+  every: 60
+  start: 0

@@ -378,6 +378,40 @@ class DefinitionWizardTest extends NodeTestBase {
   }
 
   /**
+   * A check on a field is saved with what to do, and comes back when editing.
+   */
+  public function testMappingKeepsValidator(): void {
+    $state = $this->toLastStep();
+    $state = $this->press($state, [], 'previous');
+    $mapping = $this->step4()['mapping'];
+    $mapping['field_code']['validator'] = [
+      'plugin' => 'length',
+      'settings' => ['min' => 2, 'max' => 5],
+      'on_invalid' => 'empty',
+    ];
+    $state = $this->press($state, ['mapping' => $mapping], 'next');
+    $this->press($state, $this->step5(), 'save');
+
+    $definition = ImportDefinition::load('accounts');
+    $this->assertNotNull($definition);
+    $row = $definition->getMapping()[1];
+    $this->assertArrayHasKey('validators', $row);
+    $this->assertArrayHasKey('on_invalid', $row);
+    $this->assertSame('length', $row['validators'][0]['plugin']);
+    $this->assertSame(2, $row['validators'][0]['settings']['min']);
+    $this->assertSame('empty', $row['on_invalid']);
+    $this->assertArrayNotHasKey('validators', $definition->getMapping()[0], 'A field without a check has none.');
+    $this->assertCount(0, $definition->getTypedData()->validate());
+
+    $state = $this->press(NULL, $this->step1(), 'next', [$definition]);
+    $state = $this->press($state, $this->step2(), 'next', [$definition]);
+    $state = $this->press($state, $this->step3(), 'next', [$definition]);
+    $form = $this->buildAt($state, [$definition]);
+    $this->assertSame('length', $form['mapping']['field_code']['validator']['plugin']['#default_value']);
+    $this->assertSame('empty', $form['mapping']['field_code']['validator']['on_invalid']['#default_value']);
+  }
+
+  /**
    * A mistake only the schema sees is listed, in words, and its step opens.
    */
   public function testSchemaProblemsAreShownAtTheirStep(): void {

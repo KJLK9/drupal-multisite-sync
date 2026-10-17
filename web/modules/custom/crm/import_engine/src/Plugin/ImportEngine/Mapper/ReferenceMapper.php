@@ -22,10 +22,14 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *
  * The source value is the key of the item in the other import (a single value).
  * The mapping store knows which entity that item became. Settings: definition,
- * the ID of the import that wrote the referenced entities; required, whether a
- * missing value or a referenced item that is not imported yet is a problem. A
- * referenced item that is not imported yet is retried later, as the other
- * import may simply not have run yet.
+ * the ID of the import that wrote the referenced entities; when_missing, what
+ * to do when the referenced item is not there:
+ * - wait: the item is tried again later, as the other import may simply not
+ *   have run yet, and fails when the attempts run out (and when there is no
+ *   value to refer to at all);
+ * - error: the item fails at once, for a reference that has to be there already
+ *   (the other import is known to have run);
+ * - ignore: the field stays empty.
  */
 #[ImportMapper(
   id: 'reference',
@@ -93,7 +97,23 @@ final class ReferenceMapper extends MapperPluginBase implements ContainerFactory
    *   The default settings.
    */
   public function defaultConfiguration(): array {
-    return ['definition' => '', 'required' => TRUE];
+    return ['definition' => '', 'when_missing' => 'wait'];
+  }
+
+  /**
+   * {@inheritdoc}
+   *
+   * @param array<string, mixed> $configuration
+   *   The settings; the "required" of before is read as what it meant.
+   */
+  public function setConfiguration(array $configuration): void {
+    if (array_key_exists('required', $configuration)) {
+      // Before there were three behaviors, there was a box: required meant
+      // wait, and not required meant ignore.
+      $configuration += ['when_missing' => $configuration['required'] ? 'wait' : 'ignore'];
+      unset($configuration['required']);
+    }
+    parent::setConfiguration($configuration);
   }
 
   /**
@@ -101,8 +121,9 @@ final class ReferenceMapper extends MapperPluginBase implements ContainerFactory
    */
   public function map(array $sources, TargetField $field): mixed {
     $value = $this->text($sources['id'] ?? NULL);
+    $when_missing = (string) $this->configuration['when_missing'];
     if ($value === NULL || trim($value) === '') {
-      if ($this->configuration['required']) {
+      if ($when_missing !== 'ignore') {
         throw new MappingException('There is no value to refer to.');
       }
       return NULL;
@@ -112,10 +133,11 @@ final class ReferenceMapper extends MapperPluginBase implements ContainerFactory
     $key = $this->keys->fromValues([trim($value)]);
     $record = $this->mapping->find($definition, $key);
     if ($record === NULL || $record->targetId === NULL) {
-      if ($this->configuration['required']) {
-        throw new DependencyNotReadyException(sprintf('The item "%s" of the import "%s" is not imported yet.', trim($value), $definition));
-      }
-      return NULL;
+      return match ($when_missing) {
+        'ignore' => NULL,
+        'error' => throw new MappingException(sprintf('The item "%s" of the import "%s" is not imported, and this field does not wait for it.', trim($value), $definition)),
+        default => throw new DependencyNotReadyException(sprintf('The item "%s" of the import "%s" is not imported yet.', trim($value), $definition)),
+      };
     }
     return ['target_id' => $record->targetId];
   }
@@ -145,11 +167,16 @@ final class ReferenceMapper extends MapperPluginBase implements ContainerFactory
       '#default_value' => $this->configuration['definition'],
       '#required' => TRUE,
     ];
-    $form['required'] = [
-      '#type' => 'checkbox',
-      '#title' => $this->t('Required'),
-      '#description' => $this->t('A missing value is an error, and an item that is not imported yet is tried again later. Otherwise the field stays empty.'),
-      '#default_value' => $this->configuration['required'],
+    $form['when_missing'] = [
+      '#type' => 'select',
+      '#title' => $this->t('When the referenced item is not there'),
+      '#options' => [
+        'wait' => $this->t('Wait for it: try the item again later, and fail when that runs out'),
+        'error' => $this->t('Fail at once: it should be there already'),
+        'ignore' => $this->t('Leave the field empty'),
+      ],
+      '#description' => $this->t('"Wait" suits an import that runs before the one it refers to has finished. A missing value to refer to is an error, except when the field is left empty.'),
+      '#default_value' => $this->configuration['when_missing'],
     ];
     return $form;
   }

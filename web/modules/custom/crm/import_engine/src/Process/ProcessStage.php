@@ -21,6 +21,7 @@ use Drupal\import_engine\Run\RunStatus;
 use Drupal\import_engine\Storage\MappingStore;
 use Drupal\import_engine\Storage\Outcome;
 use Drupal\import_engine\Target\TargetException;
+use Drupal\import_engine\Validator\SkipItemException;
 
 /**
  * Takes items from the work queue, maps them and writes them to the target.
@@ -194,6 +195,14 @@ final class ProcessStage {
       }
       return $this->write($item, $run, $definition, $plan, $now);
     }
+    catch (SkipItemException $exception) {
+      // A value was not valid and its row says the item is left out. The item
+      // is still in the source: what was imported for it stays, and the sweep
+      // does not take it for gone.
+      $this->mapping->markSeen((string) $definition->id(), [$item->key], (int) $run->id());
+      $this->events->record((int) $run->id(), (string) $definition->id(), EventType::Skipped, $item->key, NULL, $exception->getMessage(), $now);
+      return $this->items->complete($item, Outcome::Skipped, NULL, $now) ? 'skipped' : 'lost';
+    }
     catch (MappingException | TargetException | PlanException $exception) {
       // Retrying would fail the same way.
       return $this->end($item, $definition, $exception->getMessage(), $now, (int) $run->id());
@@ -214,7 +223,8 @@ final class ProcessStage {
     $run_id = (int) $run->id();
     $payload = $item->payload ?? [];
 
-    $values = $plan->map($payload);
+    $mapped = $plan->mapWithNotes($payload);
+    $values = $mapped->values;
     // What is written depends on where it goes as well: the same values for
     // another bundle or owner are another write.
     $hash = $this->fingerprints->fingerprint($values + ['#target' => $definition->getTarget()['configuration']]);
@@ -262,6 +272,9 @@ final class ProcessStage {
     }
     $this->mapping->record($definition_id, $item->key, $result->type, $result->id, $hash, $run_id, TRUE, $now);
     $this->events->record($run_id, $definition_id, $result->created ? EventType::Created : EventType::Updated, $item->key, $result->type . ':' . $result->id, $recreated ? 'Made again: what it was written as had been deleted.' : NULL, $now);
+    foreach ($mapped->notes as $note) {
+      $this->events->record($run_id, $definition_id, EventType::Invalid, $item->key, $result->type . ':' . $result->id, $note, $now);
+    }
 
     $outcome = $result->created ? Outcome::Created : Outcome::Updated;
     if (!$this->items->complete($item, $outcome, $hash, $now)) {

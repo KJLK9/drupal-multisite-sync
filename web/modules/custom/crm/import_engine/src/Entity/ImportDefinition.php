@@ -113,7 +113,7 @@ class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInter
   /**
    * The field mapping.
    *
-   * @var list<array{target_field: string, mapper: array{plugin: string, sources: array<string, string>, settings: array<string, mixed>}}>
+   * @var list<array{target_field: string, mapper: array{plugin: string, sources: array<string, string>, settings: array<string, mixed>}, validators?: list<array{plugin: string, settings: array<string, mixed>}>, on_invalid?: string}>
    */
   protected array $mapping = [];
 

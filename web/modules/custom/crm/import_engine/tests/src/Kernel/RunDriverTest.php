@@ -172,7 +172,7 @@ class RunDriverTest extends NodeTestBase {
       'mapper' => [
         'plugin' => 'reference',
         'sources' => ['id' => 'item'],
-        'settings' => ['definition' => 'items', 'required' => TRUE],
+        'settings' => ['definition' => 'items', 'when_missing' => 'wait'],
       ],
     ];
     [$run, $definition] = $this->start($values);

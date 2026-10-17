@@ -183,6 +183,20 @@ and write them to the target. See ADR 0010.
 - **Mapper plugins**, chosen by field type: `string`, `text`, `number`,
   `boolean`, `timestamp`, `money` and `reference`. A mapping row gives the
   target field, the mapper, named source paths and the settings of that mapper.
+- **Validators** (`email`, `url`, `phone`, `regex`, `length`, `range`, `choice`,
+  `not_blank`): a mapping row can have checks that run on the mapped value.
+  Each validator says which mappers it fits; a mapping with one that does not
+  is refused when it is saved. `on_invalid` of the row says what happens to a
+  value that fails: `fail` (default; the item ends as a mapping error),
+  `empty` (the field is left empty and an `invalid` event is recorded) or
+  `skip_item` (the item is left alone, counted as skipped and kept safe from
+  the sweep). The messages say what was wrong, never what the value was: the
+  events are kept for a year and may be read by an account that can only look.
+  `phone` checks the shape (7 to 15 digits, a country code) and can write the
+  number as `+digits`; it does not know which numbers exist. See ADR 0027.
+- **Reference behaviour** (`when_missing`): `wait` (retry until the target is
+  imported; default), `error` (the item ends at once) or `ignore` (the field is
+  left empty). Creating a stub for the missing target is not built.
 - **Change detection**: the mapped values are hashed. When the hash equals the
   one in the mapping store nothing is saved.
 - **Failures**: data that cannot be mapped or validated ends the item at once. A

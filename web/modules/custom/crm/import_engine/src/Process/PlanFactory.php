@@ -12,6 +12,9 @@ use Drupal\import_engine\Path\PathResolver;
 use Drupal\import_engine\Target\TargetException;
 use Drupal\import_engine\Target\TargetInterface;
 use Drupal\import_engine\Target\TargetPluginManager;
+use Drupal\import_engine\Validator\OnInvalid;
+use Drupal\import_engine\Validator\ValidatorInterface;
+use Drupal\import_engine\Validator\ValidatorPluginManager;
 
 /**
  * Builds the plan of an import from its definition.
@@ -25,6 +28,7 @@ final class PlanFactory {
     private readonly TargetPluginManager $targets,
     private readonly MapperPluginManager $mappers,
     private readonly PathResolver $paths,
+    private readonly ValidatorPluginManager $validators,
   ) {
   }
 
@@ -58,9 +62,45 @@ final class PlanFactory {
         'field' => $field,
         'mapper' => $mapper,
         'paths' => $this->sourcePaths($number, $row['mapper']['plugin'], $row['mapper']['sources']),
+        'validators' => $this->validatorsOf($number, $row),
+        'on_invalid' => OnInvalid::tryFrom((string) ($row['on_invalid'] ?? '')) ?? OnInvalid::Fail,
       ];
     }
     return new ImportPlan($target, $rows, $this->paths);
+  }
+
+  /**
+   * Creates the validators of a mapping row.
+   *
+   * @param int $number
+   *   The number of the row, for messages.
+   * @param array<string, mixed> $row
+   *   The mapping row.
+   *
+   * @return list<\Drupal\import_engine\Validator\ValidatorInterface>
+   *   The validators, in the order of the row.
+   *
+   * @throws \Drupal\import_engine\Process\PlanException
+   *   When a validator does not exist or does not fit the mapper of the row.
+   */
+  private function validatorsOf(int $number, array $row): array {
+    $validators = [];
+    foreach ((array) ($row['validators'] ?? []) as $given) {
+      $id = (string) ($given['plugin'] ?? '');
+      $definition = $this->validators->getDefinition($id, FALSE);
+      if ($definition === NULL) {
+        throw new PlanException(sprintf('Mapping row %d: there is no validator "%s".', $number, $id));
+      }
+      if (!in_array($row['mapper']['plugin'], $definition['mappers'], TRUE)) {
+        throw new PlanException(sprintf('Mapping row %d: the validator "%s" does not fit the mapper "%s".', $number, $id, $row['mapper']['plugin']));
+      }
+      $validator = $this->validators->createInstance($id, (array) ($given['settings'] ?? []));
+      if (!$validator instanceof ValidatorInterface) {
+        throw new PlanException(sprintf('Mapping row %d: "%s" is not a validator.', $number, $id));
+      }
+      $validators[] = $validator;
+    }
+    return $validators;
   }
 
   /**

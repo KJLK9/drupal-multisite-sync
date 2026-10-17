@@ -15,6 +15,10 @@ services:
     class: Drupal\import_engine\Mapper\MapperPluginManager
     parent: default_plugin_manager
 
+  plugin.manager.import_engine_validator:
+    class: Drupal\import_engine\Validator\ValidatorPluginManager
+    parent: default_plugin_manager
+
   plugin.manager.import_engine_pagination:
     class: Drupal\import_engine\Pagination\PaginationPluginManager
     parent: default_plugin_manager
@@ -109,7 +113,7 @@ services:
 
   import_engine.plan_factory:
     class: Drupal\import_engine\Process\PlanFactory
-    arguments: ['@plugin.manager.import_engine_target', '@plugin.manager.import_engine_mapper', '@import_engine.path_resolver']
+    arguments: ['@plugin.manager.import_engine_target', '@plugin.manager.import_engine_mapper', '@import_engine.path_resolver', '@plugin.manager.import_engine_validator']
 
   import_engine.process_stage:
     class: Drupal\import_engine\Process\ProcessStage

@@ -135,7 +135,7 @@ class PluginFormsTest extends NodeTestBase {
         ['true_values' => ['ja', 'J'], 'false_values' => ['nee'], 'when_empty' => 'fail'],
       ],
       'money mapper' => ['mapper', 'money', ['default_currency' => 'USD']],
-      'reference mapper' => ['mapper', 'reference', ['definition' => 'products', 'required' => FALSE]],
+      'reference mapper' => ['mapper', 'reference', ['definition' => 'products', 'when_missing' => 'ignore']],
       'timestamp mapper' => ['mapper', 'timestamp', ['format' => 'Y-m-d']],
       'log reporter' => ['reporter', 'log', ['only_on_problems' => TRUE]],
       'mail reporter' => [

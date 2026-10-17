@@ -279,7 +279,7 @@ class MapperTest extends StorageTestBase {
    */
   public function testReference(): void {
     $this->container->get('import_engine.mapping_store')->record('products', '["P-1"]', 'node', '42', NULL, 1, TRUE);
-    $mapper = $this->mapper('reference', ['definition' => 'products', 'required' => TRUE]);
+    $mapper = $this->mapper('reference', ['definition' => 'products', 'when_missing' => 'wait']);
 
     $this->assertSame(['target_id' => '42'], $this->map($mapper, ['id' => ' P-1 '], 'entity_reference'));
 
@@ -304,7 +304,7 @@ class MapperTest extends StorageTestBase {
    * An optional reference is empty when there is nothing to refer to.
    */
   public function testOptionalReference(): void {
-    $mapper = $this->mapper('reference', ['definition' => 'products', 'required' => FALSE]);
+    $mapper = $this->mapper('reference', ['definition' => 'products', 'when_missing' => 'ignore']);
 
     $this->assertNull($this->map($mapper, ['id' => 'unknown'], 'entity_reference'));
     $this->assertNull($this->map($mapper, [], 'entity_reference'));
@@ -336,7 +336,7 @@ class MapperTest extends StorageTestBase {
     $this->assertSame([
       'when_empty',
     ], $violations('boolean', ['true_values' => ['1'], 'false_values' => ['0'], 'when_empty' => 'maybe']));
-    $this->assertSame(['definition'], $violations('reference', ['definition' => 'Bad Id', 'required' => TRUE]));
+    $this->assertSame(['definition'], $violations('reference', ['definition' => 'Bad Id', 'when_missing' => 'wait']));
     $this->assertSame(['format'], $violations('text', ['format' => 'Basic HTML']));
   }
 

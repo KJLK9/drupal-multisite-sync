@@ -64,7 +64,7 @@ interface ImportDefinitionInterface extends ConfigEntityInterface {
   /**
    * Returns the field mapping.
    *
-   * @return list<array{target_field: string, mapper: array{plugin: string, sources: array<string, string>, settings: array<string, mixed>}}>
+   * @return list<array{target_field: string, mapper: array{plugin: string, sources: array<string, string>, settings: array<string, mixed>}, validators?: list<array{plugin: string, settings: array<string, mixed>}>, on_invalid?: string}>
    *   One row per target field.
    */
   public function getMapping(): array;

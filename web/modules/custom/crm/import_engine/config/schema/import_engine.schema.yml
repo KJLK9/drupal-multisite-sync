@@ -504,6 +504,9 @@ import_engine.source.graphql:
 import_engine.mapping_row:
   type: mapping
   label: 'Mapping row'
+  constraints:
+    # The validators of a row fit the mapper of the row.
+    ValidatorsFitMapper: ~
   mapping:
     target_field:
       type: string
@@ -538,6 +541,19 @@ import_engine.mapping_row:
         settings:
           type: 'import_engine.mapper.[%parent.plugin]'
           label: 'Mapper settings'
+    validators:
+      type: sequence
+      requiredKey: false
+      label: 'Validators of the value'
+      sequence:
+        type: import_engine.validator_reference
+    on_invalid:
+      type: string
+      requiredKey: false
+      label: 'When a value is not valid'
+      constraints:
+        Choice:
+          callback: 'Drupal\import_engine\Validator\OnInvalid::values'
 
 import_engine.mapper.join:
   type: mapping
@@ -642,9 +658,11 @@ import_engine.mapper.reference:
         Regex:
           pattern: '/^[a-z][a-z0-9_]*$/'
           message: 'An import ID is a machine name.'
-    required:
-      type: boolean
-      label: 'A missing value or an item not yet imported is a problem'
+    when_missing:
+      type: string
+      label: 'When the referenced item is not there'
+      constraints:
+        Choice: [wait, error, ignore]
 
 import_engine.settings:
   type: config_object
@@ -883,3 +901,113 @@ import_engine.schedule:
           max: 1425
         Callback:
           callback: ['Drupal\import_engine\Schedule\ScheduleRules', 'validateStart']
+
+# A validator checks the value of a mapping row; its settings are typed per
+# plugin.
+import_engine.validator_reference:
+  type: mapping
+  label: 'Validator'
+  mapping:
+    plugin:
+      type: string
+      label: 'Validator plugin ID'
+      constraints:
+        PluginExists:
+          manager: plugin.manager.import_engine_validator
+          interface: 'Drupal\import_engine\Validator\ValidatorInterface'
+    settings:
+      type: 'import_engine.validator.[%parent.plugin]'
+      label: 'Validator settings'
+
+import_engine.validator.email:
+  type: mapping
+  label: 'Email address validator'
+  mapping: {}
+
+import_engine.validator.url:
+  type: mapping
+  label: 'Web address validator'
+  mapping: {}
+
+import_engine.validator.not_blank:
+  type: mapping
+  label: 'Has a value validator'
+  mapping: {}
+
+import_engine.validator.length:
+  type: mapping
+  label: 'Length validator'
+  mapping:
+    min:
+      type: integer
+      label: 'Shortest length, 0 for no limit'
+      constraints:
+        Range:
+          min: 0
+          max: 100000
+    max:
+      type: integer
+      label: 'Longest length, 0 for no limit'
+      constraints:
+        Range:
+          min: 0
+          max: 100000
+
+import_engine.validator.range:
+  type: mapping
+  label: 'Number between validator'
+  mapping:
+    min:
+      type: float
+      nullable: true
+      label: 'Smallest number'
+    max:
+      type: float
+      nullable: true
+      label: 'Largest number'
+
+import_engine.validator.choice:
+  type: mapping
+  label: 'One of validator'
+  mapping:
+    allowed:
+      type: sequence
+      label: 'Allowed values'
+      constraints:
+        Count:
+          min: 1
+      sequence:
+        type: string
+        label: 'Allowed value'
+        constraints:
+          NotBlank: ~
+    case_sensitive:
+      type: boolean
+      label: 'Capitals must match'
+
+import_engine.validator.regex:
+  type: mapping
+  label: 'Pattern validator'
+  mapping:
+    pattern:
+      type: string
+      label: 'Regular expression'
+      constraints:
+        NotBlank: ~
+        Callback:
+          callback: ['Drupal\import_engine\Plugin\ImportEngine\Validator\RegexValidator', 'validatePattern']
+
+import_engine.validator.phone:
+  type: mapping
+  label: 'Telephone number validator'
+  mapping:
+    normalize:
+      type: boolean
+      label: 'Write the number in international form'
+    default_country_code:
+      type: string
+      label: 'Country code of numbers without one'
+      constraints:
+        Regex:
+          pattern: '/^[0-9]{0,3}$/'
+          message: 'A country code is one to three digits.'
