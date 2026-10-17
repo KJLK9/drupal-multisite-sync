@@ -1,0 +1,667 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Import engine UI\n"
+"Language: nl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "the connection \"@name\""
+msgstr "de verbinding \"@name\""
+
+msgid "a @plugin source"
+msgstr "een @plugin-bron"
+
+msgid "Reads items from @where."
+msgstr "Leest items van @where."
+
+msgid "Reads items from @where, from \"@path\" in the answer."
+msgstr "Leest items van @where, uit \"@path\" in het antwoord."
+
+msgid "An item is recognised by @keys. A second run updates the item it finds instead of adding it again."
+msgstr "Een item wordt herkend aan @keys. Een volgende run werkt het gevonden item bij in plaats van het opnieuw toe te voegen."
+
+msgid "Each item becomes one @type of the kind \"@bundle\"."
+msgstr "Elk item wordt één @type van het soort \"@bundle\"."
+
+msgid "No field is filled yet: add a source to at least one field in step 4."
+msgstr "Er is nog geen veld gevuld: geef in stap 4 minstens één veld een bron."
+
+msgid "@field from @sources"
+msgstr "@field uit @sources"
+
+msgid "(checked: @check; if not valid: @action)"
+msgstr "(gecontroleerd: @check; als het niet geldig is: @action)"
+
+msgid "and @count more"
+msgstr "en nog @count"
+
+msgid "the item fails"
+msgstr "mislukt het item"
+
+msgid "the field is left empty"
+msgstr "blijft het veld leeg"
+
+msgid "the item is skipped"
+msgstr "wordt het item overgeslagen"
+
+msgid "the content is unpublished (and published again if the item comes back)"
+msgstr "wordt de inhoud gedepubliceerd (en weer gepubliceerd als het item terugkomt)"
+
+msgid "the content is deleted"
+msgstr "wordt de inhoud verwijderd"
+
+msgid "the content is left as it is"
+msgstr "blijft de inhoud zoals die is"
+
+msgid "When an item is no longer in the source, @what. If more than @limit% of the items disappear in one run, nothing is changed and the run reports an error."
+msgstr "Als een item niet meer in de bron staat, @what. Als meer dan @limit% van de items in één run verdwijnt, wordt niets gewijzigd en meldt de run een fout."
+
+msgid "An item that fails for a reason that may pass is tried up to @n times, then waits in the dead letter queue for a person to fix it."
+msgstr "Een item dat mislukt om een reden die kan overgaan, wordt tot @n keer opnieuw geprobeerd en wacht daarna in de dead letter queue tot iemand het herstelt."
+
+msgid "An item that fails for a reason that may pass is tried up to @n times, then counted as failed."
+msgstr "Een item dat mislukt om een reden die kan overgaan, wordt tot @n keer opnieuw geprobeerd en telt daarna als mislukt."
+
+msgid "The source is called again however often it fails."
+msgstr "De bron wordt steeds opnieuw aangeroepen, hoe vaak het ook misgaat."
+
+msgid "After @n failures in a row the source is left alone for @s seconds."
+msgstr "Na @n mislukkingen achter elkaar wordt de bron @s seconden met rust gelaten."
+
+msgid "It does not run by itself: start it from the list of imports."
+msgstr "Het draait niet vanzelf: start het vanuit de lijst met imports."
+
+msgid "It runs by itself @when."
+msgstr "Het draait vanzelf @when."
+
+msgid "This is a template: it never runs, it is only copied."
+msgstr "Dit is een sjabloon: het draait nooit, het wordt alleen gekopieerd."
+
+msgid "It is switched on."
+msgstr "Het staat aan."
+
+msgid "It is switched off. Nothing runs until you switch it on."
+msgstr "Het staat uit. Er draait niets totdat je het aanzet."
+
+msgid "1 field is filled:"
+msgid_plural "@count fields are filled:"
+msgstr[0] "1 veld wordt gevuld:"
+msgstr[1] "@count velden worden gevuld:"
+
+msgid "Example:"
+msgstr "Voorbeeld:"
+
+msgid "More about this"
+msgstr "Meer hierover"
+
+msgid "What is @term?"
+msgstr "Wat is @term?"
+
+msgid "Import"
+msgstr "Import"
+
+msgid "A saved recipe: where the data comes from, which item becomes which content, and how to behave when something goes wrong. It does nothing until someone starts it or it is scheduled."
+msgstr "Een bewaard recept: waar de gegevens vandaan komen, welk item welke inhoud wordt en hoe te reageren als er iets misgaat. Het doet niets totdat iemand het start of het is ingepland."
+
+msgid "Template and clone"
+msgstr "Sjabloon en kloon"
+
+msgid "A template is an import that never runs: a starting point. \"Use as template\" or \"Clone\" makes a copy with everything filled in, switched off, for you to change. Make your own by ticking \"This is a template\"."
+msgstr "Een sjabloon is een import die nooit draait: een beginpunt. \"Gebruik als sjabloon\" of \"Kloon\" maakt een kopie met alles ingevuld, uitgeschakeld, om aan te passen. Maak er zelf een door \"Dit is een sjabloon\" aan te vinken."
+
+msgid "Run"
+msgstr "Run"
+
+msgid "One go of an import, from start to end. Every run keeps its own list of items and a log of what happened."
+msgstr "Eén keer een import uitvoeren, van begin tot eind. Elke run bewaart zijn eigen lijst met items en een logboek van wat er gebeurde."
+
+msgid "Item"
+msgstr "Item"
+
+msgid "One record in the source, for example one customer. Each item becomes one piece of content."
+msgstr "Eén record in de bron, bijvoorbeeld één klant. Elk item wordt één stuk inhoud."
+
+msgid "Source"
+msgstr "Bron"
+
+msgid "The place the data is read from, usually the address of an API."
+msgstr "De plek waar de gegevens worden gelezen, meestal het adres van een API."
+
+msgid "https://example.com/api/customers"
+msgstr "https://example.com/api/customers"
+
+msgid "Connection"
+msgstr "Verbinding"
+
+msgid "An address with its login, saved once so that several imports can share it. Change it in one place and all of them follow."
+msgstr "Een adres met bijbehorende inlog, één keer bewaard zodat meerdere imports het kunnen delen. Pas het op één plek aan en ze volgen allemaal."
+
+msgid "Items path"
+msgstr "Pad naar de items"
+
+msgid "Where in the answer of the source the list of items is. Leave it empty when the answer is the list itself."
+msgstr "Waar in het antwoord van de bron de lijst met items staat. Laat leeg als het antwoord zelf de lijst is."
+
+msgid "data.items"
+msgstr "data.items"
+
+msgid "Pagination"
+msgstr "Paginering"
+
+msgid "Large lists come in pages. This says how to ask for the next page, so that every item is read."
+msgstr "Grote lijsten komen in pagina's. Dit zegt hoe de volgende pagina wordt opgevraagd, zodat elk item gelezen wordt."
+
+msgid "Authentication"
+msgstr "Authenticatie"
+
+msgid "How the import proves to the source that it may read. The secret itself is never typed here: only the name of the setting that holds it."
+msgstr "Hoe de import de bron laat weten dat hij mag lezen. Het geheim zelf typ je hier nooit: alleen de naam van de instelling waarin het staat."
+
+msgid "Key of an item"
+msgstr "Sleutel van een item"
+
+msgid "The value that tells items apart, like a customer number. It is how a second run knows an item is the same one: it is updated, not added twice."
+msgstr "De waarde die items uit elkaar houdt, zoals een klantnummer. Zo weet een volgende run dat een item hetzelfde is: het wordt bijgewerkt, niet twee keer toegevoegd."
+
+msgid "customer_code"
+msgstr "customer_code"
+
+msgid "Dotted path"
+msgstr "Pad met punten"
+
+msgid "The way to a value inside an item, with dots between the steps."
+msgstr "De weg naar een waarde binnen een item, met punten tussen de stappen."
+
+msgid "address.city"
+msgstr "address.city"
+
+msgid "Mapping"
+msgstr "Mapping"
+
+msgid "Which value of the source goes into which field of the content. One row per field; a field without a source is left alone."
+msgstr "Welke waarde uit de bron in welk veld van de inhoud komt. Eén rij per veld; een veld zonder bron blijft ongemoeid."
+
+msgid "Mapper"
+msgstr "Mapper"
+
+msgid "How a value is turned into what the field needs: as text, as a number, as a date, as a reference to other content."
+msgstr "Hoe een waarde wordt omgezet naar wat het veld nodig heeft: als tekst, als getal, als datum, als verwijzing naar andere inhoud."
+
+msgid "Check (validator)"
+msgstr "Controle (validator)"
+
+msgid "A test on the value before it is saved, such as \"is this an email address\". Optional."
+msgstr "Een test op de waarde voordat die wordt opgeslagen, zoals \"is dit een e-mailadres\". Optioneel."
+
+msgid "If it is not valid"
+msgstr "Als het niet geldig is"
+
+msgid "What to do with a value that fails its check: fail the whole item, leave only that field empty, or skip the item. Messages never repeat the value itself."
+msgstr "Wat er met een waarde gebeurt die de controle niet haalt: het hele item laten mislukken, alleen dat veld leeg laten, of het item overslaan. Meldingen herhalen de waarde zelf nooit."
+
+msgid "When the target is missing"
+msgstr "Als het doel ontbreekt"
+
+msgid "For a reference to other content that is not there (yet): wait and try again later, fail the item, or ignore it and leave the field empty."
+msgstr "Voor een verwijzing naar andere inhoud die er (nog) niet is: wachten en later opnieuw proberen, het item laten mislukken, of negeren en het veld leeg laten."
+
+msgid "Items that disappear"
+msgstr "Items die verdwijnen"
+
+msgid "What happens to content whose item is no longer in the source: unpublish, delete, or leave it."
+msgstr "Wat er gebeurt met inhoud waarvan het item niet meer in de bron staat: depubliceren, verwijderen of laten staan."
+
+msgid "Safety limit for disappearing items"
+msgstr "Veiligheidsgrens voor verdwenen items"
+
+msgid "A source that suddenly returns almost nothing is probably broken, not empty. Above this percentage nothing is removed and the run reports an error."
+msgstr "Een bron die ineens bijna niets teruggeeft is waarschijnlijk kapot, niet leeg. Boven dit percentage wordt niets verwijderd en meldt de run een fout."
+
+msgid "Retries (backoff)"
+msgstr "Nieuwe pogingen (backoff)"
+
+msgid "An item that fails for a reason that may pass (a slow server, a missing reference) is tried again after a wait. Backoff means the wait grows with every attempt."
+msgstr "Een item dat mislukt om een reden die kan overgaan (een trage server, een ontbrekende verwijzing) wordt na een wachttijd opnieuw geprobeerd. Backoff betekent dat de wachttijd bij elke poging groeit."
+
+msgid "Dead letter queue"
+msgstr "Dead letter queue"
+
+msgid "Where items go that ran out of attempts, with their data, so that a person can fix them and try again."
+msgstr "Waar items terechtkomen die geen pogingen meer hebben, met hun gegevens, zodat iemand ze kan herstellen en opnieuw proberen."
+
+msgid "Circuit breaker"
+msgstr "Circuit breaker"
+
+msgid "When a source keeps failing, the import stops calling it for a while instead of making it worse. After the pause it tries again."
+msgstr "Als een bron blijft falen, stopt de import een tijd met aanroepen in plaats van het erger te maken. Na de pauze probeert hij het opnieuw."
+
+msgid "Worker pool"
+msgstr "Worker pool"
+
+msgid "A group of background workers. Putting a heavy import in its own pool keeps it from slowing down the others."
+msgstr "Een groep achtergrondwerkers. Een zware import in een eigen pool zetten voorkomt dat hij de andere vertraagt."
+
+msgid "Reports"
+msgstr "Rapporten"
+
+msgid "A message after a run about how it went, for example in the log or by email."
+msgstr "Een bericht na een run over hoe die ging, bijvoorbeeld in het logboek of per e-mail."
+
+msgid "Schedule"
+msgstr "Schema"
+
+msgid "Runs the import by itself, every so many minutes from a time of day (UTC). Never more often than every 15 minutes."
+msgstr "Laat de import vanzelf draaien, om de zoveel minuten vanaf een tijdstip (UTC). Nooit vaker dan elk kwartier."
+
+msgid "Enabled"
+msgstr "Ingeschakeld"
+
+msgid "Only an enabled import can be started or runs on its schedule. A new import is off until you switch it on."
+msgstr "Alleen een ingeschakelde import kan worden gestart of draait volgens zijn schema. Een nieuwe import staat uit tot je hem aanzet."
+
+msgid "Run set"
+msgstr "Runset"
+
+msgid "A named list of imports that run one after the other, for example first the customers and then the orders that refer to them."
+msgstr "Een benoemde lijst met imports die na elkaar draaien, bijvoorbeeld eerst de klanten en dan de bestellingen die ernaar verwijzen."
+
+msgid "Regular expression"
+msgstr "Reguliere expressie"
+
+msgid "A pattern a text must fit. It is written between slashes."
+msgstr "Een patroon waar een tekst aan moet voldoen. Het wordt tussen schuine strepen geschreven."
+
+msgid "/^[A-Z]{2}[0-9]{4}$/"
+msgstr "/^[A-Z]{2}[0-9]{4}$/"
+
+msgid "Where the data is. An API, with a login if needed."
+msgstr "Waar de gegevens staan. Een API, met een inlog indien nodig."
+
+msgid "The recipe: what to read and how to turn it into content."
+msgstr "Het recept: wat te lezen en hoe dat inhoud wordt."
+
+msgid "One go of the recipe. Start it by hand, or let a schedule do it."
+msgstr "Eén keer het recept uitvoeren. Start het met de hand, of laat een schema het doen."
+
+msgid "Content"
+msgstr "Inhoud"
+
+msgid "Every item of the source becomes a piece of content, and is updated next time."
+msgstr "Elk item uit de bron wordt een stuk inhoud en wordt de volgende keer bijgewerkt."
+
+msgid "Open <a href=\":new\">Add import</a> and give it a name."
+msgstr "Open <a href=\":new\">Import toevoegen</a> en geef hem een naam."
+
+msgid "Step 1 and 2: say where the data is and, if needed, how to log in and how to ask for the next page. Use <em>Try the source</em> to see that it works."
+msgstr "Stap 1 en 2: zeg waar de gegevens staan en, indien nodig, hoe je inlogt en hoe je de volgende pagina opvraagt. Gebruik <em>Probeer de bron</em> om te zien dat het werkt."
+
+msgid "Step 3: choose what identifies an item and what content it becomes."
+msgstr "Stap 3: kies wat een item uniek maakt en welke inhoud het wordt."
+
+msgid "Step 4: for each field of the content, give the path of the value in the source. <em>Suggest a mapping</em> fills in what it recognizes."
+msgstr "Stap 4: geef voor elk veld van de inhoud het pad van de waarde in de bron. <em>Stel een mapping voor</em> vult in wat het herkent."
+
+msgid "Step 5: decide what happens when things go wrong, and save. A new import is switched off: when you are happy, switch it on."
+msgstr "Stap 5: bepaal wat er gebeurt als het misgaat, en sla op. Een nieuwe import staat uit: zet hem aan als je tevreden bent."
+
+msgid "Start a run from the list of imports, and open the run to see its items and events."
+msgstr "Start een run vanuit de lijst met imports en open de run om de items en gebeurtenissen te zien."
+
+msgid "The import engine reads items from another system on a schedule or on demand, and keeps content up to date from them. This page explains the words and the steps; the <em>i</em> icons in the forms link here."
+msgstr "De import engine leest items uit een ander systeem volgens een schema of op verzoek, en houdt daarmee inhoud actueel. Deze pagina legt de woorden en stappen uit; de <em>i</em>-iconen in de formulieren verwijzen hiernaartoe."
+
+msgid "The big picture"
+msgstr "Het grote plaatje"
+
+msgid "Your first import"
+msgstr "Je eerste import"
+
+msgid "Where do I see what happened?"
+msgstr "Waar zie ik wat er gebeurd is?"
+
+msgid "Under <a href=\":runs\">Import runs</a>: every run with its items and events, and why an item failed. Items that ran out of attempts wait in the <a href=\":dead\">Dead letter queue</a>, where you can fix and retry them."
+msgstr "Onder <a href=\":runs\">Import runs</a>: elke run met zijn items en gebeurtenissen, en waarom een item mislukte. Items die geen pogingen meer hadden wachten in de <a href=\":dead\">Dead letter queue</a>, waar je ze kunt herstellen en opnieuw proberen."
+
+msgid "The words"
+msgstr "De woorden"
+
+msgid "This is a copy. Give it a name; the rest is copied and can be changed. It is switched off until you enable it."
+msgstr "Dit is een kopie. Geef hem een naam; de rest is gekopieerd en kan worden aangepast. Hij staat uit totdat je hem inschakelt."
+
+msgid "Step @step of @total: @title"
+msgstr "Stap @step van @total: @title"
+
+msgid "Help"
+msgstr "Help"
+
+msgid "Previous"
+msgstr "Vorige"
+
+msgid "Next"
+msgstr "Volgende"
+
+msgid "Save"
+msgstr "Opslaan"
+
+msgid "Cancel"
+msgstr "Annuleren"
+
+msgid "The import @label is being edited by @name, since @time. One person at a time can edit an import, so that what one changes is not overwritten by the other. The lock ends when they save, or after @minutes minutes without a step."
+msgstr "De import @label wordt bewerkt door @name, sinds @time. Eén persoon tegelijk kan een import bewerken, zodat wat de een wijzigt niet door de ander wordt overschreven. De vergrendeling eindigt bij opslaan, of na @minutes minuten zonder stap."
+
+msgid "Back to the list"
+msgstr "Terug naar de lijst"
+
+msgid "Take over editing"
+msgstr "Bewerken overnemen"
+
+msgid "Name"
+msgstr "Naam"
+
+msgid "Description"
+msgstr "Omschrijving"
+
+msgid "This is a template"
+msgstr "Dit is een sjabloon"
+
+msgid "A template never runs. It is a starting point: from the list of imports, \"Use as template\" makes a copy to fill in and run."
+msgstr "Een sjabloon draait nooit. Het is een beginpunt: vanuit de lijst met imports maakt \"Gebruik als sjabloon\" een kopie om in te vullen en te draaien."
+
+msgid "@settings come from the connection @label; change them there."
+msgstr "@settings komen uit de verbinding @label; wijzig ze daar."
+
+msgid "- None: settings of its own -"
+msgstr "- Geen: eigen instellingen -"
+
+msgid "A connection holds the address, headers, timeout and authentication that several imports share."
+msgstr "Een verbinding bevat het adres, de headers, de timeout en de authenticatie die meerdere imports delen."
+
+msgid "Paging"
+msgstr "Paginering"
+
+msgid "The connection @label logs in (@plugin). Change it there."
+msgstr "De verbinding @label logt in (@plugin). Wijzig dat daar."
+
+msgid "Save these settings as a connection"
+msgstr "Bewaar deze instellingen als verbinding"
+
+msgid "Keeps the address, headers, timeout and the authentication above as a connection, which this import then uses, and other imports can use too."
+msgstr "Bewaart het adres, de headers, de timeout en de authenticatie hierboven als verbinding, die deze import dan gebruikt en andere imports ook kunnen gebruiken."
+
+msgid "Name of the connection"
+msgstr "Naam van de verbinding"
+
+msgid "Give the connection a name."
+msgstr "Geef de verbinding een naam."
+
+msgid "The connection cannot be saved: @path: @message"
+msgstr "De verbinding kan niet worden opgeslagen: @path: @message"
+
+msgid "The connection @label is saved, and this import now uses it."
+msgstr "De verbinding @label is opgeslagen en deze import gebruikt hem nu."
+
+msgid "The dotted paths of the values that together identify an item, one per line, at most five. A single path, such as <code>customer_code</code>, is the usual case."
+msgstr "De paden met punten van de waarden die samen een item identificeren, één per regel, hooguit vijf. Eén pad, zoals <code>customer_code</code>, is het gebruikelijke geval."
+
+msgid "Target"
+msgstr "Doel"
+
+msgid "Fill in where the value of a field comes from, as the dotted path of a value in the source item, for example <code>price.amount</code>. A field without a source is not filled by the import. A field marked * is required."
+msgstr "Vul in waar de waarde van een veld vandaan komt, als pad met punten naar een waarde in het bronitem, bijvoorbeeld <code>price.amount</code>. Een veld zonder bron wordt niet door de import gevuld. Een veld met * is verplicht."
+
+msgid "Suggest a mapping"
+msgstr "Stel een mapping voor"
+
+msgid "Field"
+msgstr "Veld"
+
+msgid "Check"
+msgstr "Controle"
+
+msgid "@count fields of the target are not shown: no mapper fits their type."
+msgstr "@count velden van het doel worden niet getoond: er past geen mapper bij hun type."
+
+msgid "Off: the import cannot be started and does not run on its schedule. A new import starts switched off; turn it on when you want it to run."
+msgstr "Uit: de import kan niet worden gestart en draait niet volgens zijn schema. Een nieuwe import staat standaard uit; zet hem aan wanneer hij moet draaien."
+
+msgid "What happens to items that disappear from the source"
+msgstr "Wat er gebeurt met items die uit de bron verdwijnen"
+
+msgid "Unpublish them (they come back when the source has them again)"
+msgstr "Depubliceer ze (ze komen terug als de bron ze weer heeft)"
+
+msgid "Delete them"
+msgstr "Verwijder ze"
+
+msgid "Leave them as they are"
+msgstr "Laat ze zoals ze zijn"
+
+msgid "Most items, in percent, that may disappear in one run"
+msgstr "Maximaal aantal items, in procenten, dat in één run mag verdwijnen"
+
+msgid "When more go missing, nothing is changed and the run ends with errors: a source that suddenly returns a short list is more likely broken than right. 0 means no limit."
+msgstr "Als er meer wegvallen, wordt niets gewijzigd en eindigt de run met fouten: een bron die ineens een korte lijst teruggeeft is eerder kapot dan juist. 0 betekent geen grens."
+
+msgid "Only workers of this pool handle the items, for example to keep a heavy import apart."
+msgstr "Alleen werkers van deze pool verwerken de items, bijvoorbeeld om een zware import apart te houden."
+
+msgid "Retries"
+msgstr "Nieuwe pogingen"
+
+msgid "Attempts per item"
+msgstr "Pogingen per item"
+
+msgid "Waiting between attempts"
+msgstr "Wachttijd tussen pogingen"
+
+msgid "The same every time"
+msgstr "Elke keer even lang"
+
+msgid "Longer by a step each time"
+msgstr "Elke keer een stap langer"
+
+msgid "Twice as long each time"
+msgstr "Elke keer twee keer zo lang"
+
+msgid "Seconds before the first retry"
+msgstr "Seconden voor de eerste nieuwe poging"
+
+msgid "Keep items that ran out of attempts in the dead letter queue"
+msgstr "Bewaar items die geen pogingen meer hebben in de dead letter queue"
+
+msgid "With their payload, so they can be fixed and retried. Without it they are only counted as failed."
+msgstr "Met hun gegevens, zodat ze kunnen worden hersteld en opnieuw geprobeerd. Zonder tellen ze alleen als mislukt."
+
+msgid "Same page this many times in a row means the paging does not work"
+msgstr "Dezelfde pagina zoveel keer achter elkaar betekent dat de paginering niet werkt"
+
+msgid "Stop calling the source when it is down"
+msgstr "Stop met de bron aanroepen als die down is"
+
+msgid "Failures in a row that open the breaker"
+msgstr "Mislukkingen achter elkaar die de breaker openen"
+
+msgid "Seconds before the source is checked again"
+msgstr "Seconden voordat de bron opnieuw wordt gecontroleerd"
+
+msgid "Who is told how a run went."
+msgstr "Wie te horen krijgt hoe een run ging."
+
+msgid "Report"
+msgstr "Rapport"
+
+msgid "Remove this report"
+msgstr "Verwijder dit rapport"
+
+msgid "Add a report"
+msgstr "Voeg een rapport toe"
+
+msgid "@source"
+msgstr "@source"
+
+msgid "optional"
+msgstr "optioneel"
+
+msgid "Settings"
+msgstr "Instellingen"
+
+msgid "- none -"
+msgstr "- geen -"
+
+msgid "Fail the item"
+msgstr "Laat het item mislukken"
+
+msgid "Leave the field empty"
+msgstr "Laat het veld leeg"
+
+msgid "Skip the item"
+msgstr "Sla het item over"
+
+msgid "@title is required for a field that is mapped."
+msgstr "@title is verplicht voor een veld dat wordt gemapt."
+
+msgid "Choose a target first."
+msgstr "Kies eerst een doel."
+
+msgid "There is nothing to suggest from yet: try the source first."
+msgstr "Er is nog niets om uit voor te stellen: probeer eerst de bron."
+
+msgid "Nothing in the sample looked like a field that is still empty."
+msgstr "Niets in het voorbeeld leek op een veld dat nog leeg is."
+
+msgid "@count fields were filled in from the sample. Check them: they are suggestions."
+msgstr "@count velden zijn ingevuld uit het voorbeeld. Controleer ze: het zijn suggesties."
+
+msgid "Type"
+msgstr "Type"
+
+msgid "Filled in for this source; change it to what the source needs."
+msgstr "Ingevuld voor deze bron; pas het aan op wat de bron nodig heeft."
+
+msgid "Try the source"
+msgstr "Probeer de bron"
+
+msgid "Reads a few pages with the settings so far, and shows what came back and the paths of the values in its items. Those paths are offered in the next steps."
+msgstr "Leest een paar pagina's met de instellingen tot nu toe en toont wat terugkwam en de paden van de waarden in de items. Die paden worden in de volgende stappen aangeboden."
+
+msgid "Do this first: the real values then show next to every path you type below."
+msgstr "Doe dit eerst: de echte waarden verschijnen dan naast elk pad dat je hieronder typt."
+
+msgid "In the sample:"
+msgstr "In het voorbeeld:"
+
+msgid "This path is not in the sample items. Check the spelling, or click a path from the table."
+msgstr "Dit pad staat niet in de voorbeelditems. Controleer de spelling, of klik een pad uit de tabel aan."
+
+msgid "Paths in @count sample items. Click a path to put it in the source you were typing in."
+msgstr "Paden in @count voorbeelditems. Klik een pad aan om het in te vullen bij de bron waar je in typte."
+
+msgid "Paths in @count sample items"
+msgstr "Paden in @count voorbeelditems"
+
+msgid "Path"
+msgstr "Pad"
+
+msgid "Example"
+msgstr "Voorbeeld"
+
+msgid "Preview the result"
+msgstr "Toon het resultaat"
+
+msgid "ok"
+msgstr "goed"
+
+msgid "left empty"
+msgstr "leeg gelaten"
+
+msgid "the item would fail"
+msgstr "het item zou mislukken"
+
+msgid "the item would be skipped"
+msgstr "het item zou worden overgeslagen"
+
+msgid "waits for the referenced item"
+msgstr "wacht op het item waarnaar wordt verwezen"
+
+msgid "What the mapping makes of the first sample item"
+msgstr "Wat de mapping maakt van het eerste voorbeelditem"
+
+msgid "Will be saved as"
+msgstr "Wordt opgeslagen als"
+
+msgid "Result"
+msgstr "Resultaat"
+
+msgid "No field has a source yet."
+msgstr "Nog geen veld heeft een bron."
+
+msgid "Found in the sample: @paths."
+msgstr "Gevonden in het voorbeeld: @paths."
+
+msgid "The import cannot be saved yet"
+msgstr "De import kan nog niet worden opgeslagen"
+
+msgid "Step @step: @title"
+msgstr "Stap @step: @title"
+
+msgid "Machine name: give the import a name, and so a machine name."
+msgstr "Machinenaam: geef de import een naam, en dus een machinenaam."
+
+msgid "Machine name: an import with the machine name @id exists already. Choose another."
+msgstr "Machinenaam: er bestaat al een import met de machinenaam @id. Kies een andere."
+
+msgid "The import could not be checked: @message"
+msgstr "De import kon niet worden gecontroleerd: @message"
+
+msgid "Mapping, row @n (@field)"
+msgstr "Mapping, rij @n (@field)"
+
+msgid "Report @n"
+msgstr "Rapport @n"
+
+msgid "Key"
+msgstr "Sleutel"
+
+msgid "Not everything on step @step could be kept: @parts. They have the settings they had before; check them when you come back."
+msgstr "Niet alles in stap @step kon worden bewaard: @parts. Ze hebben de instellingen van daarvoor; controleer ze als je terugkomt."
+
+msgid "@name has taken over editing this import. Nothing of what you changed was saved; open the import again to see what it is now."
+msgstr "@name heeft het bewerken van deze import overgenomen. Niets van wat je wijzigde is opgeslagen; open de import opnieuw om te zien hoe hij nu is."
+
+msgid "Give one to five paths."
+msgstr "Geef één tot vijf paden."
+
+msgid "The field \"@field\" needs a source for \"@source\", or none at all to leave it alone."
+msgstr "Het veld \"@field\" heeft een bron nodig voor \"@source\", of helemaal geen om het ongemoeid te laten."
+
+msgid "The import no longer exists."
+msgstr "De import bestaat niet meer."
+
+msgid "The import @label is saved."
+msgstr "De import @label is opgeslagen."
+
+msgid "The target cannot be used yet: @message"
+msgstr "Het doel kan nog niet worden gebruikt: @message"
+
+msgid "In plain words: what this import will do"
+msgstr "In gewone woorden: wat deze import gaat doen"
+
+msgid "Update this summary"
+msgstr "Werk dit overzicht bij"
+
+msgid "Where does the data come from? Give the import a name and the address of the source, then try it."
+msgstr "Waar komen de gegevens vandaan? Geef de import een naam en het adres van de bron en probeer het dan."
+
+msgid "How does the import read all of it? Say how to ask for the next page, and how to log in if the source needs it."
+msgstr "Hoe leest de import alles? Zeg hoe je de volgende pagina opvraagt, en hoe je inlogt als de bron dat vraagt."
+
+msgid "What makes an item unique, and what content does it become?"
+msgstr "Wat maakt een item uniek, en welke inhoud wordt het?"
+
+msgid "Which value of the source goes into which field? Leave a field empty to leave it alone."
+msgstr "Welke waarde uit de bron komt in welk veld? Laat een veld leeg om het ongemoeid te laten."
+
+msgid "What should happen when things go wrong, and should the import run now? A new import is off until you switch it on."
+msgstr "Wat moet er gebeuren als het misgaat, en moet de import nu draaien? Een nieuwe import staat uit totdat je hem aanzet."

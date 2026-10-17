@@ -58,7 +58,7 @@ final class SourceSampler {
         $paths[$path] ??= ['type' => $type, 'example' => $this->example($item, $path)];
       }
     }
-    return new SourceSample($messages, $paths, count($check->sampleItems));
+    return new SourceSample($messages, $paths, count($check->sampleItems), $check->sampleItems[0] ?? []);
   }
 
   /**

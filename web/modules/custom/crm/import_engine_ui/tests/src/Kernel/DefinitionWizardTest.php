@@ -79,6 +79,7 @@ class DefinitionWizardTest extends NodeTestBase {
       'add_reporter' => 'Add a report',
       'test_source' => 'Try the source',
       'summarize' => 'Update this summary',
+      'preview_mapping' => 'Preview the result',
       'save_connection' => 'Save these settings as a connection',
     ];
     $state = new FormState();
@@ -692,6 +693,33 @@ class DefinitionWizardTest extends NodeTestBase {
     $settings = $after['#attached']['drupalSettings']['importWizard'];
     $this->assertSame('Acme', $settings['examples']['name']);
     $this->assertSame('C-1', $settings['examples']['code']);
+  }
+
+  /**
+   * The preview shows per field what the mapping makes of the first item.
+   */
+  public function testMappingPreview(): void {
+    $this->sourceReturns([['code' => 'C-1', 'name' => '  Acme  ', 'mail' => 'nonsense']]);
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $state = $this->press($state, $this->plainStep2(), 'test_source');
+    $state = $this->press($state, $this->plainStep2(), 'next');
+    $state = $this->press($state, ['source_key' => 'code', 'target' => $this->step3()['target']], 'next');
+
+    $mapping = $this->step4()['mapping'];
+    $mapping['title']['sources']['value'] = 'name';
+    $mapping['field_code']['sources']['value'] = 'mail';
+    $mapping['field_code']['validator'] = ['plugin' => 'email', 'on_invalid' => 'empty'];
+    $state = $this->press($state, ['mapping' => $mapping], 'preview_mapping');
+
+    $preview = $state->get('mapping_preview');
+    $this->assertArrayNotHasKey('error', $preview);
+    $this->assertSame(['title', 'field_code'], array_column($preview['rows'], 'field'));
+    $this->assertSame('Acme', $preview['rows'][0]['shown'], 'The mapper trims.');
+    $this->assertSame('ok', $preview['rows'][0]['status']);
+    $this->assertSame('left_empty', $preview['rows'][1]['status']);
+    $this->assertSame('(empty)', $preview['rows'][1]['shown']);
+    $this->assertSame(4, $state->get('step'));
+    $this->assertNull(ImportDefinition::load('accounts'), 'Nothing is saved.');
   }
 
   /**

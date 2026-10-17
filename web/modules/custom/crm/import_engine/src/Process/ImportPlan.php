@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine\Process;
 
+use Drupal\import_engine\Mapper\DependencyNotReadyException;
 use Drupal\import_engine\Mapper\MappingException;
 use Drupal\import_engine\Path\PathResolver;
 use Drupal\import_engine\Target\TargetInterface;
@@ -75,38 +76,89 @@ final class ImportPlan {
     $values = [];
     $notes = [];
     foreach ($this->rows as $row) {
-      $sources = [];
-      foreach ($row['paths'] as $name => $path) {
-        $sources[$name] = $this->paths->get($item, $path);
-      }
-      $value = $row['mapper']->map($sources, $row['field']);
-      foreach ($row['validators'] as $validator) {
-        $subject = self::subject($value);
-        if (($subject === NULL || $subject === '') && !$validator->validatesEmpty()) {
-          continue;
-        }
-        $outcome = $validator->validate($subject ?? '');
-        if ($outcome->valid) {
-          $value = self::withSubject($value, $outcome->value);
-          continue;
-        }
-        $what = sprintf('Field "%s": the value %s', $row['field']->name, $outcome->reason);
-        switch ($row['on_invalid']) {
-          case OnInvalid::Empty:
-            $value = NULL;
-            $notes[] = $what . '; left empty.';
-            break 2;
-
-          case OnInvalid::SkipItem:
-            throw new SkipItemException($what . '; the item was not imported.');
-
-          default:
-            throw new MappingException($what . '.');
-        }
+      [$value, $note] = $this->mapRow($row, $item);
+      if ($note !== NULL) {
+        $notes[] = $note;
       }
       $values[$row['field']->name] = $value;
     }
     return new MappedItem($values, $notes);
+  }
+
+  /**
+   * Shows what every mapping row makes of a source item, without failing.
+   *
+   * For the wizard: a person sees the result of each row on a sample item, and
+   * for a row that would fail, the reason. Nothing is written.
+   *
+   * @param array<string, mixed> $item
+   *   The source item.
+   *
+   * @return list<array{field: string, status: string, value: mixed, message: string}>
+   *   Per row: the target field, the status (ok, left_empty, failed, skipped or
+   *   waiting), the value and a message for any status but ok.
+   */
+  public function preview(array $item): array {
+    $results = [];
+    foreach ($this->rows as $row) {
+      $name = $row['field']->name;
+      try {
+        [$value, $note] = $this->mapRow($row, $item);
+        $results[] = [
+          'field' => $name,
+          'status' => $note === NULL ? 'ok' : 'left_empty',
+          'value' => $value,
+          'message' => (string) $note,
+        ];
+      }
+      catch (SkipItemException $exception) {
+        $results[] = ['field' => $name, 'status' => 'skipped', 'value' => NULL, 'message' => $exception->getMessage()];
+      }
+      catch (DependencyNotReadyException $exception) {
+        $results[] = ['field' => $name, 'status' => 'waiting', 'value' => NULL, 'message' => $exception->getMessage()];
+      }
+      catch (\Throwable $exception) {
+        $results[] = ['field' => $name, 'status' => 'failed', 'value' => NULL, 'message' => $exception->getMessage()];
+      }
+    }
+    return $results;
+  }
+
+  /**
+   * Maps one row: the value, and a note when a value was left empty.
+   *
+   * @param array{field: \Drupal\import_engine\Target\TargetField, mapper: \Drupal\import_engine\Mapper\MapperInterface, paths: array<string, string>, validators: list<\Drupal\import_engine\Validator\ValidatorInterface>, on_invalid: \Drupal\import_engine\Validator\OnInvalid} $row
+   *   The row.
+   * @param array<string, mixed> $item
+   *   The source item.
+   *
+   * @return array{0: mixed, 1: string|null}
+   *   The value and the note.
+   */
+  private function mapRow(array $row, array $item): array {
+    $sources = [];
+    foreach ($row['paths'] as $name => $path) {
+      $sources[$name] = $this->paths->get($item, $path);
+    }
+    $value = $row['mapper']->map($sources, $row['field']);
+    foreach ($row['validators'] as $validator) {
+      $subject = self::subject($value);
+      if (($subject === NULL || $subject === '') && !$validator->validatesEmpty()) {
+        continue;
+      }
+      $outcome = $validator->validate($subject ?? '');
+      if ($outcome->valid) {
+        $value = self::withSubject($value, $outcome->value);
+        continue;
+      }
+      $what = sprintf('Field "%s": the value %s', $row['field']->name, $outcome->reason);
+      return match ($row['on_invalid']) {
+        OnInvalid::Empty => [NULL, $what . '; left empty.'],
+        OnInvalid::SkipItem => throw new SkipItemException($what . '; the item was not imported.'),
+        default => throw new MappingException($what . '.'),
+      };
+    }
+    return [$value, NULL];
   }
 
   /**

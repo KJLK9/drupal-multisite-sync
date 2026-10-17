@@ -29,6 +29,8 @@ use Drupal\import_engine\Mapper\MapperPluginManager;
 use Drupal\import_engine\Connection\ConnectionResolver;
 use Drupal\import_engine\ImportConnectionInterface;
 use Drupal\import_engine\Mapper\MappingSuggester;
+use Drupal\import_engine\Process\PlanException;
+use Drupal\import_engine\Process\PlanFactory;
 use Drupal\import_engine\Schedule\ScheduleRules;
 use Drupal\import_engine_ui\Help\DefinitionSummary;
 use Drupal\import_engine_ui\Help\Glossary;
@@ -120,6 +122,8 @@ final class DefinitionWizardForm extends FormBase {
     protected Glossary $glossary,
     #[Autowire(service: 'import_engine_ui.definition_summary')]
     protected DefinitionSummary $summary,
+    #[Autowire(service: 'import_engine.plan_factory')]
+    protected PlanFactory $plans,
   ) {
   }
 
@@ -1187,6 +1191,9 @@ final class DefinitionWizardForm extends FormBase {
       $items[] = ['#markup' => '<strong>' . ucfirst((string) $message['severity']) . ':</strong> ' . Html::escape((string) $message['message'])];
     }
     $form['source_test']['messages'] = ['#theme' => 'item_list', '#items' => $items];
+    if ($step === 4 && !empty($sample['item'])) {
+      $form['source_test']['preview'] = $this->mappingPreview($form_state);
+    }
     if ($sample['paths'] !== []) {
       // The paths found, offered while typing the source of a mapping row.
       $form['source_test']['path_list'] = [
@@ -1216,6 +1223,116 @@ final class DefinitionWizardForm extends FormBase {
   }
 
   /**
+   * Builds the button and table that preview the mapping on a sample item.
+   *
+   * The table shows what the mapping makes of the first sample item.
+   *
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   *
+   * @return array<string, mixed>
+   *   The element.
+   */
+  private function mappingPreview(FormStateInterface $form_state): array {
+    $element = [
+      '#type' => 'container',
+      '#prefix' => '<div id="import-wizard-result-preview">',
+      '#suffix' => '</div>',
+      'button' => [
+        '#type' => 'submit',
+        '#value' => $this->t('Preview the result'),
+        '#name' => 'preview_mapping',
+        '#limit_validation_errors' => [['mapping']],
+        '#submit' => ['::previewMapping'],
+        '#ajax' => ['callback' => '::ajaxPreview', 'wrapper' => 'import-wizard-result-preview'],
+      ],
+    ];
+    $preview = $form_state->get('mapping_preview');
+    if (!is_array($preview)) {
+      return $element;
+    }
+    if (isset($preview['error'])) {
+      $element['error'] = ['#markup' => '<p class="import-wizard-example--missing">' . Html::escape((string) $preview['error']) . '</p>'];
+      return $element;
+    }
+    $labels = [
+      'ok' => $this->t('ok'),
+      'left_empty' => $this->t('left empty'),
+      'failed' => $this->t('the item would fail'),
+      'skipped' => $this->t('the item would be skipped'),
+      'waiting' => $this->t('waits for the referenced item'),
+    ];
+    $rows = [];
+    foreach ($preview['rows'] as $row) {
+      $rows[] = [
+        $row['field'],
+        $row['shown'],
+        ['data' => ['#markup' => Html::escape((string) $labels[$row['status']]) . ($row['message'] === '' ? '' : '<br><small>' . Html::escape($row['message']) . '</small>')]],
+      ];
+    }
+    $element['table'] = [
+      '#type' => 'table',
+      '#caption' => $this->t('What the mapping makes of the first sample item'),
+      '#header' => [$this->t('Field'), $this->t('Will be saved as'), $this->t('Result')],
+      '#rows' => $rows,
+      '#empty' => $this->t('No field has a source yet.'),
+    ];
+    return $element;
+  }
+
+  /**
+   * Maps the first sample item with the mapping as typed so far.
+   *
+   * @param array<mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   */
+  public function previewMapping(array &$form, FormStateInterface $form_state): void {
+    $this->storeStep(4, $form, $form_state, $form_state->getValues());
+    $sample = (array) $form_state->get('source_sample');
+    try {
+      $plan = $this->plans->create($this->entityFromValues($this->values($form_state)));
+      $rows = [];
+      foreach ($plan->preview((array) ($sample['item'] ?? [])) as $row) {
+        $row['shown'] = $this->shown($row['value']);
+        unset($row['value']);
+        $rows[] = $row;
+      }
+      $form_state->set('mapping_preview', ['rows' => $rows]);
+    }
+    catch (PlanException $exception) {
+      $form_state->set('mapping_preview', ['error' => $exception->getMessage()]);
+    }
+    $form_state->setRebuild();
+  }
+
+  /**
+   * Returns the preview for the AJAX call.
+   *
+   * @param array<mixed> $form
+   *   The form.
+   *
+   * @return array<mixed>
+   *   The element.
+   */
+  public function ajaxPreview(array &$form): array {
+    return (array) ($form['source_test']['preview'] ?? []);
+  }
+
+  /**
+   * Writes a mapped value as short text.
+   */
+  private function shown(mixed $value): string {
+    $text = match (TRUE) {
+      $value === NULL => '(empty)',
+      is_scalar($value) => (string) $value,
+      default => (string) json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+    };
+    return mb_strlen($text) > 120 ? mb_substr($text, 0, 119) . '…' : $text;
+  }
+
+  /**
    * Tries the source with what has been filled in so far.
    *
    * @param array<mixed> $form
@@ -1238,7 +1355,10 @@ final class DefinitionWizardForm extends FormBase {
       'messages' => $sample->messages,
       'paths' => $sample->paths,
       'items' => $sample->items,
+      'item' => $sample->firstItem,
     ]);
+    // What an earlier preview showed is not about this sample.
+    $form_state->set('mapping_preview', NULL);
     $form_state->setRebuild();
   }
 

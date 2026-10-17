@@ -21,11 +21,14 @@ final class SourceSample {
    *   and a short example.
    * @param int $items
    *   How many sample items were read.
+   * @param array<string, mixed> $firstItem
+   *   The first sample item, to show what a mapping makes of it.
    */
   public function __construct(
     public readonly array $messages,
     public readonly array $paths,
     public readonly int $items,
+    public readonly array $firstItem = [],
   ) {
   }
 

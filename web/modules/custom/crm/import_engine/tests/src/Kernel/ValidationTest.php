@@ -283,6 +283,31 @@ class ValidationTest extends NodeTestBase {
   }
 
   /**
+   * The preview tells per row what would happen, and never throws.
+   */
+  public function testPreviewTellsPerRow(): void {
+    $item = ['id' => 1, 'name' => 'Acme', 'code' => 'nonsense'];
+    $preview = function (string $onInvalid) use ($item): array {
+      $values = $this->withValidators($this->email(), $onInvalid);
+      $plan = $this->container->get('import_engine.plan_factory')->create($this->definition($values));
+      return $plan->preview($item);
+    };
+
+    $fail = $preview('fail');
+    $this->assertSame(['title', 'field_code'], array_column($fail, 'field'));
+    $this->assertSame('ok', $fail[0]['status']);
+    $this->assertSame('failed', $fail[1]['status']);
+    $this->assertStringContainsString('is not a valid email address', $fail[1]['message']);
+    $this->assertStringNotContainsString('nonsense', $fail[1]['message']);
+
+    $empty = $preview('empty');
+    $this->assertSame('left_empty', $empty[1]['status']);
+    $this->assertNull($empty[1]['value']);
+
+    $this->assertSame('skipped', $preview('skip_item')[1]['status']);
+  }
+
+  /**
    * The schema accepts a row with validators, and refuses what is wrong.
    */
   public function testSchemaOfValidators(): void {

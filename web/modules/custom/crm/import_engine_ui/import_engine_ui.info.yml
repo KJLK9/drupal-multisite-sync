@@ -5,3 +5,7 @@ package: Custom
 core_version_requirement: ^11.2
 dependencies:
   - import_engine:import_engine
+# Dutch translations ship with the module; the locale module picks them up from
+# translations/ when the language is enabled.
+'interface translation project': import_engine_ui
+'interface translation server pattern': modules/custom/crm/import_engine_ui/translations/%language.po
