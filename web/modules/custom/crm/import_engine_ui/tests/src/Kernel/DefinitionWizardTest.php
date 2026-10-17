@@ -492,15 +492,15 @@ class DefinitionWizardTest extends NodeTestBase {
     $this->assertSame(['Accounts', 'accounts', 'http', 'entity: node/account', '-'], array_slice($row, 0, 5));
     // Without the permission to see runs there is no link to the dead letter
     // queue, which would only say "access denied".
-    $this->assertSame(['edit', 'run', 'delete'], array_keys($row[6]['data']['#links']));
+    $this->assertSame(['edit', 'run', 'clone', 'delete'], array_keys($row[6]['data']['#links']));
     $this->setUpCurrentUser(['name' => 'carol'], [
       'administer import definitions',
       'administer import runs',
       'view import runs',
     ]);
-    $this->assertSame(['edit', 'run', 'runs', 'delete'], array_keys($controller->list()['table']['#rows'][0][6]['data']['#links']));
+    $this->assertSame(['edit', 'run', 'clone', 'runs', 'delete'], array_keys($controller->list()['table']['#rows'][0][6]['data']['#links']));
     $this->setUpCurrentUser(['name' => 'dave'], ['administer import definitions']);
-    $this->assertSame(['edit', 'delete'], array_keys($controller->list()['table']['#rows'][0][6]['data']['#links']));
+    $this->assertSame(['edit', 'clone', 'delete'], array_keys($controller->list()['table']['#rows'][0][6]['data']['#links']));
 
     $manager = $this->container->get('access_manager');
     $this->assertTrue($manager->checkNamedRoute('import_engine_ui.definitions', [], $this->createUser(['administer import definitions'])));
@@ -915,6 +915,45 @@ class DefinitionWizardTest extends NodeTestBase {
     $this->assertStringContainsString('stops calling it for a while', $html);
     $this->assertStringContainsString('/admin/config/system/import-engine/help#breaker', $html);
     $this->assertStringContainsString('import-wizard-intro', $html);
+  }
+
+  /**
+   * A copy is a new, switched-off import; a template never runs.
+   */
+  public function testCloneAndTemplate(): void {
+    $state = $this->toLastStep();
+    $this->press($this->press($state, [], 'add_reporter'), $this->step5(), 'save');
+    $original = ImportDefinition::load('accounts');
+    $this->assertNotNull($original);
+    $this->assertTrue($original->status());
+
+    $values = new \ReflectionMethod(DefinitionWizardForm::class, 'initialValues');
+    $form = DefinitionWizardForm::create($this->container);
+    $copy = $values->invoke($form, $original, TRUE);
+    $this->assertSame('', $copy['id']);
+    $this->assertSame('', $copy['label']);
+    $this->assertFalse($copy['status']);
+    $this->assertFalse($copy['template']);
+    $this->assertSame($original->getMapping(), $copy['mapping'], 'The mapping is copied.');
+    $this->assertSame($original->getSource()['configuration'], $copy['source']['configuration']);
+
+    // A template is switched off whatever it says, and is not scheduled.
+    $array = $original->toArray();
+    unset($array['uuid']);
+    $template = ImportDefinition::create(['id' => 'tpl', 'template' => TRUE, 'status' => TRUE] + [
+      'schedule' => ['enabled' => TRUE, 'every' => 60, 'start' => 0],
+    ] + $array);
+    $template->save();
+    $stored = ImportDefinition::load('tpl');
+    $this->assertNotNull($stored);
+    $this->assertTrue($stored->isTemplate());
+    $this->assertFalse($stored->status());
+    $this->assertFalse($stored->getSchedule()['enabled']);
+    $this->assertCount(0, $stored->getTypedData()->validate());
+
+    $page = $this->container->get('class_resolver')->getInstanceFromDefinition(DefinitionController::class)->list();
+    $this->assertCount(1, $page['table']['#rows']);
+    $this->assertCount(1, $page['templates']['#rows']);
   }
 
   /**

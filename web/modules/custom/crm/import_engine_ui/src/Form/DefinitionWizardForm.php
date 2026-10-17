@@ -142,18 +142,23 @@ final class DefinitionWizardForm extends FormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state, ?ImportDefinitionInterface $import_definition = NULL): array {
     // One person at a time edits an import; every step renews the lock.
-    if ($import_definition !== NULL) {
+    $cloning = $this->getRouteMatch()->getRouteName() === 'import_engine_ui.definition_clone';
+    if ($import_definition !== NULL && !$cloning) {
       $holder = $this->lock->acquire((string) $import_definition->id(), $this->currentUser());
       if ($holder !== NULL) {
         return $this->lockedForm($import_definition, $holder);
       }
     }
     if ($form_state->get('definition') === NULL) {
-      $form_state->set('definition', $this->initialValues($import_definition));
-      $form_state->set('is_new', $import_definition === NULL);
+      $form_state->set('definition', $this->initialValues($import_definition, $cloning));
+      // A copy is a new import: it has no ID, no lock and is saved as new.
+      $form_state->set('is_new', $import_definition === NULL || $cloning);
       $form_state->set('step', 1);
       // An import that exists has been through every step.
       $form_state->set('visited', $import_definition === NULL ? [1] : array_keys(self::STEPS));
+      if ($cloning) {
+        $this->messenger()->addStatus($this->t('This is a copy. Give it a name; the rest is copied and can be changed. It is switched off until you enable it.'));
+      }
     }
     $step = (int) $form_state->get('step');
 
@@ -296,6 +301,12 @@ final class DefinitionWizardForm extends FormBase {
       '#title' => $this->t('Description'),
       '#default_value' => $values['description'],
       '#rows' => 2,
+    ];
+    $form['template'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('This is a template'),
+      '#description' => $this->t('A template never runs. It is a starting point: from the list of imports, "Use as template" makes a copy to fill in and run.'),
+      '#default_value' => !empty($values['template']),
     ];
     $connection = $this->chosenConnection($form_state);
     $form['source'] = $this->pluginSection(['source'], $this->sources, $values['source'], $form, $form_state, $this->t('Source'), [], $connection === NULL ? NULL : [$connection->getSource()['plugin']]);
@@ -599,7 +610,8 @@ final class DefinitionWizardForm extends FormBase {
       '#type' => 'checkbox',
       '#title' => $this->t('Enabled'),
       '#description' => $this->t('Off: the import cannot be started and does not run on its schedule. A new import starts switched off; turn it on when you want it to run.'),
-      '#default_value' => $values['status'],
+      '#default_value' => $values['status'] && empty($values['template']),
+      '#disabled' => !empty($values['template']),
     ];
     $form['delete_policy'] = [
       '#type' => 'select',
@@ -1757,6 +1769,7 @@ final class DefinitionWizardForm extends FormBase {
         $values['id'] = (string) ($in['id'] ?? '');
       }
       $values['description'] = (string) ($in['description'] ?? '');
+      $values['template'] = (bool) ($in['template'] ?? FALSE);
     }
     elseif ($step === 3) {
       $values['source_key'] = TextLists::lines((string) ($in['source_key'] ?? ''));
@@ -2126,14 +2139,29 @@ final class DefinitionWizardForm extends FormBase {
   /**
    * Returns the values to start from: those of the import, or the defaults.
    *
+   * @param \Drupal\import_engine\ImportDefinitionInterface|null $definition
+   *   The import to edit or copy, or NULL for a new one.
+   * @param bool $copy
+   *   Whether the import is copied into a new one.
+   *
    * @return array<string, mixed>
    *   The values.
    */
-  private function initialValues(?ImportDefinitionInterface $definition): array {
+  private function initialValues(?ImportDefinitionInterface $definition, bool $copy = FALSE): array {
     if ($definition !== NULL) {
       /** @var array<string, mixed> $values */
       $values = $definition->toArray();
       $values['status'] = $definition->status();
+      if ($copy) {
+        // A copy starts as a new, switched-off import that is not a template
+        // and has no schedule of its own: someone has to choose those.
+        $values['id'] = '';
+        $values['label'] = '';
+        unset($values['uuid']);
+        $values['status'] = FALSE;
+        $values['template'] = FALSE;
+        $values['schedule']['enabled'] = FALSE;
+      }
       return $values;
     }
     $blank = ImportDefinition::create(['id' => '', 'label' => '']);

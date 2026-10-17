@@ -99,6 +99,13 @@ class Glossary {
         $this->t('A saved recipe: where the data comes from, which item becomes which content, and how to behave when something goes wrong. It does nothing until someone starts it or it is scheduled.'),
       ),
       new GlossaryTerm(
+        'template',
+        $this->t('Template and clone'),
+        $this->t('A template is an import that never runs: a starting point. "Use as template" or "Clone" makes a copy with everything filled in, switched off, for you to change. Make your own by ticking "This is a template".'),
+        NULL,
+        ['template'],
+      ),
+      new GlossaryTerm(
         'run',
         $this->t('Run'),
         $this->t('One go of an import, from start to end. Every run keeps its own list of items and a log of what happened.'),

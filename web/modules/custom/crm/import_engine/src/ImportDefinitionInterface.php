@@ -147,4 +147,9 @@ interface ImportDefinitionInterface extends ConfigEntityInterface {
    */
   public function getSchedule(): array;
 
+  /**
+   * Whether the import is a template: a starting point that never runs.
+   */
+  public function isTemplate(): bool;
+
 }

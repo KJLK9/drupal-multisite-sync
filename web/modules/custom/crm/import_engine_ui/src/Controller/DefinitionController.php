@@ -24,50 +24,20 @@ final class DefinitionController extends ControllerBase {
    *   A render array.
    */
   public function list(): array {
-    $rows = [];
+    $imports = [];
+    $templates = [];
     foreach ($this->entityTypeManager()->getStorage('import_definition')->loadMultiple() as $definition) {
       if (!$definition instanceof ImportDefinitionInterface) {
         continue;
       }
-      $target = $definition->getTarget();
-      $configuration = (array) ($target['configuration'] ?? []);
-      $rows[] = [
-        $definition->label(),
-        $definition->id(),
-        $definition->getSource()['plugin'],
-        $target['plugin'] . (isset($configuration['entity_type']) ? ': ' . $configuration['entity_type'] . '/' . ($configuration['bundle'] ?? '') : ''),
-        ScheduleRules::describe($definition->getSchedule()) ?: '-',
-        $definition->status() ? $this->t('enabled') : $this->t('disabled'),
-        [
-          'data' => [
-            '#type' => 'operations',
-            '#links' => $this->allowed([
-              'edit' => [
-                'title' => $this->t('Edit'),
-                'url' => Url::fromRoute('import_engine_ui.definition_edit', ['import_definition' => $definition->id()]),
-              ],
-              'run' => [
-                'title' => $this->t('Run now'),
-                'url' => Url::fromRoute('import_engine_ui.definition_run', ['import_definition' => $definition->id()]),
-              ],
-              'runs' => [
-                'title' => $this->t('Dead letter queue'),
-                'url' => Url::fromRoute('import_engine_ui.dead_letter', [], [
-                  'query' => ['import' => $definition->id()],
-                ]),
-              ],
-              'delete' => [
-                'title' => $this->t('Delete'),
-                'url' => Url::fromRoute('import_engine_ui.definition_delete', [
-                  'import_definition' => $definition->id(),
-                ]),
-              ],
-            ]),
-          ],
-        ],
-      ];
+      if ($definition->isTemplate()) {
+        $templates[] = $this->templateRow($definition);
+      }
+      else {
+        $imports[] = $this->importRow($definition);
+      }
     }
-    return [
+    $build = [
       'table' => [
         '#type' => 'table',
         '#header' => [
@@ -79,12 +49,119 @@ final class DefinitionController extends ControllerBase {
           $this->t('Status'),
           $this->t('Operations'),
         ],
-        '#rows' => $rows,
+        '#rows' => $imports,
         '#empty' => $this->t('There are no imports yet.'),
       ],
       '#cache' => [
         'tags' => ['config:import_engine.import_definition_list'],
         'contexts' => ['user.permissions'],
+      ],
+    ];
+    if ($templates !== []) {
+      $build['templates_title'] = ['#markup' => '<h2>' . $this->t('Templates') . '</h2>'];
+      $build['templates'] = [
+        '#type' => 'table',
+        '#header' => [$this->t('Name'), $this->t('ID'), $this->t('Source'), $this->t('Target'), $this->t('Operations')],
+        '#rows' => $templates,
+      ];
+    }
+    return $build;
+  }
+
+  /**
+   * Describes the target of an import in a few words.
+   *
+   * @param \Drupal\import_engine\ImportDefinitionInterface $definition
+   *   The import.
+   */
+  private function targetOf(ImportDefinitionInterface $definition): string {
+    $target = $definition->getTarget();
+    $configuration = (array) ($target['configuration'] ?? []);
+    return $target['plugin'] . (isset($configuration['entity_type']) ? ': ' . $configuration['entity_type'] . '/' . ($configuration['bundle'] ?? '') : '');
+  }
+
+  /**
+   * Builds the row of an import.
+   *
+   * @param \Drupal\import_engine\ImportDefinitionInterface $definition
+   *   The import.
+   *
+   * @return list<mixed>
+   *   The cells.
+   */
+  private function importRow(ImportDefinitionInterface $definition): array {
+    $id = (string) $definition->id();
+    return [
+      $definition->label(),
+      $id,
+      $definition->getSource()['plugin'],
+      $this->targetOf($definition),
+      ScheduleRules::describe($definition->getSchedule()) ?: '-',
+      $definition->status() ? $this->t('enabled') : $this->t('disabled'),
+      [
+        'data' => [
+          '#type' => 'operations',
+          '#links' => $this->allowed([
+            'edit' => [
+              'title' => $this->t('Edit'),
+              'url' => Url::fromRoute('import_engine_ui.definition_edit', ['import_definition' => $id]),
+            ],
+            'run' => [
+              'title' => $this->t('Run now'),
+              'url' => Url::fromRoute('import_engine_ui.definition_run', ['import_definition' => $id]),
+            ],
+            'clone' => [
+              'title' => $this->t('Clone'),
+              'url' => Url::fromRoute('import_engine_ui.definition_clone', ['import_definition' => $id]),
+            ],
+            'runs' => [
+              'title' => $this->t('Dead letter queue'),
+              'url' => Url::fromRoute('import_engine_ui.dead_letter', [], ['query' => ['import' => $id]]),
+            ],
+            'delete' => [
+              'title' => $this->t('Delete'),
+              'url' => Url::fromRoute('import_engine_ui.definition_delete', ['import_definition' => $id]),
+            ],
+          ]),
+        ],
+      ],
+    ];
+  }
+
+  /**
+   * Builds the row of a template.
+   *
+   * @param \Drupal\import_engine\ImportDefinitionInterface $definition
+   *   The template.
+   *
+   * @return list<mixed>
+   *   The cells.
+   */
+  private function templateRow(ImportDefinitionInterface $definition): array {
+    $id = (string) $definition->id();
+    return [
+      $definition->label(),
+      $id,
+      $definition->getSource()['plugin'],
+      $this->targetOf($definition),
+      [
+        'data' => [
+          '#type' => 'operations',
+          '#links' => $this->allowed([
+            'use' => [
+              'title' => $this->t('Use as template'),
+              'url' => Url::fromRoute('import_engine_ui.definition_clone', ['import_definition' => $id]),
+            ],
+            'edit' => [
+              'title' => $this->t('Edit'),
+              'url' => Url::fromRoute('import_engine_ui.definition_edit', ['import_definition' => $id]),
+            ],
+            'delete' => [
+              'title' => $this->t('Delete'),
+              'url' => Url::fromRoute('import_engine_ui.definition_delete', ['import_definition' => $id]),
+            ],
+          ]),
+        ],
       ],
     ];
   }

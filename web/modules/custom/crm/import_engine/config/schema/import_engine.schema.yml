@@ -138,6 +138,10 @@ import_engine.import_definition.*:
       type: import_engine.schedule
       requiredKey: false
       label: 'Schedule'
+    template:
+      type: boolean
+      requiredKey: false
+      label: 'Template'
 
 # A source plugin; its configuration is typed per plugin.
 import_engine.source_reference:

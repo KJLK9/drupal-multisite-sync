@@ -6,6 +6,7 @@ namespace Drupal\import_engine\Entity;
 
 use Drupal\Core\Config\Entity\ConfigEntityBase;
 use Drupal\Core\Entity\Attribute\ConfigEntityType;
+use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\import_engine\BackoffStrategy;
 use Drupal\import_engine\DeletePolicy;
@@ -53,6 +54,7 @@ use Drupal\import_engine\Storage\ImportDefinitionStorage;
     'reporters',
     'pool',
     'schedule',
+    'template',
   ],
 )]
 class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInterface {
@@ -176,6 +178,30 @@ class ImportDefinition extends ConfigEntityBase implements ImportDefinitionInter
    * @var array{enabled: bool, every: int, start: int}
    */
   protected array $schedule = ['enabled' => FALSE, 'every' => 60, 'start' => 0];
+
+  /**
+   * Whether this is a template: a starting point that never runs.
+   */
+  protected bool $template = FALSE;
+
+  /**
+   * {@inheritdoc}
+   */
+  public function isTemplate(): bool {
+    return $this->template;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function preSave(EntityStorageInterface $storage): void {
+    parent::preSave($storage);
+    if ($this->template) {
+      // A template is only copied: it is never started or scheduled.
+      $this->status = FALSE;
+      $this->schedule['enabled'] = FALSE;
+    }
+  }
 
   /**
    * {@inheritdoc}
