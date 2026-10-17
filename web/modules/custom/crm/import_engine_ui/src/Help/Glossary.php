@@ -130,6 +130,13 @@ class Glossary {
         ['connection'],
       ),
       new GlossaryTerm(
+        'variables',
+        $this->t('Variables'),
+        $this->t('Fixed values that a GraphQL query takes, one per line as name = value. The query uses them as $name.'),
+        $this->t('first = 100'),
+        ['variables'],
+      ),
+      new GlossaryTerm(
         'items_path',
         $this->t('Items path'),
         $this->t('Where in the answer of the source the list of items is. Leave it empty when the answer is the list itself.'),

@@ -9,6 +9,7 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\import_engine\Attribute\ImportSource;
 use Drupal\import_engine\Http\RequestSpec;
+use Drupal\import_engine\Source\GraphqlVariables;
 use Drupal\import_engine\Source\SourceException;
 
 /**
@@ -130,9 +131,9 @@ final class GraphqlSource extends HttpSource {
     ];
     $form['variables'] = [
       '#type' => 'textarea',
-      '#title' => $this->t('Variables (JSON)'),
-      '#description' => $this->t('A JSON object with fixed variables, or empty.'),
-      '#default_value' => $this->configuration['variables'],
+      '#title' => $this->t('Variables'),
+      '#description' => $this->t('Fixed values for the query, one per line as <code>name = value</code>, for example <code>first = 100</code> or <code>status = "published"</code>. Numbers, true, false and null are read as such. Nested values: write a JSON object instead.'),
+      '#default_value' => GraphqlVariables::toLines((string) $this->configuration['variables']),
       '#rows' => 3,
     ];
     $form['headers'] = [
@@ -176,6 +177,12 @@ final class GraphqlSource extends HttpSource {
         $form_state->setErrorByName($field, $exception->getMessage());
       }
     }
+    try {
+      GraphqlVariables::toJson((string) $form_state->getValue('variables'));
+    }
+    catch (\InvalidArgumentException $exception) {
+      $form_state->setErrorByName('variables', $exception->getMessage());
+    }
   }
 
   /**
@@ -191,6 +198,8 @@ final class GraphqlSource extends HttpSource {
     foreach (['headers' => ': '] as $field => $separator) {
       $values[$field] = TextLists::pairs((string) ($values[$field] ?? ''), $separator);
     }
+    // The source keeps JSON; the form shows lines.
+    $values['variables'] = GraphqlVariables::toJson((string) ($values['variables'] ?? ''));
     return $values;
   }
 

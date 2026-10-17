@@ -10,6 +10,7 @@ use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\DependencyInjection\AutowireTrait;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormBase;
+use Drupal\Core\Security\TrustedCallbackInterface;
 use Drupal\Core\TypedData\TypedDataInterface;
 use Drupal\Core\TypedData\ComplexDataInterface;
 use Drupal\Core\Render\Element;
@@ -58,7 +59,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * definition never reaches the configuration. The settings of every plugin are
  * the form that plugin describes itself (ADR 0014).
  */
-final class DefinitionWizardForm extends FormBase {
+final class DefinitionWizardForm extends FormBase implements TrustedCallbackInterface {
 
   use AutowireTrait;
   use ScheduleFormTrait;
@@ -173,7 +174,8 @@ final class DefinitionWizardForm extends FormBase {
     $form['#attributes']['class'][] = 'import-definition-wizard';
     $form['#attributes']['class'][] = 'import-engine-form';
     $form['#attached']['library'][] = 'import_engine_ui/wizard';
-    $form['#pre_render'][] = $this->addInfoIcons(...);
+    // A method, not a closure: the form is serialized into the form cache.
+    $form['#pre_render'][] = [$this, 'addInfoIcons'];
 
     $current = $this->values($form_state);
     $problems = $this->problemsByStep($this->entityFromValues($current), ($current['id'] ?? '') === '', $this->idIsTaken($form_state, $current));
@@ -2292,6 +2294,13 @@ final class DefinitionWizardForm extends FormBase {
       4 => $this->t('Which value of the source goes into which field? Leave a field empty to leave it alone.'),
       default => $this->t('What should happen when things go wrong, and should the import run now? A new import is off until you switch it on.'),
     };
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function trustedCallbacks(): array {
+    return ['addInfoIcons'];
   }
 
   /**

@@ -550,6 +550,9 @@ class DefinitionWizardTest extends NodeTestBase {
       $render_state = new FormState();
       $render_state->setStorage($state?->getStorage() ?? []);
       $form = $this->container->get('form_builder')->buildForm(DefinitionWizardForm::class, $render_state);
+      // The form goes into the form cache between requests; a closure in it
+      // breaks every step but the first.
+      $this->assertNotSame('', serialize($form), 'Step ' . $step . ' can be cached.');
       $html = (string) $this->container->get('renderer')->renderRoot($form);
 
       foreach ($expected[$step] as $text) {

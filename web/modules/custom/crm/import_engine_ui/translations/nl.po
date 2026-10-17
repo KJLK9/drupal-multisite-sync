@@ -138,6 +138,15 @@ msgstr "Verbinding"
 msgid "An address with its login, saved once so that several imports can share it. Change it in one place and all of them follow."
 msgstr "Een adres met bijbehorende inlog, één keer bewaard zodat meerdere imports het kunnen delen. Pas het op één plek aan en ze volgen allemaal."
 
+msgid "Variables"
+msgstr "Variabelen"
+
+msgid "Fixed values that a GraphQL query takes, one per line as name = value. The query uses them as $name."
+msgstr "Vaste waarden die een GraphQL-query gebruikt, één per regel als naam = waarde. De query gebruikt ze als $naam."
+
+msgid "first = 100"
+msgstr "first = 100"
+
 msgid "Items path"
 msgstr "Pad naar de items"
 

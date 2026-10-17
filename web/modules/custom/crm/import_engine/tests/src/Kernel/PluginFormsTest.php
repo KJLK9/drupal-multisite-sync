@@ -93,7 +93,7 @@ class PluginFormsTest extends NodeTestBase {
       'graphql source' => ['source', 'graphql', [
         'url' => 'https://site-a.test/graphql',
         'query' => '{ customers { items { id } } }',
-        'variables' => '{"a": 1}',
+        'variables' => '{"a":1}',
         'headers' => $headers,
         'items_path' => 'data.customers.items',
         'timeout' => 15,
