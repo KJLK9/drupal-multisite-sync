@@ -30,6 +30,7 @@ use Drupal\import_engine\Connection\ConnectionResolver;
 use Drupal\import_engine\ImportConnectionInterface;
 use Drupal\import_engine\Mapper\MappingSuggester;
 use Drupal\import_engine\Schedule\ScheduleRules;
+use Drupal\import_engine_ui\Help\DefinitionSummary;
 use Drupal\import_engine_ui\Help\Glossary;
 use Drupal\import_engine_ui\Lock\WizardLock;
 use Drupal\import_engine\Source\SourceSampler;
@@ -117,6 +118,8 @@ final class DefinitionWizardForm extends FormBase {
     protected ValidatorPluginManager $validators,
     #[Autowire(service: 'import_engine_ui.glossary')]
     protected Glossary $glossary,
+    #[Autowire(service: 'import_engine_ui.definition_summary')]
+    protected DefinitionSummary $summary,
   ) {
   }
 
@@ -632,6 +635,7 @@ final class DefinitionWizardForm extends FormBase {
       '#max' => 100,
     ];
     $form['schedule'] = $this->scheduleElement($values['schedule'] ?? ScheduleRules::none());
+    $form['summary_plain'] = $this->plainSummary($values);
     $form['pool'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Worker pool'),
@@ -2084,6 +2088,74 @@ final class DefinitionWizardForm extends FormBase {
     /** @var array<string, mixed> $values */
     $values = $form_state->get('definition');
     return $values;
+  }
+
+  /**
+   * Builds the import in plain sentences, with a button to bring it up to date.
+   *
+   * It shows the import as it is stored in the form; the settings of this step
+   * join it when the button is pressed or the step is left.
+   *
+   * @param array<string, mixed> $values
+   *   The values of the import so far.
+   *
+   * @return array<string, mixed>
+   *   The element.
+   */
+  private function plainSummary(array $values): array {
+    $items = array_map(
+      static fn (string $line): array => ['#markup' => nl2br(Html::escape($line))],
+      $this->summary->sentences($this->entityFromValues($values)),
+    );
+    return [
+      '#type' => 'container',
+      '#weight' => 90,
+      '#prefix' => '<div id="import-wizard-summary-plain">',
+      '#suffix' => '</div>',
+      'box' => [
+        '#type' => 'details',
+        '#title' => $this->t('In plain words: what this import will do'),
+        '#open' => TRUE,
+        'list' => ['#theme' => 'item_list', '#items' => $items],
+      ],
+      'summarize' => [
+        '#type' => 'submit',
+        '#value' => $this->t('Update this summary'),
+        '#name' => 'summarize',
+        '#limit_validation_errors' => [
+          ['status'], ['delete_policy'], ['delete_threshold_percent'], ['pool'],
+          ['resilience'], ['breaker'], ['reporters'], ['schedule'],
+        ],
+        '#submit' => ['::summarize'],
+        '#ajax' => ['callback' => '::ajaxSummary', 'wrapper' => 'import-wizard-summary-plain'],
+      ],
+    ];
+  }
+
+  /**
+   * Takes the settings of step 5 into the import, to update the summary.
+   *
+   * @param array<mixed> $form
+   *   The form.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The form state.
+   */
+  public function summarize(array &$form, FormStateInterface $form_state): void {
+    $this->storeStep(5, $form, $form_state, $form_state->getValues());
+    $form_state->setRebuild();
+  }
+
+  /**
+   * Returns the summary for the AJAX call.
+   *
+   * @param array<mixed> $form
+   *   The form.
+   *
+   * @return array<mixed>
+   *   The element.
+   */
+  public function ajaxSummary(array &$form): array {
+    return (array) ($form['summary_plain'] ?? []);
   }
 
   /**

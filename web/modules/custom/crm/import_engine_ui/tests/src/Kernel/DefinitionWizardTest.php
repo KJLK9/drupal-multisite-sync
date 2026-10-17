@@ -78,6 +78,7 @@ class DefinitionWizardTest extends NodeTestBase {
       'suggest_mapping' => 'Suggest a mapping',
       'add_reporter' => 'Add a report',
       'test_source' => 'Try the source',
+      'summarize' => 'Update this summary',
       'save_connection' => 'Save these settings as a connection',
     ];
     $state = new FormState();
@@ -954,6 +955,32 @@ class DefinitionWizardTest extends NodeTestBase {
     $page = $this->container->get('class_resolver')->getInstanceFromDefinition(DefinitionController::class)->list();
     $this->assertCount(1, $page['table']['#rows']);
     $this->assertCount(1, $page['templates']['#rows']);
+  }
+
+  /**
+   * The last step tells the import in sentences, and the button updates it.
+   */
+  public function testPlainSummaryOnTheLastStep(): void {
+    $state = $this->toLastStep();
+    $form = $this->buildAt($state);
+    $text = (string) $this->container->get('renderer')->renderRoot($form['summary_plain']);
+
+    $this->assertStringContainsString('Reads items from https://site-a.test/api/customers', $text);
+    $this->assertStringContainsString('An item is recognised by customer_code', $text);
+    $this->assertStringContainsString('2 fields are filled', $text);
+    $this->assertStringContainsString('title from name', $text);
+    $this->assertStringContainsString('It is switched off. Nothing runs until you switch it on.', $text);
+
+    // The settings typed on this step join the summary when it is updated.
+    $values = $this->step5();
+    $values['delete_policy'] = 'delete';
+    $values['resilience']['max_attempts'] = '7';
+    $updated = $this->press($state, $values, 'summarize');
+    $text = (string) $this->container->get('renderer')->renderRoot($this->buildAt($updated)['summary_plain']);
+    $this->assertStringContainsString('the content is deleted', $text);
+    $this->assertStringContainsString('up to 7 times', $text);
+    $this->assertStringContainsString('It is switched on.', $text);
+    $this->assertNull(ImportDefinition::load('accounts'), 'Updating the summary saves nothing.');
   }
 
   /**

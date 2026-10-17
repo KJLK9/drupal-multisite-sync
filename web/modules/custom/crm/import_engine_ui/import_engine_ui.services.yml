@@ -32,5 +32,10 @@ services:
     class: Drupal\import_engine_ui\Lock\WizardLock
     arguments: ['@keyvalue.expirable', '@datetime.time']
 
+  import_engine_ui.definition_summary:
+    class: Drupal\import_engine_ui\Help\DefinitionSummary
+    arguments:
+      - '@plugin.manager.import_engine_validator'
+
   import_engine_ui.glossary:
     class: Drupal\import_engine_ui\Help\Glossary
