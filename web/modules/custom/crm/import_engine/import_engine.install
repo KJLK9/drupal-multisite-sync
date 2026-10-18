@@ -43,7 +43,8 @@ function import_engine_schema(): array {
       'run_id' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE],
       'page' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
       'pool' => ['type' => 'varchar_ascii', 'length' => 32, 'not null' => TRUE, 'default' => 'default'],
-      'source_key' => ['type' => 'varchar', 'length' => 190, 'not null' => TRUE],
+      // Binary: two keys that differ only in case or accents are two items.
+      'source_key' => ['type' => 'varchar', 'length' => 190, 'not null' => TRUE, 'binary' => TRUE],
       'state' => ['type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
       'outcome' => ['type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => FALSE],
       'attempts' => ['type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
@@ -117,7 +118,7 @@ function import_engine_schema(): array {
     'description' => 'One row per source item that is known: which target entity it became, and when it was last seen.',
     'fields' => [
       'definition_id' => ['type' => 'varchar_ascii', 'length' => 64, 'not null' => TRUE],
-      'source_key' => ['type' => 'varchar', 'length' => 190, 'not null' => TRUE],
+      'source_key' => ['type' => 'varchar', 'length' => 190, 'not null' => TRUE, 'binary' => TRUE],
       'target_type' => ['type' => 'varchar_ascii', 'length' => 32, 'not null' => FALSE],
       'target_id' => ['type' => 'varchar_ascii', 'length' => 64, 'not null' => FALSE],
       'hash' => $hash(FALSE),
@@ -191,4 +192,23 @@ function import_engine_update_10001(): string {
     }
   }
   return sprintf('Changed the reference mappers of %d imports.', $changed);
+}
+
+/**
+ * Compares the keys of source items exactly, not case-insensitively.
+ *
+ * The column of the key had the default collation of the database, which
+ * ignores case and accents: the items "a/b" and "A/B" were one row in the
+ * mapping and a duplicate in the queue, which stopped the extraction with a
+ * database error. A key is now compared as it is written.
+ */
+function import_engine_update_10002(): string {
+  $schema = \Drupal::database()->schema();
+  $spec = ['type' => 'varchar', 'length' => 190, 'not null' => TRUE, 'binary' => TRUE];
+  foreach (['import_item', 'import_mapping'] as $table) {
+    if ($schema->tableExists($table)) {
+      $schema->changeField($table, 'source_key', 'source_key', $spec);
+    }
+  }
+  return 'The keys of source items are compared exactly.';
 }
