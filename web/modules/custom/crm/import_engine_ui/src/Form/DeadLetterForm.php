@@ -89,7 +89,7 @@ final class DeadLetterForm extends FormBase {
         'key' => ['data' => $item->key, 'class' => ['import-cell--key']],
         'attempts' => $item->attempts,
         'error' => ['data' => $item->error ?? '', 'class' => ['import-cell--error']],
-        'operations' => ['data' => $this->editLink($item->id)],
+        'operations' => ['data' => $this->editLink($item->id), 'class' => ['import-cell--ops']],
       ];
     }
     $form['items'] = [
@@ -110,6 +110,9 @@ final class DeadLetterForm extends FormBase {
       (string) $this->t('What is waiting here, and what you can do with it.'),
       $this->queueSentences($run_ids, $total),
     );
+    // On a screen without room at the side the reasons come before the long
+    // table, not after it.
+    $form['summary_plain']['#weight'] = -25;
 
     $allowed = $this->currentUser()->hasPermission('administer import runs');
     $form['actions'] = ['#type' => 'actions', '#access' => $allowed && $options !== []];

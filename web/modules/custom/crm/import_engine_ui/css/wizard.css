@@ -350,11 +350,14 @@ button.import-wizard-path {
  * Colour instead of boxes: one accent (the accent of the theme) and its washes
  * mark what belongs together; one warm colour marks what needs a look.
  */
-:root {
+/* On the body, not the root: Gin sets its colours there, and a custom property
+   that refers to one is only known below the element that sets it. */
+body {
   --import-accent: var(--gin-color-primary, #0f766e);
   --import-wash: color-mix(in srgb, var(--import-accent) 9%, transparent);
   --import-wash-strong: color-mix(in srgb, var(--import-accent) 18%, transparent);
   --import-warm: #b45309;
+  --import-danger: #b91c1c;
   --import-warm-wash: color-mix(in srgb, var(--import-warm) 12%, transparent);
   --import-line: var(--gin-border-color, #d4d4d8);
 }
@@ -643,5 +646,36 @@ button.import-wizard-path {
   .import-engine-form:has(> .import-wizard-panel):not(:has(> .import-wizard-steps)) > .import-wizard-panel,
   .import-engine-form:has(> .import-wizard-panel):not(:has(> .import-wizard-steps)) > div:has(> .import-wizard-panel) {
     grid-row: 2 / span 12;
+  }
+}
+
+/* On a narrower screen the road gets shorter, and wraps before it is cut off. */
+@media (max-width: 1499px) {
+  .import-wizard-steps {
+    flex-wrap: wrap;
+    gap: 0.75rem 0;
+    padding-inline: 1rem;
+  }
+
+  .import-wizard-step-item:not(:last-child)::after {
+    min-width: 0.5rem;
+    margin-inline: 0.35rem;
+  }
+
+  .import-definition-wizard .import-wizard-steps input.import-wizard-step.button {
+    padding-inline: 2.4rem 0.25rem;
+  }
+}
+
+/* In dark mode the warm colours are lighter, so that they can be read. */
+.gin--dark-mode body {
+  --import-warm: #f59e0b;
+  --import-danger: #f87171;
+}
+
+/* Under the content, the panel has air above it. */
+@media (max-width: 1499px) {
+  .import-wizard-panel {
+    margin-block-start: 1.5rem;
   }
 }

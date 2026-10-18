@@ -105,9 +105,12 @@ final class RunController extends ControllerBase {
       ];
     }
     return [
+      '#prefix' => '<div class="import-run-page">',
+      '#suffix' => '</div>',
       'header' => Chrome::header((string) $this->t('All runs'), $pills, (string) $this->t('Newest first')),
       'table' => [
         '#type' => 'table',
+        '#attributes' => ['class' => ['import-runs-list']],
         '#header' => [
           $this->t('Run'),
           $this->t('Import'),
