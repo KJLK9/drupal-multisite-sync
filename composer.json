@@ -43,7 +43,8 @@
             "php-http/discovery": true,
             "php-tuf/composer-integration": true,
             "symfony/runtime": true,
-            "phpro/grumphp": true
+            "phpro/grumphp": true,
+            "infection/extension-installer": true
         },
         "sort-packages": true
     },
@@ -111,6 +112,7 @@
         "brianium/paratest": "^7.8",
         "drupal/coder": "^8.3",
         "drupal/core-dev": "^11.4",
+        "infection/infection": "^0.35.8",
         "mglaman/phpstan-drupal": "^2.2",
         "palantirnet/drupal-rector": "^1.1",
         "phpro/grumphp": "^2.25",
@@ -129,9 +131,13 @@
             "@rector",
             "@test"
         ],
+        "verify": "bash -c 'mkdir -p /tmp/php-opcache && PHP_INI_SCAN_DIR=:build/php.d exec vendor/bin/paratest -c phpunit.guarantee.xml.dist --functional --processes=${PARATEST_PROCESSES:-6} \"$@\"' --",
+        "verify:live": "bash bin/verify-live.sh",
+        "coverage": "bash -c 'mkdir -p /tmp/php-opcache build/coverage && PHP_INI_SCAN_DIR=:build/php.d:build/php.cov.d exec vendor/bin/paratest -c phpunit.coverage.xml.dist --functional --processes=${PARATEST_PROCESSES:-6} --coverage-xml=build/coverage/coverage-xml --log-junit=build/coverage/junit.xml \"$@\"' --",
+        "mutate": "bash bin/mutate.sh",
         "test:unit": "phpunit -c phpunit.xml.dist --testsuite unit",
         "test:serial": "phpunit -c phpunit.xml.dist",
-        "e2e": "bash -c 'cd e2e && npm ci --no-audit --no-fund --silent && npx playwright install chromium && npx playwright test \"$@\"' --",
+        "e2e": "bash -c 'cd e2e && npm ci --no-audit --no-fund --silent && npx playwright install --with-deps chromium && npx playwright test \"$@\"' --",
         "check:fast": [
             "@phpcs",
             "@phpstan",

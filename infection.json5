@@ -1,0 +1,33 @@
+{
+  // Mutation tests of the import engine (ADR 0030): Infection changes the code a
+  // little (a > becomes >=, a condition is negated, a call is removed) and runs
+  // the tests that cover that line. A change that no test notices is a gap.
+  "$schema": "vendor/infection/infection/resources/schema.json",
+  "source": {
+    "directories": ["web/modules/custom/crm/import_engine/src"],
+    "excludes": [
+      // Forms and hooks of Drupal's own machinery, and attributes: what is
+      // tested there is the behaviour of Drupal, not of the engine.
+      "Attribute",
+      "Form",
+      "Hook",
+      // The drush layer is thin and tested through its commands.
+      "Drush"
+    ]
+  },
+  "bootstrap": "infection/bootstrap.php",
+  "phpUnit": {
+    "configDir": "infection"
+  },
+  "logs": {
+    "text": "build/infection/infection.log",
+    "summary": "build/infection/summary.log",
+    "json": "build/infection/infection.json"
+  },
+  "tmpDir": "build/infection/tmp",
+  "testFramework": "phpunit",
+  "timeout": 120,
+  "mutators": {
+    "@default": true
+  }
+}

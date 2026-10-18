@@ -21,6 +21,11 @@ products, product prices) exposed through a read-only GraphQL API.
 - `ddev composer test:serial`: PHPUnit one test after the other, with readable
   output, for debugging. Slow with the database on disk.
 - `ddev composer check:fast`: phpcs + phpstan + rector + Unit tests
+- `ddev composer verify`: the guarantee tests of the import engine (promises
+  over the whole chain; about 75 seconds; not in `check` or CI). Run before a
+  commit that changes the engine. `ddev composer verify:live` checks site B
+  against site A over the real API. `ddev composer mutate` is the mutation
+  test (long; see docs/decisions/0030).
 - `ddev composer e2e`: Playwright tests of the screens (`e2e/`, see its README),
   in a real browser against the local site B; not part of `check`. Run them
   after changes to forms or pages.

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The tests of the engine with code coverage, for "ddev composer coverage" and
+  the mutation tests ("ddev composer mutate"). Not the file that CI uses.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.5/phpunit.xsd"
+         bootstrap="../web/core/tests/bootstrap.php"
+         colors="true"
+         cacheDirectory="../.phpunit.cache"
+         failOnWarning="true">
+  <php>
+    <ini name="error_reporting" value="32767"/>
+    <ini name="memory_limit" value="-1"/>
+    <env name="SIMPLETEST_BASE_URL" value="http://web"/>
+    <env name="SIMPLETEST_DB" value="mysql://db:db@db/db"/>
+    <env name="BROWSERTEST_OUTPUT_DIRECTORY" value="/tmp"/>
+  </php>
+  <testsuites>
+    <testsuite name="engine">
+      <directory>../web/modules/custom/crm/import_engine/tests/src/Unit</directory>
+      <directory>../web/modules/custom/crm/import_engine/tests/src/Kernel</directory>
+      <directory>../web/modules/custom/crm/import_engine/tests/src/Guarantee</directory>
+    </testsuite>
+  </testsuites>
+  <source>
+    <include>
+      <directory>../web/modules/custom/crm/import_engine/src</directory>
+    </include>
+  </source>
+</phpunit>

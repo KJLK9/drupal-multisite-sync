@@ -78,6 +78,10 @@ ddev composer check      # phpcs + phpstan level 8 + rector + all tests
                          # (about 2.5 minutes); this is also what CI runs
 ddev composer e2e        # Playwright, in a real browser, against site B
                          # (about 40 seconds; not part of check)
+ddev composer verify     # the guarantee tests of the engine: promises over the
+                         # whole chain (about 75 seconds; not part of check)
+ddev composer verify:live  # site B against site A, over the real API
+ddev composer mutate     # mutation tests: would the tests notice a change?
 ```
 
 Site B reads site A with an API key: create a user with the `catalog_reader`
@@ -116,6 +120,17 @@ curl -H "api-key: $KEY" "http://site-a.ddev.site/graphql/catalog?query={customer
   Drupal Rector, PHPUnit (Unit and Kernel, run in parallel against a database
   in memory), GrumPHP on commit (phpcs, phpstan, conventional commits) and
   GitHub Actions (a lint job and a test job).
+- **Guarantee tests** (`import_engine/tests/src/Guarantee`, run with
+  `ddev composer verify`, [ADR 0030](docs/decisions/0030-guarantee-tests.md)):
+  scenarios over the whole chain that must stay true however a run is cut up,
+  repeated or interrupted, against a real database and a scripted source:
+  every item arrives once in every shape of data and every way of paging; a run
+  that is stopped, crashed or failing ends like an uninterrupted one and removes
+  nothing it should not; retries follow their strategy to the second; the key
+  never reaches an event; 5,000 items stay within bounds. `verify:live`
+  compares site B with site A over the real API, and `mutate` (Infection) says
+  how many deliberate changes to the engine the tests notice. They are heavy,
+  so they run before a commit and not in CI.
 - Playwright tests (`e2e/`, [ADR 0028](docs/decisions/0028-end-to-end-tests-with-playwright.md))
   walk through the screens in a real browser: the wizard from start to save,
   editing, copying, templates, the help page, connections, run sets, settings

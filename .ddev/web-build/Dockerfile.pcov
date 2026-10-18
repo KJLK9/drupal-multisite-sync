@@ -1,0 +1,4 @@
+# pcov: fast code coverage, for `ddev composer mutate` (Infection) and coverage
+# reports. It is installed but switched off (.ddev/php/pcov.ini), so that normal
+# requests and tests do not pay for it; the scripts switch it on with -d.
+RUN (apt-get update || true) && DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::="--force-confnew" --no-install-recommends --no-install-suggests php${DDEV_PHP_VERSION}-pcov

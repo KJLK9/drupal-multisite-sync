@@ -69,6 +69,16 @@ A reference mapper says what to do when what it refers to is not imported:
 `when_missing: wait` (retry until it is, the default), `error` (end the item)
 or `ignore` (leave the field empty).
 
+## Guarantee tests
+
+`tests/src/Guarantee` holds tests of the promises of the engine as a whole, with
+their own configuration (`phpunit.guarantee.xml.dist`): `ddev composer verify`.
+They are heavy and are not part of `check`. See ADR 0030 for the list of what
+is guaranteed and what is not, `bin/verify-live.sh` for the check of site B
+against site A over the real API, and `ddev composer mutate` for the mutation
+tests (Infection) that measure how much of the engine's code the tests notice
+changes in.
+
 ## Templates and previews
 
 An import with `template: true` never runs and is never scheduled (saving it
