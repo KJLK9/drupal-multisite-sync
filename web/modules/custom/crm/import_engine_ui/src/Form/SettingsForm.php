@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine_ui\Form;
 
+use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Config\TypedConfigManagerInterface;
 use Drupal\Core\Form\ConfigFormBase;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Security\TrustedCallbackInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
+use Drupal\import_engine_ui\Help\Glossary;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * How long the engine keeps what it stores, and whether cron goes on with runs.
@@ -14,7 +19,9 @@ use Drupal\Core\StringTranslation\TranslatableMarkup;
  * The stores have different lifetimes (ADR 0009): the work queue is short, the
  * history is long. The purge runs from cron in bounded batches.
  */
-final class SettingsForm extends ConfigFormBase {
+final class SettingsForm extends ConfigFormBase implements TrustedCallbackInterface {
+
+  use FormChromeTrait;
 
   /**
    * The settings that are a number of days.
@@ -25,6 +32,28 @@ final class SettingsForm extends ConfigFormBase {
     'retention_events_days',
     'retention_runs_days',
   ];
+
+  /**
+   * Constructs the form.
+   */
+  public function __construct(
+    ConfigFactoryInterface $config_factory,
+    TypedConfigManagerInterface $typedConfigManager,
+    protected Glossary $glossary,
+  ) {
+    parent::__construct($config_factory, $typedConfigManager);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container): static {
+    return new static(
+      $container->get('config.factory'),
+      $container->get('config.typed'),
+      $container->get('import_engine_ui.glossary'),
+    );
+  }
 
   /**
    * {@inheritdoc}
@@ -58,6 +87,9 @@ final class SettingsForm extends ConfigFormBase {
     $config = $this->config('import_engine.settings');
     $form['#attributes']['class'][] = 'import-engine-form';
     $form['#attached']['library'][] = 'import_engine_ui/wizard';
+    // A method, not a closure: the form is serialized into the form cache.
+    $form['#pre_render'][] = [$this, 'addInfoIcons'];
+    $form['settings_header'] = $this->formHeader((string) $this->t('Retention and cron'), [], (string) $this->t('How long the engine keeps what it stores'));
 
     $form['retention'] = [
       '#type' => 'fieldset',
@@ -98,7 +130,35 @@ final class SettingsForm extends ConfigFormBase {
       '#max' => 3600,
       '#required' => TRUE,
     ];
+    $form['summary_plain'] = $this->plainPanel(
+      'settings-summary-plain',
+      (string) $this->t('What these settings do, as they are saved.'),
+      $this->sentences(),
+    );
     return parent::buildForm($form, $form_state);
+  }
+
+  /**
+   * Says in sentences how long things are kept and what cron does.
+   *
+   * @return list<string>
+   *   Sentences, made by t() so that what is put in them is escaped.
+   */
+  private function sentences(): array {
+    $config = $this->config('import_engine.settings');
+    $kept = fn (string $what, string $key): string => (int) $config->get($key) === 0
+      ? (string) $this->t('@what are kept for ever.', ['@what' => $what])
+      : (string) $this->formatPlural((int) $config->get($key), '@what are kept for 1 day.', '@what are kept for @count days.', ['@what' => $what]);
+    $seconds = (int) $config->get('cron_resume_seconds');
+    return [
+      $kept((string) $this->t('Items that are done'), 'retention_items_days'),
+      $kept((string) $this->t('Items in the dead letter queue'), 'retention_dead_days'),
+      $kept((string) $this->t('Events'), 'retention_events_days'),
+      $kept((string) $this->t('Finished runs'), 'retention_runs_days'),
+      $seconds === 0
+        ? (string) $this->t('Cron leaves runs alone. Start them from the list, with drush or with a scheduled job.')
+        : (string) $this->t('Cron carries on with runs that are not over, for up to @seconds seconds each time. It never starts a run.', ['@seconds' => (string) $seconds]),
+    ];
   }
 
   /**

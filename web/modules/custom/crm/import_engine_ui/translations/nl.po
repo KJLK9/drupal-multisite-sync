@@ -750,3 +750,97 @@ msgstr "Gebruikt door de imports @imports. Een wijziging hier geldt voor alle im
 
 msgid "an address"
 msgstr "een adres"
+
+msgid "Stop on errors"
+msgstr "Stoppen bij fouten"
+
+msgid "A set always stops when an import fails. With this on it also stops when an import finished but had items that went wrong, for when the next import needs all of them."
+msgstr "Een set stopt altijd als een import mislukt. Met dit aan stopt hij ook als een import klaar is maar items had die misgingen, voor als de volgende import ze allemaal nodig heeft."
+
+msgid "Retention"
+msgstr "Bewaartermijn"
+
+msgid "How long the engine keeps what it stores before cron removes it. 0 keeps it for ever. The tables grow with the data, not with the number of runs."
+msgstr "Hoe lang de engine bewaart wat hij opslaat voordat cron het verwijdert. 0 bewaart het voor altijd. De tabellen groeien met de gegevens, niet met het aantal runs."
+
+msgid "Cron"
+msgstr "Cron"
+
+msgid "The job that Drupal runs every so often. Here it can carry on with runs that are already going; it never starts one."
+msgstr "De taak die Drupal af en toe uitvoert. Hier kan hij doorgaan met runs die al bezig zijn; hij start er nooit een."
+
+msgid "New run set"
+msgstr "Nieuwe runset"
+
+msgid "No imports yet"
+msgstr "Nog geen imports"
+
+msgid "1 import"
+msgid_plural "@count imports"
+msgstr[0] "1 import"
+msgstr[1] "@count imports"
+
+msgid "Not scheduled"
+msgstr "Niet gepland"
+
+msgid "What a run set is, and what it will do once it is saved."
+msgstr "Wat een runset is, en wat hij gaat doen als hij is opgeslagen."
+
+msgid "What this run set does, as it is saved."
+msgstr "Wat deze runset doet, zoals hij is opgeslagen."
+
+msgid "A run set is a named list of imports that run one after the other."
+msgstr "Een runset is een benoemde lijst met imports die na elkaar draaien."
+
+msgid "Use it when an import needs another one first, for example the customers before the orders that refer to them."
+msgstr "Gebruik hem als een import eerst een andere nodig heeft, bijvoorbeeld de klanten voor de bestellingen die ernaar verwijzen."
+
+msgid "There are no imports in it yet: add at least one."
+msgstr "Er zitten nog geen imports in: voeg er minstens één toe."
+
+msgid "Runs @imports, in this order, each one when the one before it is done."
+msgstr "Draait @imports, in deze volgorde, elk als de vorige klaar is."
+
+msgid "It does not run by itself: start it from the list of run sets."
+msgstr "Hij draait niet vanzelf: start hem vanuit de lijst met runsets."
+
+msgid "It stops when an import fails, is cancelled, cannot go on, or finishes with items that went wrong."
+msgstr "Hij stopt als een import mislukt, wordt geannuleerd, niet verder kan, of eindigt met items die misgingen."
+
+msgid "It stops when an import fails, is cancelled or cannot go on. Items that went wrong in an import do not stop it."
+msgstr "Hij stopt als een import mislukt, wordt geannuleerd of niet verder kan. Items die in een import misgingen houden hem niet tegen."
+
+msgid "Retention and cron"
+msgstr "Bewaartermijn en cron"
+
+msgid "How long the engine keeps what it stores"
+msgstr "Hoe lang de engine bewaart wat hij opslaat"
+
+msgid "What these settings do, as they are saved."
+msgstr "Wat deze instellingen doen, zoals ze zijn opgeslagen."
+
+msgid "@what are kept for ever."
+msgstr "@what worden voor altijd bewaard."
+
+msgid "@what are kept for 1 day."
+msgid_plural "@what are kept for @count days."
+msgstr[0] "@what worden 1 dag bewaard."
+msgstr[1] "@what worden @count dagen bewaard."
+
+msgid "Items that are done"
+msgstr "Items die klaar zijn"
+
+msgid "Items in the dead letter queue"
+msgstr "Items in de dead letter queue"
+
+msgid "Events"
+msgstr "Gebeurtenissen"
+
+msgid "Finished runs"
+msgstr "Afgeronde runs"
+
+msgid "Cron leaves runs alone. Start them from the list, with drush or with a scheduled job."
+msgstr "Cron laat runs met rust. Start ze vanuit de lijst, met drush of met een geplande taak."
+
+msgid "Cron carries on with runs that are not over, for up to @seconds seconds each time. It never starts a run."
+msgstr "Cron gaat door met runs die niet klaar zijn, hooguit @seconds seconden per keer. Hij start nooit een run."

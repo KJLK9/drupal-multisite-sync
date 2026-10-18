@@ -282,6 +282,27 @@ class Glossary {
         ['status'],
       ),
       new GlossaryTerm(
+        'stop_on_errors',
+        $this->t('Stop on errors'),
+        $this->t('A set always stops when an import fails. With this on it also stops when an import finished but had items that went wrong, for when the next import needs all of them.'),
+        NULL,
+        ['stop_on_errors'],
+      ),
+      new GlossaryTerm(
+        'retention',
+        $this->t('Retention'),
+        $this->t('How long the engine keeps what it stores before cron removes it. 0 keeps it for ever. The tables grow with the data, not with the number of runs.'),
+        NULL,
+        ['retention', 'retention_items_days', 'retention_dead_days', 'retention_events_days', 'retention_runs_days'],
+      ),
+      new GlossaryTerm(
+        'cron',
+        $this->t('Cron'),
+        $this->t('The job that Drupal runs every so often. Here it can carry on with runs that are already going; it never starts one.'),
+        NULL,
+        ['cron', 'cron_resume_seconds'],
+      ),
+      new GlossaryTerm(
         'run_set',
         $this->t('Run set'),
         $this->t('A named list of imports that run one after the other, for example first the customers and then the orders that refer to them.'),

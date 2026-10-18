@@ -113,7 +113,11 @@ trait FormChromeTrait {
       $parents = (array) ($child['#parents'] ?? [(string) $key]);
       $name = (string) end($parents);
       $term = $this->glossary->forField($name);
-      if ($term !== NULL && isset($child['#title']) && ($child['#title_display'] ?? '') !== 'invisible') {
+      // Some forms (those of the configuration system) are pre-rendered more
+      // than once; an element that has its icon is left alone.
+      if ($term !== NULL && isset($child['#title']) && empty($child['#import_info_done'])
+        && ($child['#title_display'] ?? '') !== 'invisible') {
+        $child['#import_info_done'] = TRUE;
         $child['#title'] = $this->glossary->labelWithIcon($child['#title'], $term);
         if ($term->example !== NULL && in_array($child['#type'] ?? '', ['textfield', 'textarea', 'url'], TRUE)
           && empty($child['#default_value']) && !isset($child['#attributes']['placeholder'])) {

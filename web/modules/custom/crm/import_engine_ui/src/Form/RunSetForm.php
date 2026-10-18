@@ -7,6 +7,8 @@ namespace Drupal\import_engine_ui\Form;
 use Drupal\Core\DependencyInjection\AutowireTrait;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Form\FormBase;
+use Drupal\Core\Security\TrustedCallbackInterface;
+use Drupal\import_engine_ui\Help\Glossary;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Url;
 use Drupal\import_engine\ImportRunSetInterface;
@@ -19,10 +21,11 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * The imports are rows that can be dragged into the order they run in. A row
  * without an import is left out; another row is added with a button.
  */
-final class RunSetForm extends FormBase {
+final class RunSetForm extends FormBase implements TrustedCallbackInterface {
 
   use AutowireTrait;
   use ScheduleFormTrait;
+  use FormChromeTrait;
 
   /**
    * The set that is changed; none when one is added.
@@ -35,6 +38,8 @@ final class RunSetForm extends FormBase {
   public function __construct(
     #[Autowire(service: 'entity_type.manager')]
     protected EntityTypeManagerInterface $entityTypes,
+    #[Autowire(service: 'import_engine_ui.glossary')]
+    protected Glossary $glossary,
   ) {
   }
 
@@ -68,6 +73,9 @@ final class RunSetForm extends FormBase {
     $form['#tree'] = TRUE;
     $form['#attributes']['class'][] = 'import-engine-form';
     $form['#attached']['library'][] = 'import_engine_ui/wizard';
+    // A method, not a closure: the form is serialized into the form cache.
+    $form['#pre_render'][] = [$this, 'addInfoIcons'];
+    $form['set_header'] = $this->setHeader($import_run_set);
     $form['label'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Name'),
@@ -84,7 +92,8 @@ final class RunSetForm extends FormBase {
       '#maxlength' => 64,
     ];
     $form['description'] = [
-      '#type' => 'textfield',
+      '#type' => 'textarea',
+      '#rows' => 2,
       '#title' => $this->t('Description'),
       '#default_value' => $import_run_set?->getDescription(),
     ];
@@ -148,6 +157,14 @@ final class RunSetForm extends FormBase {
       '#default_value' => $import_run_set?->stopsOnErrors() ?? FALSE,
     ];
 
+    $form['summary_plain'] = $this->plainPanel(
+      'run-set-summary-plain',
+      (string) ($import_run_set === NULL
+        ? $this->t('What a run set is, and what it will do once it is saved.')
+        : $this->t('What this run set does, as it is saved.')),
+      $this->setSentences($import_run_set, $options),
+    );
+
     $form['actions'] = ['#type' => 'actions'];
     $form['actions']['submit'] = [
       '#type' => 'submit',
@@ -161,6 +178,64 @@ final class RunSetForm extends FormBase {
       '#attributes' => ['class' => ['dialog-cancel']],
     ];
     return $form;
+  }
+
+  /**
+   * Builds the line above the form: the name, how many imports, the schedule.
+   *
+   * @param \Drupal\import_engine\ImportRunSetInterface|null $set
+   *   The set, or NULL for a new one.
+   *
+   * @return array<string, mixed>
+   *   The element.
+   */
+  private function setHeader(?ImportRunSetInterface $set): array {
+    if ($set === NULL) {
+      return $this->formHeader((string) $this->t('New run set'), [['new', (string) $this->t('Not saved yet')]]);
+    }
+    $count = count($set->getImports());
+    $pill = $count === 0
+      ? ['off', (string) $this->t('No imports yet')]
+      : ['on', (string) $this->formatPlural($count, '1 import', '@count imports')];
+    $when = ScheduleRules::describe($set->getSchedule());
+    return $this->formHeader(
+      (string) $set->label(),
+      [$pill],
+      $when === '' ? (string) $this->t('Not scheduled') : $when,
+    );
+  }
+
+  /**
+   * Says in sentences what a set does.
+   *
+   * @param \Drupal\import_engine\ImportRunSetInterface|null $set
+   *   The set, or NULL for a new one.
+   * @param array<string, mixed> $options
+   *   The names of the imports, by ID.
+   *
+   * @return list<string>
+   *   Sentences, made by t() so that what is put in them is escaped.
+   */
+  private function setSentences(?ImportRunSetInterface $set, array $options): array {
+    if ($set === NULL) {
+      return [
+        (string) $this->t('A run set is a named list of imports that run one after the other.'),
+        (string) $this->t('Use it when an import needs another one first, for example the customers before the orders that refer to them.'),
+      ];
+    }
+    $names = array_map(static fn (string $id): string => (string) ($options[$id] ?? $id), $set->getImports());
+    $lines = [$names === []
+        ? (string) $this->t('There are no imports in it yet: add at least one.')
+        : (string) $this->t('Runs @imports, in this order, each one when the one before it is done.', ['@imports' => implode(' → ', $names)]),
+    ];
+    $when = ScheduleRules::describe($set->getSchedule());
+    $lines[] = $when === ''
+      ? (string) $this->t('It does not run by itself: start it from the list of run sets.')
+      : (string) $this->t('It runs by itself @when.', ['@when' => $when]);
+    $lines[] = $set->stopsOnErrors()
+      ? (string) $this->t('It stops when an import fails, is cancelled, cannot go on, or finishes with items that went wrong.')
+      : (string) $this->t('It stops when an import fails, is cancelled or cannot go on. Items that went wrong in an import do not stop it.');
+    return $lines;
   }
 
   /**

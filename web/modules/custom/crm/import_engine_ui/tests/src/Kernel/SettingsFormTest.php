@@ -56,6 +56,23 @@ class SettingsFormTest extends KernelTestBase {
   }
 
   /**
+   * The icons are put on once, even when the form is rendered more than once.
+   *
+   * A configuration form is pre-rendered twice; an icon put on twice shows as
+   * the text of its own markup.
+   */
+  public function testIconsAreNotShownAsMarkup(): void {
+    $form = $this->container->get('form_builder')->getForm(SettingsForm::class);
+    $renderer = $this->container->get('renderer');
+
+    $html = (string) $renderer->renderRoot($form);
+
+    $this->assertStringContainsString('import-info__icon', $html);
+    $this->assertStringNotContainsString('&lt;span class=&quot;import-info', $html);
+    $this->assertStringNotContainsString('&lt;button', $html);
+  }
+
+  /**
    * The form starts from what is saved.
    */
   public function testFormShowsTheSavedSettings(): void {
