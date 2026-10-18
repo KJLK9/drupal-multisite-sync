@@ -42,6 +42,11 @@ final class RunStarter {
    *   only thing that keeps a disabled import from running.
    */
   public function start(ImportDefinitionInterface $definition, Trigger $trigger, ?int $uid = NULL, bool $fullRun = FALSE): ImportRun {
+    // Saving a template switches it off; this is for one that was not saved
+    // through the entity (a configuration import, a hand-edited file).
+    if ($definition->isTemplate()) {
+      throw new \RuntimeException(sprintf('The import "%s" is a template: it is copied, never run.', $definition->id()));
+    }
     if (!$definition->status()) {
       throw new \RuntimeException(sprintf('The import "%s" is disabled.', $definition->id()));
     }

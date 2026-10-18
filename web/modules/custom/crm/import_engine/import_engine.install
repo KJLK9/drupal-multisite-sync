@@ -7,8 +7,6 @@
 
 declare(strict_types=1);
 
-use Drupal\import_engine\Entity\ImportDefinition;
-
 /**
  * Implements hook_schema().
  *
@@ -171,16 +169,16 @@ function import_engine_schema(): array {
  */
 function import_engine_update_10001(): string {
   $changed = 0;
-  $storage = \Drupal::entityTypeManager()->getStorage('import_definition');
-  foreach ($storage->loadMultiple() as $definition) {
-    if (!$definition instanceof ImportDefinition) {
-      continue;
-    }
-    $mapping = $definition->get('mapping');
+  // Through the raw configuration, not the entity: the schema no longer allows
+  // the old key, and an entity would be checked against it on the way.
+  $factory = \Drupal::configFactory();
+  foreach ($factory->listAll('import_engine.import_definition.') as $name) {
+    $config = $factory->getEditable($name);
+    $mapping = (array) $config->get('mapping');
     $touched = FALSE;
     foreach ($mapping as $delta => $row) {
-      if (($row['mapper']['plugin'] ?? '') === 'reference' && array_key_exists('required', $row['mapper']['settings'] ?? [])) {
-        $settings = $row['mapper']['settings'];
+      $settings = $row['mapper']['settings'] ?? [];
+      if (($row['mapper']['plugin'] ?? '') === 'reference' && array_key_exists('required', $settings)) {
         $settings['when_missing'] = $settings['required'] ? 'wait' : 'ignore';
         unset($settings['required']);
         $mapping[$delta]['mapper']['settings'] = $settings;
@@ -188,7 +186,7 @@ function import_engine_update_10001(): string {
       }
     }
     if ($touched) {
-      $definition->set('mapping', $mapping)->save();
+      $config->set('mapping', $mapping)->save();
       $changed++;
     }
   }

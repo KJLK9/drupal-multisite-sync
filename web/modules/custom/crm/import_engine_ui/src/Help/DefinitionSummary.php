@@ -11,6 +11,7 @@ use Drupal\import_engine\ImportDefinitionInterface;
 use Drupal\import_engine\Schedule\ScheduleRules;
 use Drupal\import_engine\Validator\OnInvalid;
 use Drupal\import_engine\Validator\ValidatorPluginManager;
+use Psr\Log\LoggerInterface;
 
 /**
  * Tells in plain sentences what an import will do.
@@ -32,7 +33,10 @@ class DefinitionSummary {
   /**
    * Constructs the summary.
    */
-  public function __construct(protected ValidatorPluginManager $validators) {
+  public function __construct(
+    protected ValidatorPluginManager $validators,
+    protected LoggerInterface $logger,
+  ) {
   }
 
   /**
@@ -62,8 +66,10 @@ class DefinitionSummary {
       try {
         array_push($lines, ...$part());
       }
-      catch (\Throwable) {
-        continue;
+      catch (\ValueError | \TypeError | \OutOfBoundsException $exception) {
+        // What a half-filled import cannot tell is left out; anything else is
+        // a bug and is not swallowed here.
+        $this->logger->debug('A part of the summary of an import could not be made: @message', ['@message' => $exception->getMessage()]);
       }
     }
     return array_values(array_filter($lines, static fn (string $line): bool => $line !== ''));

@@ -1183,7 +1183,8 @@ final class DefinitionWizardForm extends FormBase implements TrustedCallbackInte
     }
     $examples = [];
     foreach (array_slice($sample['paths'], 0, 500, TRUE) as $path => $info) {
-      $examples[(string) $path] = $info['example'];
+      // Real values of the source go into the page; a short piece is enough.
+      $examples[(string) $path] = mb_strimwidth($info['example'], 0, 80, '…');
     }
     $form['#attached']['drupalSettings']['importWizard'] = [
       'examples' => $examples,

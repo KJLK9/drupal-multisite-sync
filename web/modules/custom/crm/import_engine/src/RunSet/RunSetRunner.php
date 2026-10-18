@@ -74,8 +74,12 @@ final class RunSetRunner {
       }
       $id = $imports[$progress->index];
       $definition = ImportDefinition::load($id);
-      if ($definition === NULL || !$definition->status()) {
-        $why = $definition === NULL ? sprintf('The import "%s" no longer exists.', $id) : sprintf('The import "%s" is disabled.', $id);
+      if ($definition === NULL || !$definition->status() || $definition->isTemplate()) {
+        $why = match (TRUE) {
+          $definition === NULL => sprintf('The import "%s" no longer exists.', $id),
+          $definition->isTemplate() => sprintf('The import "%s" is a template.', $id),
+          default => sprintf('The import "%s" is disabled.', $id),
+        };
         return $this->stopped($progress, $id, NULL, 'not run', $why);
       }
 

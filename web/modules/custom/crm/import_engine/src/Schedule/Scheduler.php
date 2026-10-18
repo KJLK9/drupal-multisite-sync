@@ -73,7 +73,7 @@ final class Scheduler {
     }
     $imports = [];
     foreach ($this->entityTypeManager->getStorage('import_definition')->loadMultiple() as $definition) {
-      if (!$definition instanceof ImportDefinitionInterface || !$definition->status()) {
+      if (!$definition instanceof ImportDefinitionInterface || !$definition->status() || $definition->isTemplate()) {
         continue;
       }
       $id = (string) $definition->id();

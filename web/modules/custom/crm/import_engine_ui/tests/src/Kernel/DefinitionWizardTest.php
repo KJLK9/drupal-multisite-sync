@@ -699,6 +699,23 @@ class DefinitionWizardTest extends NodeTestBase {
   }
 
   /**
+   * The values of the sample that go into the page are short.
+   */
+  public function testExampleValuesInThePageAreShort(): void {
+    $this->sourceReturns([['code' => 'C-1', 'name' => str_repeat('x', 300)]]);
+    $state = $this->press(NULL, $this->step1(), 'next');
+    $state = $this->press($state, $this->plainStep2(), 'next');
+    $state = $this->press($state, $this->step3(), 'next');
+    $tried = $this->press($state, [], 'test_source');
+
+    $settings = $this->buildAt($tried)['#attached']['drupalSettings']['importWizard'];
+
+    $this->assertLessThanOrEqual(80, mb_strlen($settings['examples']['name']));
+    $this->assertStringEndsWith('…', $settings['examples']['name']);
+    $this->assertSame('C-1', $settings['examples']['code']);
+  }
+
+  /**
    * The preview shows per field what the mapping makes of the first item.
    */
   public function testMappingPreview(): void {

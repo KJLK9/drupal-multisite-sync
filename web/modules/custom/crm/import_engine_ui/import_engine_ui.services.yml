@@ -36,6 +36,7 @@ services:
     class: Drupal\import_engine_ui\Help\DefinitionSummary
     arguments:
       - '@plugin.manager.import_engine_validator'
+      - '@logger.channel.import_engine'
 
   import_engine_ui.glossary:
     class: Drupal\import_engine_ui\Help\Glossary

@@ -328,6 +328,9 @@ final class ImportCommands extends DrushCommands {
     if ($definition === NULL) {
       throw new \InvalidArgumentException(sprintf('There is no import "%s".', $id));
     }
+    if ($definition->isTemplate()) {
+      throw new \InvalidArgumentException(sprintf('The import "%s" is a template: it is copied, never run.', $id));
+    }
     if (!$definition->status()) {
       throw new \InvalidArgumentException(sprintf('The import "%s" is disabled.', $id));
     }
