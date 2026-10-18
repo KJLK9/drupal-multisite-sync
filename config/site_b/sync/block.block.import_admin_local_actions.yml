@@ -1,0 +1,20 @@
+uuid: b85393c5-84e6-4b19-9dde-5db4b38ce404
+langcode: en
+status: true
+dependencies:
+  theme:
+    - import_admin
+_core:
+  default_config_hash: FNf6StEdhENGvRNmpLT3PFiNjJIq07lIV13oHYQLm0w
+id: import_admin_local_actions
+theme: import_admin
+region: content
+weight: -10
+provider: null
+plugin: local_actions_block
+settings:
+  id: local_actions_block
+  label: 'Primary admin actions'
+  label_display: '0'
+  provider: core
+visibility: {  }

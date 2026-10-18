@@ -1,0 +1,9 @@
+name: 'Import admin'
+type: theme
+base theme: gin
+description: 'The look of the import engine screens: Gin with the colours, shapes and spacing of this project.'
+package: Custom
+core_version_requirement: ^11.2
+
+libraries:
+  - import_admin/global

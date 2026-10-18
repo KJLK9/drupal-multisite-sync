@@ -48,4 +48,6 @@ module:
 theme:
   olivero: 0
   claro: 0
+  gin: 0
+  import_admin: 0
 profile: standard

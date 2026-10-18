@@ -1,0 +1,22 @@
+uuid: f9236ddb-3990-452a-b0de-d8fe8691a566
+langcode: en
+status: true
+dependencies:
+  theme:
+    - import_admin
+_core:
+  default_config_hash: h6k1hg33SAZq4JjSxho3vnHtq9K-GZksqsPlXoC1FV0
+id: import_admin_primary_local_tasks
+theme: import_admin
+region: header
+weight: 0
+provider: null
+plugin: local_tasks_block
+settings:
+  id: local_tasks_block
+  label: 'Primary tabs'
+  label_display: '0'
+  provider: core
+  primary: true
+  secondary: false
+visibility: {  }

@@ -1,0 +1,22 @@
+uuid: 5383e683-d5ff-4b9f-8f69-8721f2ed8539
+langcode: en
+status: false
+dependencies:
+  theme:
+    - import_admin
+_core:
+  default_config_hash: 37ZrSfOkypgTZdWKQRvskLliDt68b9NodMXUWLuETxo
+id: import_admin_secondary_local_tasks
+theme: import_admin
+region: sidebar_first
+weight: 0
+provider: null
+plugin: local_tasks_block
+settings:
+  id: local_tasks_block
+  label: 'Secondary tabs'
+  label_display: '0'
+  provider: core
+  primary: false
+  secondary: true
+visibility: {  }

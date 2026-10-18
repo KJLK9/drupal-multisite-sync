@@ -21,7 +21,12 @@ const QUERY = `query ($limit: Int!, $offset: Int!) {
  * can be quiet before the request has started.
  */
 async function press(page: Page, name: string): Promise<void> {
-  const button = page.locator(`form.import-definition-wizard [name="${name}"]`);
+  // Gin repeats the main buttons in a bar that stays in view; that is the one a
+  // person presses, and the one that is pressed here when there is one.
+  const sticky = page.locator(`input[name="${name}"][data-gin-sticky-form-selector]`);
+  const button = (await sticky.count()) > 0
+    ? sticky
+    : page.locator(`form.import-definition-wizard [name="${name}"]`);
   const byAjax = ((await button.getAttribute('data-once')) ?? '').includes('drupal-ajax');
   if (byAjax) {
     await Promise.all([page.waitForResponse((r) => r.url().includes('ajax_form=1')), button.click()]);

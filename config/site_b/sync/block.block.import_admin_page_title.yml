@@ -1,0 +1,20 @@
+uuid: 5aad9020-7c5c-4517-a2c6-42f3a6de4081
+langcode: en
+status: true
+dependencies:
+  theme:
+    - import_admin
+_core:
+  default_config_hash: Oz4PnqmWV6gQ_qa2lkWxWIJTCVwNOPt9DJw9wv_65Vc
+id: import_admin_page_title
+theme: import_admin
+region: header
+weight: -30
+provider: null
+plugin: page_title_block
+settings:
+  id: page_title_block
+  label: 'Page title'
+  label_display: '0'
+  provider: core
+visibility: {  }

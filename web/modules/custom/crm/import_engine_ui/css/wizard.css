@@ -304,3 +304,82 @@ button.import-wizard-path {
 .import-wizard-example--missing {
   color: #9a5b00;
 }
+
+/*
+ * The mapping table: the field name does not break into pieces, and the
+ * settings of a row are a quiet link under the mapper instead of a box of
+ * their own for every row.
+ */
+.import-wizard-mapping {
+  width: 100%;
+}
+
+.import-wizard-mapping td:first-child,
+.import-wizard-mapping th:first-child {
+  min-width: 12.5rem;
+}
+
+/* The source field takes the room the column has, and no more. */
+.import-wizard-mapping input.import-wizard-source {
+  width: 100%;
+  min-width: 10rem;
+}
+
+.import-wizard-mapping td:first-child small {
+  display: block;
+  white-space: nowrap;
+  color: var(--gin-color-text-light, #55596b);
+}
+
+.import-wizard-mapping details {
+  margin-block: 0.4rem 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.import-wizard-mapping details > summary {
+  padding: 0.15rem 0 0.15rem 1.5rem;
+  background: transparent;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--gin-color-primary, #1c4fd4);
+}
+
+.import-wizard-mapping details > summary::before {
+  inset-inline-start: 0;
+}
+
+.import-wizard-mapping details[open] {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--gin-border-color-layer, #dcdce3);
+  border-radius: 0.5rem;
+}
+
+/* The help page is one card, and the picture's arrows sit in the gaps. */
+.import-help {
+  max-width: 60rem;
+  padding: 1.5rem 2rem 2rem;
+  border: 1px solid var(--gin-border-color-layer, #dcdce3);
+  border-radius: 0.75rem;
+  background: var(--gin-bg-layer, #fff);
+}
+
+.import-help__flow {
+  gap: 1.5rem;
+}
+
+.import-help__flow li {
+  position: relative;
+  border-radius: 0.5rem;
+}
+
+.import-help__flow li:not(:last-child)::after {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-end: -1.2rem;
+  float: none;
+  margin: 0;
+  transform: translateY(-50%);
+  content: "\2192";
+}

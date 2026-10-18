@@ -1,0 +1,50 @@
+/**
+ * @file
+ * The identity of the import engine screens, on top of Gin.
+ *
+ * Gin gives the structure, the dark mode and the form elements. What is here is
+ * what makes these screens ours: the shapes, the spacing and the type. Colours
+ * come from Gin's own variables (the accent is a Gin setting, so that a user
+ * can still choose dark mode), never from fixed values, so that both modes work.
+ */
+
+:root {
+  --import-radius: 0.75rem;
+  --import-radius-small: 0.5rem;
+  --import-gap: 1.5rem;
+}
+
+/* Page titles: a little more air and weight than Gin's default. */
+.gin-content-header h1,
+.page-title,
+.region-header h1 {
+  letter-spacing: -0.01em;
+}
+
+/* Cards: the white panels that hold a form or a table. */
+.layout-container .gin-layer-wrapper,
+.layout-container .layer-wrapper,
+.import-definition-wizard > .gin-layer-wrapper {
+  border-radius: var(--import-radius);
+}
+
+/* Tables: rows breathe, headers are quiet. */
+.gin-table-scroll-wrapper table th {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.gin-table-scroll-wrapper table td {
+  padding-block: 0.9rem;
+}
+
+/* A status word in a list is a label, not running text. */
+td.import-status,
+.import-status {
+  display: inline-block;
+  padding: 0.1rem 0.6rem;
+  border-radius: 999px;
+  background: var(--gin-bg-layer, #fff);
+  border: 1px solid var(--gin-border-color, #d4d4d8);
+  font-size: var(--gin-font-size-s, 0.875rem);
+}

@@ -1,0 +1,22 @@
+uuid: 5fb8e034-5460-4803-8aa7-8142c150444c
+langcode: en
+status: true
+dependencies:
+  module:
+    - system
+  theme:
+    - import_admin
+_core:
+  default_config_hash: yzvlhUddtV6JfWGZYp45zI8FTUFzfV6GwEVbF8ItkeQ
+id: import_admin_messages
+theme: import_admin
+region: highlighted
+weight: 0
+provider: null
+plugin: system_messages_block
+settings:
+  id: system_messages_block
+  label: 'Status messages'
+  label_display: '0'
+  provider: system
+visibility: {  }
