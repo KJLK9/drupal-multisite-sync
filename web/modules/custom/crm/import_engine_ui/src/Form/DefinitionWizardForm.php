@@ -1417,12 +1417,16 @@ final class DefinitionWizardForm extends FormBase implements TrustedCallbackInte
       if ($number === $current) {
         $state = 'is-current';
       }
-      elseif (in_array($number, $visited, TRUE)) {
-        $state = $count === 0 ? 'is-ok' : 'has-problems';
-        $circle = $count === 0 ? '✓' : '!';
-        $hint = $count === 0
-          ? (string) $this->t('In order')
-          : (string) $this->formatPlural($count, '1 problem', '@count problems');
+      else {
+        // What the button does, and how that step is doing.
+        $hint = (string) $this->t('Go to step @n: @title', ['@n' => (string) $number, '@title' => $title]);
+        if (in_array($number, $visited, TRUE)) {
+          $state = $count === 0 ? 'is-ok' : 'has-problems';
+          $circle = $count === 0 ? '✓' : '!';
+          $hint .= ' (' . ($count === 0
+            ? $this->t('In order')
+            : $this->formatPlural($count, '1 problem', '@count problems')) . ')';
+        }
       }
       $classes[] = $state;
       // The circle is the picture of the state; the button keeps the words, and
@@ -1477,6 +1481,7 @@ final class DefinitionWizardForm extends FormBase implements TrustedCallbackInte
       . '<span class="import-pill import-pill--' . $class . '">' . Html::escape((string) $state) . '</span>'
       . ($isNew ? '<span class="import-pill import-pill--new">' . Html::escape((string) $this->t('Not saved yet')) . '</span>' : '')
       . ($meta === '' ? '' : '<span class="import-wizard-header__meta">' . Html::escape($meta) . '</span>')
+      . '<span class="import-wizard-header__hint">' . Html::escape((string) $this->t('Click a step to jump to it.')) . '</span>'
       . '</div>';
     return ['#markup' => Markup::create($markup), '#weight' => -30];
   }

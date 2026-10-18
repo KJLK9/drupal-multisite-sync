@@ -193,3 +193,25 @@ test('a template is listed apart and can only be copied', async ({ page }) => {
   await expect(operations.getByRole('link', { name: 'Use as template' })).toBeVisible();
   await expect(operations.getByRole('link', { name: 'Run now', includeHidden: true })).toHaveCount(0);
 });
+
+test('the steps say that they can be clicked', async ({ page }) => {
+  await page.goto(`${LIST}/e2e_accounts/edit`);
+  await expect(page.locator('.import-wizard-header__hint')).toHaveText('Click a step to jump to it.');
+
+  const third = page.locator('input.import-wizard-step[name=goto_3]');
+  await expect(third).toHaveAttribute('title', /^Go to step 3: Key and target/);
+  await expect(third).toHaveCSS('cursor', 'pointer');
+
+  // Hover is seen: the button gets a colour behind it.
+  await expect(third).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await third.hover();
+  await expect(third).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+
+  // And so is the keyboard: a ring around the step that has the focus.
+  await page.mouse.move(0, 0);
+  await third.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await expect(third).toBeFocused();
+  await expect(third).not.toHaveCSS('outline-style', 'none');
+});

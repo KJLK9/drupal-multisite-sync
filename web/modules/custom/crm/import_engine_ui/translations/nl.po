@@ -672,6 +672,12 @@ msgstr "Uitgeschakeld"
 msgid "Not saved yet"
 msgstr "Nog niet opgeslagen"
 
+msgid "Go to step @n: @title"
+msgstr "Ga naar stap @n: @title"
+
+msgid "Click a step to jump to it."
+msgstr "Klik op een stap om erheen te gaan."
+
 msgid "In order"
 msgstr "In orde"
 

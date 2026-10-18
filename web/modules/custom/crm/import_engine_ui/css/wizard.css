@@ -488,7 +488,28 @@ button.import-wizard-path {
 }
 
 .import-definition-wizard .import-wizard-steps input.import-wizard-step.button:hover {
-  background: var(--import-wash-strong);
+  background: var(--import-wash-strong) !important;
+  border-radius: 999px;
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+/* The circle belongs to the button: it lights up with it. */
+.import-wizard-step-item:has(input.import-wizard-step:hover) .import-wizard-step-num,
+.import-wizard-step-item:has(input.import-wizard-step:focus-visible) .import-wizard-step-num {
+  box-shadow: 0 0 0 4px var(--import-wash-strong);
+}
+
+.import-definition-wizard .import-wizard-steps input.import-wizard-step.button:focus-visible {
+  border-radius: 999px;
+  outline: 3px solid var(--import-accent);
+  outline-offset: 2px;
+}
+
+.import-wizard-header__hint {
+  margin-inline-start: auto;
+  color: var(--gin-color-text-light, #55596b);
+  font-size: 0.85rem;
 }
 
 .import-definition-wizard .import-wizard-steps input.import-wizard-step.button.is-current {

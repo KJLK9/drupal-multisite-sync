@@ -1037,16 +1037,16 @@ class DefinitionWizardTest extends NodeTestBase {
     $state = $this->press(NULL, $this->step1(), 'next');
     $form = $this->buildAt($state);
     $this->assertSame('Source', (string) $form['steps']['goto_1']['#value']);
-    $this->assertSame('In order', $form['steps']['goto_1']['#attributes']['title']);
+    $this->assertSame('Go to step 1: Source (In order)', $form['steps']['goto_1']['#attributes']['title']);
     $this->assertContains('is-current', $form['steps']['goto_2']['#attributes']['class']);
-    $this->assertArrayNotHasKey('title', $form['steps']['goto_3']['#attributes'], 'A step that was not visited has no mark.');
+    $this->assertSame('Go to step 3: Key and target', $form['steps']['goto_3']['#attributes']['title'], 'A step that was not visited has no state.');
 
     // Step 3 is left without a key: it has problems from then on.
     $state = $this->press($state, $this->step2(), 'next');
     $state = $this->jump($state, ['source_key' => '', 'target' => $this->step3()['target']], 4);
     $form = $this->buildAt($state);
 
-    $this->assertMatchesRegularExpression('/problems?$/', (string) $form['steps']['goto_3']['#attributes']['title']);
+    $this->assertMatchesRegularExpression('/^Go to step 3: Key and target \(\d+ problems?\)$/', (string) $form['steps']['goto_3']['#attributes']['title']);
     $this->assertContains('has-problems', $form['steps']['goto_3']['#attributes']['class']);
     $this->assertContains('is-ok', $form['steps']['goto_1']['#attributes']['class']);
     $this->assertArrayNotHasKey('summary', $form, 'The list of problems is for after a try to save.');
