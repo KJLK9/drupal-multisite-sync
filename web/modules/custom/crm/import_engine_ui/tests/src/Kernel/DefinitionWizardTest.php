@@ -1036,16 +1036,17 @@ class DefinitionWizardTest extends NodeTestBase {
   public function testMenuMarksStepsThatAreInOrderOrNot(): void {
     $state = $this->press(NULL, $this->step1(), 'next');
     $form = $this->buildAt($state);
-    $this->assertSame('1. Source ✓', (string) $form['steps']['goto_1']['#value']);
+    $this->assertSame('Source', (string) $form['steps']['goto_1']['#value']);
+    $this->assertSame('In order', $form['steps']['goto_1']['#attributes']['title']);
     $this->assertContains('is-current', $form['steps']['goto_2']['#attributes']['class']);
-    $this->assertSame('3. Key and target', (string) $form['steps']['goto_3']['#value'], 'A step that was not visited has no mark.');
+    $this->assertArrayNotHasKey('title', $form['steps']['goto_3']['#attributes'], 'A step that was not visited has no mark.');
 
     // Step 3 is left without a key: it has problems from then on.
     $state = $this->press($state, $this->step2(), 'next');
     $state = $this->jump($state, ['source_key' => '', 'target' => $this->step3()['target']], 4);
     $form = $this->buildAt($state);
 
-    $this->assertStringStartsWith('3. Key and target ⚠ ', (string) $form['steps']['goto_3']['#value']);
+    $this->assertMatchesRegularExpression('/problems?$/', (string) $form['steps']['goto_3']['#attributes']['title']);
     $this->assertContains('has-problems', $form['steps']['goto_3']['#attributes']['class']);
     $this->assertContains('is-ok', $form['steps']['goto_1']['#attributes']['class']);
     $this->assertArrayNotHasKey('summary', $form, 'The list of problems is for after a try to save.');
@@ -1058,7 +1059,7 @@ class DefinitionWizardTest extends NodeTestBase {
     $form = $this->container->get('form_builder')->getForm(DefinitionWizardForm::class);
 
     $this->assertSame(['goto_1', 'goto_2', 'goto_3', 'goto_4', 'goto_5'], array_keys(array_filter($form['steps'], static fn (mixed $key): bool => is_array($key) && isset($key['#goto']))));
-    $this->assertSame('1. Source', (string) $form['steps']['goto_1']['#value'], 'The current step has no mark.');
+    $this->assertArrayNotHasKey('title', $form['steps']['goto_1']['#attributes'], 'The current step has no mark.');
   }
 
   /**

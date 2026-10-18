@@ -179,7 +179,9 @@ final class DefinitionWizardForm extends FormBase implements TrustedCallbackInte
 
     $current = $this->values($form_state);
     $problems = $this->problemsByStep($this->entityFromValues($current), ($current['id'] ?? '') === '', $this->idIsTaken($form_state, $current));
+    $form['import_header'] = $this->importHeader($current, (bool) $form_state->get('is_new'));
     $form['steps'] = $this->stepMenu($form_state, $step, $problems);
+    $form['summary_plain'] = $this->plainSummary($current, $step === 5);
     $summary = $this->problemSummary($form_state, $problems);
     if ($summary !== []) {
       $form['summary'] = $summary;
@@ -641,7 +643,6 @@ final class DefinitionWizardForm extends FormBase implements TrustedCallbackInte
       '#max' => 100,
     ];
     $form['schedule'] = $this->scheduleElement($values['schedule'] ?? ScheduleRules::none());
-    $form['summary_plain'] = $this->plainSummary($values);
     $form['pool'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Worker pool'),
@@ -1410,25 +1411,74 @@ final class DefinitionWizardForm extends FormBase implements TrustedCallbackInte
     foreach (self::STEPS as $number => $title) {
       $count = count($problems[$number] ?? []);
       $classes = ['import-wizard-step'];
-      $mark = '';
+      $state = '';
+      $circle = (string) $number;
+      $hint = '';
       if ($number === $current) {
-        $classes[] = 'is-current';
+        $state = 'is-current';
       }
       elseif (in_array($number, $visited, TRUE)) {
-        $classes[] = $count === 0 ? 'is-ok' : 'has-problems';
-        $mark = $count === 0 ? ' ✓' : ' ⚠ ' . $count;
+        $state = $count === 0 ? 'is-ok' : 'has-problems';
+        $circle = $count === 0 ? '✓' : '!';
+        $hint = $count === 0
+          ? (string) $this->t('In order')
+          : (string) $this->formatPlural($count, '1 problem', '@count problems');
       }
+      $classes[] = $state;
+      // The circle is the picture of the state; the button keeps the words, and
+      // says the state to a screen reader.
       $menu['goto_' . $number] = [
         '#type' => 'submit',
-        '#value' => $number . '. ' . $title . $mark,
+        '#value' => $title,
         '#name' => 'goto_' . $number,
         '#goto' => $number,
         '#limit_validation_errors' => [],
         '#submit' => ['::gotoStep'],
-        '#attributes' => ['class' => $classes],
+        '#attributes' => array_filter([
+          'class' => $classes,
+          'title' => $hint,
+          'aria-current' => $number === $current ? 'step' : NULL,
+        ]),
+        '#prefix' => '<div class="import-wizard-step-item ' . $state . '"><span class="import-wizard-step-num" aria-hidden="true">' . $circle . '</span>',
+        '#suffix' => '</div>',
       ];
     }
     return $menu;
+  }
+
+  /**
+   * Builds the line above the steps: which import this is, and what it is.
+   *
+   * @param array<string, mixed> $values
+   *   The values of the import so far.
+   * @param bool $isNew
+   *   Whether the import is not saved yet.
+   *
+   * @return array<string, mixed>
+   *   The element.
+   */
+  private function importHeader(array $values, bool $isNew): array {
+    $name = trim((string) ($values['label'] ?? ''));
+    [$class, $state] = match (TRUE) {
+      !empty($values['template']) => ['template', $this->t('Template')],
+      !empty($values['status']) => ['on', $this->t('Enabled')],
+      default => ['off', $this->t('Switched off')],
+    };
+    $source = (string) ($values['connection'] ?? '') !== ''
+      ? (string) $values['connection']
+      : (string) ($values['source']['plugin'] ?? '');
+    $configuration = (array) ($values['target']['configuration'] ?? []);
+    $target = isset($configuration['entity_type'])
+      ? $configuration['entity_type'] . ($configuration['bundle'] ?? '' ? '/' . $configuration['bundle'] : '')
+      : '';
+    $meta = $target === '' ? $source : $source . ' → ' . $target;
+    $markup = '<div class="import-wizard-header">'
+      . '<span class="import-wizard-header__name">' . Html::escape($name !== '' ? $name : (string) $this->t('New import')) . '</span>'
+      . '<span class="import-pill import-pill--' . $class . '">' . Html::escape((string) $state) . '</span>'
+      . ($isNew ? '<span class="import-pill import-pill--new">' . Html::escape((string) $this->t('Not saved yet')) . '</span>' : '')
+      . ($meta === '' ? '' : '<span class="import-wizard-header__meta">' . Html::escape($meta) . '</span>')
+      . '</div>';
+    return ['#markup' => Markup::create($markup), '#weight' => -30];
   }
 
   /**
@@ -2220,11 +2270,13 @@ final class DefinitionWizardForm extends FormBase implements TrustedCallbackInte
    *
    * @param array<string, mixed> $values
    *   The values of the import so far.
+   * @param bool $withButton
+   *   Whether to offer the button that takes the settings of step 5 into it.
    *
    * @return array<string, mixed>
    *   The element.
    */
-  private function plainSummary(array $values): array {
+  private function plainSummary(array $values, bool $withButton): array {
     $items = array_map(
       // The sentences are made by t(), which has escaped what was put in.
       static fn (string $line): array => ['#markup' => nl2br($line)],
@@ -2233,15 +2285,15 @@ final class DefinitionWizardForm extends FormBase implements TrustedCallbackInte
     return [
       '#type' => 'container',
       '#weight' => 90,
-      '#prefix' => '<div id="import-wizard-summary-plain">',
-      '#suffix' => '</div>',
+      '#prefix' => '<aside id="import-wizard-summary-plain" class="import-wizard-panel">',
+      '#suffix' => '</aside>',
       'box' => [
-        '#type' => 'details',
-        '#title' => $this->t('In plain words: what this import will do'),
-        '#open' => TRUE,
+        '#markup' => '<h3 class="import-wizard-panel__title">' . $this->t('In plain words') . '</h3>'
+        . '<p class="import-wizard-panel__lead">' . $this->t('What this import will do, as far as it is filled in.') . '</p>',
         'list' => ['#theme' => 'item_list', '#items' => $items],
       ],
       'summarize' => [
+        '#access' => $withButton,
         '#type' => 'submit',
         '#value' => $this->t('Update this summary'),
         '#name' => 'summarize',

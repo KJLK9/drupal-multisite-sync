@@ -654,8 +654,31 @@ msgstr "De import @label is opgeslagen."
 msgid "The target cannot be used yet: @message"
 msgstr "Het doel kan nog niet worden gebruikt: @message"
 
-msgid "In plain words: what this import will do"
-msgstr "In gewone woorden: wat deze import gaat doen"
+msgid "In plain words"
+msgstr "In gewone woorden"
+
+msgid "What this import will do, as far as it is filled in."
+msgstr "Wat deze import gaat doen, voor zover het is ingevuld."
+
+msgid "New import"
+msgstr "Nieuwe import"
+
+msgid "Template"
+msgstr "Sjabloon"
+
+msgid "Switched off"
+msgstr "Uitgeschakeld"
+
+msgid "Not saved yet"
+msgstr "Nog niet opgeslagen"
+
+msgid "In order"
+msgstr "In orde"
+
+msgid "1 problem"
+msgid_plural "@count problems"
+msgstr[0] "1 probleem"
+msgstr[1] "@count problemen"
 
 msgid "Update this summary"
 msgstr "Werk dit overzicht bij"

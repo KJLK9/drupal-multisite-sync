@@ -91,46 +91,8 @@
   border-top: 1px solid #d3d4d9;
 }
 
-.import-wizard-steps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin: 0 0 1.5rem;
-  padding: 0 0 1rem;
-  border-bottom: 1px solid #d3d4d9;
-}
-
-.import-wizard-steps .form-actions,
-.import-wizard-steps > .form-submit {
-  margin: 0;
-}
-
-.import-wizard-steps .import-wizard-step {
-  margin: 0;
-  border-radius: 2rem;
-  background: #f3f4f9;
-  color: #232429;
-  font-weight: 400;
-}
-
-.import-wizard-steps .import-wizard-step.is-current {
-  background: #003ecc;
-  color: #fff;
-  font-weight: 700;
-}
-
-.import-wizard-steps .import-wizard-step.is-ok {
-  border-color: #1e7e34;
-}
-
-.import-wizard-steps .import-wizard-step.has-problems {
-  border-color: #b4300f;
-  background: #fff4f0;
-  color: #b4300f;
-}
-
 .import-wizard-title {
-  margin-top: 0;
+  margin-block: 0.5rem 0.25rem;
 }
 
 .import-wizard-summary h3 {
@@ -382,4 +344,276 @@ button.import-wizard-path {
   margin: 0;
   transform: translateY(-50%);
   content: "\2192";
+}
+
+/*
+ * Colour instead of boxes: one accent (the accent of the theme) and its washes
+ * mark what belongs together; one warm colour marks what needs a look.
+ */
+:root {
+  --import-accent: var(--gin-color-primary, #0f766e);
+  --import-wash: color-mix(in srgb, var(--import-accent) 9%, transparent);
+  --import-wash-strong: color-mix(in srgb, var(--import-accent) 18%, transparent);
+  --import-warm: #b45309;
+  --import-warm-wash: color-mix(in srgb, var(--import-warm) 12%, transparent);
+  --import-line: var(--gin-border-color, #d4d4d8);
+}
+
+/* The import: its name, whether it is on, what it reads and writes. */
+.import-wizard-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 0.9rem;
+  align-items: center;
+  margin-block: 0 1.25rem;
+}
+
+.import-wizard-header__name {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.import-wizard-header__meta {
+  color: var(--gin-color-text-light, #55596b);
+  font-size: 0.95rem;
+}
+
+.import-pill {
+  padding: 0.15rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: var(--import-wash-strong);
+  color: var(--import-accent);
+}
+
+.import-pill--off {
+  background: color-mix(in srgb, currentcolor 10%, transparent);
+  color: var(--gin-color-text-light, #55596b);
+}
+
+.import-pill--template,
+.import-pill--new {
+  background: var(--import-warm-wash);
+  color: var(--import-warm);
+}
+
+/* The steps: a road with a circle for every step. */
+.import-wizard-steps {
+  display: flex;
+  align-items: center;
+  margin: 0 0 1.75rem;
+  padding: 1rem 1.5rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: var(--import-wash);
+}
+
+.import-wizard-steps .form-actions,
+.import-wizard-steps > .form-submit {
+  margin: 0;
+}
+
+.import-wizard-step-item {
+  position: relative;
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+}
+
+.import-wizard-step-item:not(:last-child) {
+  flex: 1 1 auto;
+}
+
+.import-wizard-step-item:not(:last-child)::after {
+  flex: 1;
+  height: 2px;
+  min-width: 1rem;
+  margin-inline: 0.75rem;
+  background: var(--import-line);
+  content: "";
+}
+
+.import-wizard-step-item.is-ok:not(:last-child)::after {
+  background: var(--import-accent);
+}
+
+.import-wizard-step-num {
+  position: absolute;
+  inset-inline-start: 0;
+  z-index: 1;
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid var(--import-line);
+  border-radius: 50%;
+  background: var(--gin-bg-layer, #fff);
+  color: var(--gin-color-text-light, #55596b);
+  font-weight: 700;
+  place-items: center;
+  pointer-events: none;
+}
+
+.import-wizard-step-item.is-current .import-wizard-step-num {
+  border-color: var(--import-accent);
+  background: var(--import-accent);
+  box-shadow: 0 0 0 4px var(--import-wash-strong);
+  color: #fff;
+}
+
+.import-wizard-step-item.is-ok .import-wizard-step-num {
+  border-color: var(--import-accent);
+  background: var(--import-accent);
+  color: #fff;
+}
+
+.import-wizard-step-item.has-problems .import-wizard-step-num {
+  border-color: var(--import-warm);
+  background: var(--import-warm);
+  color: #fff;
+}
+
+.import-definition-wizard .import-wizard-steps input.import-wizard-step.button {
+  height: 2rem;
+  margin: 0;
+  padding-block: 0;
+  padding-inline: 2.6rem 0.5rem;
+  /* Gin gives every button a border and a fill; here the circle is the button. */
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--gin-color-text, #232429);
+  font-weight: 500;
+}
+
+.import-definition-wizard .import-wizard-steps input.import-wizard-step.button:hover {
+  background: var(--import-wash-strong);
+}
+
+.import-definition-wizard .import-wizard-steps input.import-wizard-step.button.is-current {
+  color: var(--import-accent);
+  font-weight: 700;
+}
+
+.import-definition-wizard .import-wizard-steps input.import-wizard-step.button.has-problems {
+  color: var(--import-warm);
+}
+
+/* Sections: a coloured bar instead of a box in a box. */
+.import-definition-wizard fieldset.fieldset {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.import-definition-wizard fieldset.fieldset > legend.fieldset__legend .fieldset__label {
+  display: inline-block;
+  padding-inline: 0.8rem 0;
+  border-inline-start: 4px solid var(--import-accent);
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.import-definition-wizard .fieldset__wrapper {
+  padding: 0.5rem 0 0;
+}
+
+/* Parts that open and close are a wash of the accent. */
+.import-definition-wizard > details.claro-details,
+.import-definition-wizard #import-wizard-source-test > details,
+.import-definition-wizard details.claro-details:not(.import-wizard-mapping details) {
+  border: 0;
+  border-radius: 0.6rem;
+  background: var(--import-wash);
+  box-shadow: none;
+}
+
+/* The summary on the side of the form. */
+.import-wizard-panel {
+  padding: 1.25rem 1.5rem;
+  border-radius: 0.75rem;
+  background: var(--import-wash);
+}
+
+.import-wizard-panel__title {
+  margin: 0;
+  padding-inline-start: 0.7rem;
+  border-inline-start: 4px solid var(--import-accent);
+  font-size: 1.1rem;
+}
+
+.import-wizard-panel__lead {
+  margin-block: 0.4rem 1rem;
+  color: var(--gin-color-text-light, #55596b);
+  font-size: 0.9rem;
+}
+
+.import-wizard-panel .item-list ul {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.import-wizard-panel .item-list li {
+  margin-inline-start: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.import-wizard-panel .item-list li::marker {
+  content: "";
+}
+
+.import-wizard-panel .item-list li {
+  margin-block: 0 0.8rem;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+/* Room: the form has a width it reads well in; the summary has its own column. */
+.import-definition-wizard > * {
+  max-width: 64rem;
+}
+
+.import-definition-wizard > input.button {
+  justify-self: start;
+}
+
+.import-definition-wizard > .import-wizard-header,
+.import-definition-wizard > .import-wizard-steps,
+.import-definition-wizard > #import-wizard-mapping,
+.import-definition-wizard > #edit-actions,
+.import-definition-wizard > .import-wizard-summary {
+  max-width: none;
+}
+
+@media (min-width: 1500px) {
+  .import-definition-wizard {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 24rem;
+    column-gap: 2.5rem;
+    align-items: start;
+  }
+
+  .import-definition-wizard > * {
+    grid-column: 1;
+  }
+
+  .import-definition-wizard > .import-wizard-header,
+  .import-definition-wizard > .import-wizard-steps {
+    grid-column: 1 / -1;
+  }
+
+  .import-definition-wizard > .import-wizard-panel,
+  .import-definition-wizard > div:has(> .import-wizard-panel) {
+    position: sticky;
+    inset-block-start: 5rem;
+    grid-column: 2;
+    grid-row: 3 / span 12;
+    align-self: start;
+    max-height: calc(100vh - 7rem);
+    overflow-y: auto;
+  }
 }

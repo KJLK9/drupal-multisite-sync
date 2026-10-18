@@ -48,3 +48,8 @@ td.import-status,
   border: 1px solid var(--gin-border-color, #d4d4d8);
   font-size: var(--gin-font-size-s, 0.875rem);
 }
+
+/* The buttons that stay in view: the last link is not pushed under a scrollbar. */
+.top-bar__actions {
+  padding-inline-end: 0.75rem;
+}
