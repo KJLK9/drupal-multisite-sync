@@ -263,7 +263,7 @@ class RunSetPagesTest extends KernelTestBase {
 
     $form = $this->container->get('form_builder')->buildForm(RunSetRunForm::class, $state);
 
-    $this->assertStringContainsString('items, accounts', (string) $form['description']['#markup']);
+    $this->assertStringContainsString('items, accounts', (string) $form['summary_plain']['box']['list']['#items'][0]['#markup']);
     $this->assertSame('checkbox', $form['full']['#type']);
   }
 

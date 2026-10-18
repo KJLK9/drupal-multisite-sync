@@ -20,6 +20,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 final class BreakerActionForm extends ConfirmFormBase {
 
   use AutowireTrait;
+  use ConfirmChromeTrait;
 
   /**
    * What to do: trip (open) or reset (close).
@@ -70,7 +71,7 @@ final class BreakerActionForm extends ConfirmFormBase {
     }
     $this->action = $action;
     $this->endpoint = $endpoint;
-    return parent::buildForm($form, $form_state);
+    return $this->chromeConfirm(parent::buildForm($form, $form_state), $action === 'trip' ? 'careful' : 'plain');
   }
 
   /**

@@ -11,6 +11,7 @@ use Drupal\Core\Url;
 use Drupal\import_engine\Storage\ItemState;
 use Drupal\import_engine\Storage\ItemStorage;
 use Drupal\import_engine_ui\DeadLetter\DeadLetterOperations;
+use Drupal\import_engine_ui\Help\Chrome;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -64,15 +65,32 @@ final class DeadLetterEditForm extends FormBase {
       throw new NotFoundHttpException();
     }
     $form_state->set('item_id', $item->id);
-    $form['info'] = [
-      '#markup' => '<p>' . $this->t('Item @key of run @run is @state. Last error: @error', [
-        '@key' => $item->key,
+    $form['#attributes']['class'][] = 'import-engine-form';
+    $form['#attached']['library'][] = 'import_engine_ui/wizard';
+    $dead = $item->state === ItemState::Dead;
+    $form['item_header'] = Chrome::header(
+      $item->key,
+      [$dead
+          ? ['failed', (string) $this->t('Dead')]
+          : ['template', (string) $this->t('Waiting for a retry')],
+      ],
+      (string) $this->t('Run @run · @attempts attempts', [
         '@run' => (string) $item->runId,
-        '@state' => strtolower($item->state->name),
-        '@error' => $item->error ?? '-',
-      ]) . '</p>',
-    ];
+        '@attempts' => (string) $item->attempts,
+      ]),
+    );
+    $form['summary_plain'] = Chrome::panel(
+      'dead-item-summary-plain',
+      (string) $this->t('In plain words'),
+      (string) $this->t('What is wrong with this item, and what saving does.'),
+      [
+        (string) $this->t('This item could not be saved. Last error: @error', ['@error' => $item->error ?? '-']),
+        (string) $this->t('Change the data on the left so that it fits, then save. It must stay a JSON object.'),
+        (string) $this->t('With "Retry the item after saving" on, a worker handles it again straight away.'),
+      ],
+    );
     $form['payload'] = [
+      '#attributes' => ['class' => ['import-payload']],
       '#type' => 'textarea',
       '#title' => $this->t('Payload (JSON)'),
       '#rows' => 20,

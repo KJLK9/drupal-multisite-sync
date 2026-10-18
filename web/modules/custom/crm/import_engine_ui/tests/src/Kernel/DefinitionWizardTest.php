@@ -1750,7 +1750,7 @@ class DefinitionWizardTest extends NodeTestBase {
     $state = new FormState();
     $state->addBuildInfo('args', [$definition]);
     $form = $this->container->get('form_builder')->buildForm(DefinitionUnlockForm::class, $state);
-    $this->assertStringContainsString('anna', (string) $form['description']['#markup']);
+    $this->assertStringContainsString('anna', (string) $form['summary_plain']['box']['list']['#items'][0]['#markup']);
     $state = new FormState();
     $state->addBuildInfo('args', [$definition]);
     $state->setValues(['op' => 'Take over']);

@@ -20,6 +20,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 final class ConnectionDeleteForm extends ConfirmFormBase {
 
   use AutowireTrait;
+  use ConfirmChromeTrait;
 
   /**
    * The connection to delete.
@@ -57,14 +58,11 @@ final class ConnectionDeleteForm extends ConfirmFormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state, ?ImportConnectionInterface $import_connection = NULL): array {
     $this->connection = $import_connection;
-    $form = parent::buildForm($form, $form_state);
+    $form = $this->chromeConfirm(parent::buildForm($form, $form_state), 'danger');
     $used = $this->usedBy();
     if ($used !== []) {
       // Nothing to confirm: say why it cannot be done.
-      $form['blocked'] = [
-        '#markup' => '<p>' . $this->t('The imports @imports use this connection. Give them another connection, or their own settings, first.', ['@imports' => implode(', ', $used)]) . '</p>',
-        '#weight' => -5,
-      ];
+      $form['blocked'] = $this->blockedNotice((string) $this->t('The imports @imports use this connection. Give them another connection, or their own settings, first.', ['@imports' => implode(', ', $used)]));
       unset($form['actions']['submit']);
     }
     return $form;

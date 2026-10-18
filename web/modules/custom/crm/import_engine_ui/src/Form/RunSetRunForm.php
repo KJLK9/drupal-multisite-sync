@@ -16,6 +16,8 @@ use Drupal\import_engine\ImportRunSetInterface;
  */
 final class RunSetRunForm extends ConfirmFormBase {
 
+  use ConfirmChromeTrait;
+
   /**
    * The set to run.
    */
@@ -43,7 +45,7 @@ final class RunSetRunForm extends ConfirmFormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state, ?ImportRunSetInterface $import_run_set = NULL): array {
     $this->set = $import_run_set;
-    $form = parent::buildForm($form, $form_state);
+    $form = $this->chromeConfirm(parent::buildForm($form, $form_state));
     $form['full'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Read every page again'),

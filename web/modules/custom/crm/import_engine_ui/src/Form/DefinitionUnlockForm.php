@@ -19,6 +19,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 final class DefinitionUnlockForm extends ConfirmFormBase {
 
   use AutowireTrait;
+  use ConfirmChromeTrait;
 
   /**
    * The import.
@@ -56,7 +57,7 @@ final class DefinitionUnlockForm extends ConfirmFormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state, ?ImportDefinitionInterface $import_definition = NULL): array {
     $this->definition = $import_definition;
-    return parent::buildForm($form, $form_state);
+    return $this->chromeConfirm(parent::buildForm($form, $form_state), 'careful');
   }
 
   /**

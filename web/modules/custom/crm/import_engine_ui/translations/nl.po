@@ -1010,3 +1010,36 @@ msgstr "@server wordt als uitgevallen beschouwd en met rust gelaten. Vanaf @time
 
 msgid "@server is being tried again: the next call decides whether it is closed or opens again."
 msgstr "@server wordt opnieuw geprobeerd: de volgende aanroep bepaalt of hij sluit of weer opengaat."
+
+msgid "Cannot be undone"
+msgstr "Kan niet ongedaan worden gemaakt"
+
+msgid "Take care"
+msgstr "Let op"
+
+msgid "What happens"
+msgstr "Wat er gebeurt"
+
+msgid "Read this before you confirm."
+msgstr "Lees dit voordat je bevestigt."
+
+msgid "Dead"
+msgstr "Dood"
+
+msgid "Waiting for a retry"
+msgstr "Wacht op een nieuwe poging"
+
+msgid "Run @run · @attempts attempts"
+msgstr "Run @run · @attempts pogingen"
+
+msgid "What is wrong with this item, and what saving does."
+msgstr "Wat er mis is met dit item, en wat opslaan doet."
+
+msgid "This item could not be saved. Last error: @error"
+msgstr "Dit item kon niet worden opgeslagen. Laatste fout: @error"
+
+msgid "Change the data on the left so that it fits, then save. It must stay a JSON object."
+msgstr "Pas de gegevens links zo aan dat ze passen en sla dan op. Het moet een JSON-object blijven."
+
+msgid "With \"Retry the item after saving\" on, a worker handles it again straight away."
+msgstr "Met \"Probeer het item opnieuw na het opslaan\" aan pakt een worker het meteen weer op."

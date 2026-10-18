@@ -29,6 +29,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 final class RunStartForm extends ConfirmFormBase {
 
   use AutowireTrait;
+  use ConfirmChromeTrait;
 
   /**
    * The import.
@@ -74,7 +75,7 @@ final class RunStartForm extends ConfirmFormBase {
   public function buildForm(array $form, FormStateInterface $form_state, ?ImportDefinitionInterface $import_definition = NULL): array {
     $this->definition = $import_definition;
     $this->activeRun = $import_definition === NULL ? NULL : $this->starter->activeRunId((string) $import_definition->id());
-    $form = parent::buildForm($form, $form_state);
+    $form = $this->chromeConfirm(parent::buildForm($form, $form_state));
 
     if ($import_definition !== NULL && !$import_definition->status()) {
       $this->messenger()->addError($this->t('The import @label is disabled. Enable it in its settings to run it.', ['@label' => (string) $import_definition->label()]));

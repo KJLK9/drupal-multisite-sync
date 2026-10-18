@@ -243,17 +243,6 @@
   content: "";
 }
 
-/* The pill in the header of a run that failed, or is still going. */
-.import-pill--failed {
-  background: color-mix(in srgb, var(--import-danger, #b91c1c) 14%, transparent);
-  color: var(--import-danger, #b91c1c);
-}
-
-.import-pill--live {
-  background: var(--import-wash-strong, #cfe7e4);
-  color: var(--import-accent, #0f766e);
-}
-
 /* The dead letter queue: a key reads as a key, an error as a problem. */
 .import-cell--key {
   font-family: var(--gin-font-family-mono, ui-monospace, monospace);

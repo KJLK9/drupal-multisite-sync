@@ -20,6 +20,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 final class RunCancelForm extends ConfirmFormBase {
 
   use AutowireTrait;
+  use ConfirmChromeTrait;
 
   /**
    * The run to cancel.
@@ -57,7 +58,7 @@ final class RunCancelForm extends ConfirmFormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state, ?ImportRunInterface $import_run = NULL): array {
     $this->run = $import_run;
-    return parent::buildForm($form, $form_state);
+    return $this->chromeConfirm(parent::buildForm($form, $form_state), 'careful');
   }
 
   /**

@@ -24,6 +24,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 final class DefinitionDeleteForm extends ConfirmFormBase {
 
   use AutowireTrait;
+  use ConfirmChromeTrait;
 
   /**
    * The definition to delete.
@@ -63,14 +64,11 @@ final class DefinitionDeleteForm extends ConfirmFormBase {
    */
   public function buildForm(array $form, FormStateInterface $form_state, ?ImportDefinitionInterface $import_definition = NULL): array {
     $this->definition = $import_definition;
-    $form = parent::buildForm($form, $form_state);
+    $form = $this->chromeConfirm(parent::buildForm($form, $form_state), 'danger');
     $sets = $this->setsOf();
     if ($sets !== []) {
       // Nothing to confirm: say why it cannot be done.
-      $form['blocked'] = [
-        '#markup' => '<p>' . $this->t('The run sets @sets list this import. Take it out of them first.', ['@sets' => implode(', ', $sets)]) . '</p>',
-        '#weight' => -5,
-      ];
+      $form['blocked'] = $this->blockedNotice((string) $this->t('The run sets @sets list this import. Take it out of them first.', ['@sets' => implode(', ', $sets)]));
       unset($form['actions']['submit']);
     }
     return $form;
