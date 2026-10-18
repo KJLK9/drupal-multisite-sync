@@ -22,15 +22,17 @@ catalog; the catalog-specific part is configuration (`site_b_catalog`).
 | **Sources** | HTTP (REST, JSON:API, CSV) and GraphQL, with API-key authentication read from the environment (never stored in config). |
 | **Paging** | Offset and limit, page number, a next-URL in the response, or none. The paging values can be GraphQL variables. |
 | **Mapping** | Chosen by the type of the target field, as one table with a row per field, with suggestions from a sample of the source. Mappers: text, formatted text, number, yes/no, timestamp, money, reference to another import, join. |
+| **Validation** | A check per mapping row after the mapper: email, URL, phone number (by shape), regular expression, length, range, allowed values, not blank. A value that is not valid fails the item, is left empty, or skips the item, as the row says; messages never repeat the value, since events are kept for a year ([ADR 0027](docs/decisions/0027-validators-and-reference-behaviour.md)). A reference that finds nothing waits, fails or is ignored. |
 | **Idempotent** | An item is only written when its hash changed; unchanged pages are skipped; items that disappear at the source are unpublished, deleted or ignored, with a safeguard against mass deletion. |
 | **Resilient** | Retry with backoff, a circuit breaker per server with a probe request, a dead letter queue that keeps the payload and can be retried, edited and discarded from the interface. |
 | **Observable** | A run is an object with status, counters and an event log of what changed or went wrong; reporters (log, mail) are plugins. |
 | **Operable** | Drush commands, a progress bar from the interface, workers per pool, a run is resumable after a stop (SIGTERM included). |
-| **Composable** | Connections (shared source and authentication) and run sets (imports in order, stopping at the first failure). |
+| **Composable** | Connections (shared source and authentication), run sets (imports in order, stopping at the first failure), and clone and templates for starting a new import from an old one. |
+| **Understandable** | The interface explains itself: an info icon with the meaning next to every word of jargon, a help page, a short line under each step, the real values of the source next to a path while it is typed, a preview of what the mapping makes of a sample item, and a summary of the import in plain sentences. A new import starts switched off. In English, with a Dutch translation. |
 | **Bounded** | Tables grow with the data and with what changes, not with the number of runs; retention is configurable. |
 
 The design is written down as short decision records in
-[docs/decisions](docs/decisions) (0001 to 0023), the original plan in
+[docs/decisions](docs/decisions) (0001 to 0029), the original plan in
 [docs/plan-site-b.md](docs/plan-site-b.md), and the module has its own
 [README](web/modules/custom/crm/import_engine/README.md).
 
@@ -60,6 +62,9 @@ web/modules/custom/
   crm/        import_engine      the engine, generic
               import_engine_ui   admin interface of the engine
               site_b_catalog     content model and imports of site B
+web/themes/custom/
+  import_admin   the admin theme: Gin with the colours of this project
+e2e/             Playwright tests of the screens
 config/<site>/sync   exported configuration per site
 docs/                decisions (ADRs), plan, research, scheduling
 ```
@@ -70,7 +75,9 @@ docs/                decisions (ADRs), plan, research, scheduling
 ddev start && ddev composer install
 cp .env.example .env     # DB credentials, hash salts, SITE_A_API_KEY
 ddev composer check      # phpcs + phpstan level 8 + rector + all tests
-                         # (about 80 seconds); this is also what CI runs
+                         # (about 2.5 minutes); this is also what CI runs
+ddev composer e2e        # Playwright, in a real browser, against site B
+                         # (about 40 seconds; not part of check)
 ```
 
 Site B reads site A with an API key: create a user with the `catalog_reader`
@@ -109,6 +116,14 @@ curl -H "api-key: $KEY" "http://site-a.ddev.site/graphql/catalog?query={customer
   Drupal Rector, PHPUnit (Unit and Kernel, run in parallel against a database
   in memory), GrumPHP on commit (phpcs, phpstan, conventional commits) and
   GitHub Actions (a lint job and a test job).
+- Playwright tests (`e2e/`, [ADR 0028](docs/decisions/0028-end-to-end-tests-with-playwright.md))
+  walk through the screens in a real browser: the wizard from start to save,
+  editing, copying, templates, the help page, connections, run sets, settings
+  and the queues. They exist because a change once broke every step but the
+  first of the wizard, which no Kernel test could see.
+- The admin theme is Gin with a small subtheme, in light and dark
+  ([ADR 0029](docs/decisions/0029-gin-as-admin-theme-with-a-subtheme.md)); the
+  screens were checked at laptop width (1280) and in dark mode, not on a phone.
 - Tests assert the behaviour that matters: that a run can be stopped and
   continued, that table growth follows the data and not the number of runs,
   that the work queue never hands an item to two workers, that a deleted
@@ -117,9 +132,12 @@ curl -H "api-key: $KEY" "http://site-a.ddev.site/graphql/catalog?query={customer
 
 ### What has not been tried
 
-Say it before it is asked. The interface (the wizard with its AJAX, dragging
-rows, the CSS) is covered by Kernel tests of what the server builds, not by a
-test in a browser; nothing runs JavaScript in CI. The mail reporter has not
+Say it before it is asked. The interface is covered by Kernel tests of what
+the server builds and by Playwright tests of the main paths, but the Playwright
+tests run locally, not in CI (they need DDEV), and the screens were not tried on
+a phone or in a screen reader. The Dutch translation covers the wizard, the help
+page and the new screens, not every text of the plugin forms, and has not been
+loaded through the locale module on a site. The mail reporter has not
 sent to a real mail server. The Kubernetes setup has run on a k3d cluster on a
 development machine (both sites installed, the imports scheduled by a CronJob),
 and was made reachable from the internet through a Cloudflare Tunnel with

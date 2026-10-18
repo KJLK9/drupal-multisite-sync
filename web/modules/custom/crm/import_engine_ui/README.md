@@ -5,6 +5,15 @@ separate module, so the engine runs without it (drush, cron, workers).
 
 ## Pages
 
+Every page has a line at the top that says which item it is about (the name,
+a label for its state, a few facts), and most have a panel at the side that
+says in plain sentences what the page shows or what the item will do. The words
+of jargon have an info icon with their meaning and a link to the **help page**
+(`.../help`), which also explains the big picture and the steps of a first
+import. The texts are in `Help/Glossary.php` and `Help/DefinitionSummary.php`;
+the Dutch translation is in `translations/nl.po`, and a test keeps it in step
+with the code.
+
 - **Run sets** (`/admin/config/system/import-engine/run-sets`, permission
   `administer import definitions`; running needs `administer import runs`):
   named lists of imports with draggable rows, run in order with a progress bar
@@ -40,16 +49,25 @@ separate module, so the engine runs without it (drush, cron, workers).
   and offered while typing the sources of the mapping, and a source is filled in
   when a path matches the field (`field_customer_code` finds `customer_code` or
   `customer.code`).
+- **Clone and templates** (on the list of imports): "Clone" opens the wizard
+  with everything of an import filled in, as a new import that is switched off.
+  An import marked as a template is listed apart, never runs, and is used with
+  "Use as template". A new import starts switched off.
+- **In the wizard**: while a path of the source is typed, the real value it has
+  in the sample shows under the field; "Preview the result" shows per field what
+  the mapping makes of the first sample item (the value, or why it would fail);
+  a panel with the import in plain sentences grows with the steps.
 - **Run now** (on the list of imports): starts a run, or continues the one that
   is not over, with a progress bar. The run is driven in calls of 15 seconds
   (`RunBatch`), so closing the browser leaves a run that can be continued here,
   or by a worker. A run that waits for retries, for another process or for a
   source that is down ends the batch with a message that says so.
-- **Moving through the wizard**: a menu of steps at the top (a tick for a step
-  that is in order, a count for one with problems) lets a person go to any step;
-  what was typed is kept. Adding or removing rows, and trying the source, are
-  AJAX, so the page does not jump. After a try to save, the problems are listed
-  in the form in words. See ADR 0018.
+- **Moving through the wizard**: a road of steps at the top (a circle per step:
+  a tick when it is in order, an exclamation mark when it has problems; hover
+  and keyboard focus show that they can be clicked) lets a person go to any
+  step; what was typed is kept. Adding or removing rows, and trying the source,
+  are AJAX, so the page does not jump. After a try to save, the problems are
+  listed in the form in words. See ADR 0018.
 - **The mapping** (step 4) is a table with a row for every field of the target:
   the field, its source or sources (dotted paths) and the mapper with its
   settings. A field without a source is left alone. "Suggest a mapping" fills in
@@ -61,4 +79,7 @@ separate module, so the engine runs without it (drush, cron, workers).
 
 There is no web server in CI, so the pages are tested as Kernel tests: the
 render arrays that the controllers return, the access checks of the routes and
-the forms submitted programmatically.
+the forms submitted programmatically. What only a browser shows (the form cache
+between the steps, AJAX, hover and focus, the layout) is covered by the
+Playwright tests in `e2e/` (`ddev composer e2e`, see its README); they run
+locally, inside DDEV, against site B.

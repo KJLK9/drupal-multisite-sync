@@ -42,6 +42,39 @@ Not validated yet, because the things they refer to do not exist yet: that a
 plugin ID exists and that its configuration has the right shape, that the
 target entity type and bundle exist, and that no target field is mapped twice.
 
+## Validators and reference behaviour
+
+A mapping row can carry checks that run on the value the mapper made, and say
+what to do with a value that fails:
+
+```yaml
+- target_field: field_email
+  mapper: { plugin: string, sources: { value: mail }, settings: {} }
+  validators:
+    - { plugin: email, settings: {} }
+  on_invalid: empty        # fail (default), empty or skip_item
+```
+
+Validators are plugins (`Plugin/ImportEngine/Validator`): `email`, `url`,
+`phone` (the shape of a number, 7 to 15 digits with a country code, optionally
+written as `+digits`; it does not know which numbers exist), `regex`, `length`,
+`range`, `choice` and `not_blank`. Each says which mappers it fits, and a
+mapping with one that does not is refused. `fail` ends the item as a mapping
+error; `empty` saves the item without that field and records an `invalid` event;
+`skip_item` leaves the item alone and counts it as skipped (and not as gone from
+the source). A message says what was wrong and never the value. The validators
+are part of the mapping fingerprint. See ADR 0027.
+
+A reference mapper says what to do when what it refers to is not imported:
+`when_missing: wait` (retry until it is, the default), `error` (end the item)
+or `ignore` (leave the field empty).
+
+## Templates and previews
+
+An import with `template: true` never runs and is never scheduled (saving it
+switches it off); it is only copied. `ImportPlan::preview()` maps a sample item
+row by row without failing, so the wizard can show what each field would get.
+
 ## Sources
 
 A source plugin hands out items one page at a time and keeps no state:
