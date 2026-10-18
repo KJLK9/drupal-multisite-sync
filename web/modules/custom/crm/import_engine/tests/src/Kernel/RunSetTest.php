@@ -216,7 +216,7 @@ class RunSetTest extends HttpImportTestBase {
     $this->assertNotNull(ImportDefinition::load('first'));
 
     $set->set('imports', ['second'])->save();
-    ImportDefinition::load('first')?->delete();
+    ImportDefinition::load('first')->delete();
     $this->assertNull(ImportDefinition::load('first'));
   }
 
