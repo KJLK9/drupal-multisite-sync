@@ -71,13 +71,27 @@ class BreakerPagesTest extends StorageTestBase {
     $this->store->recordFailure('b.test', 5, 60, $now);
     $this->store->trip('c.test', $now);
 
-    $rows = $this->page()['table']['#rows'];
+    $page = $this->page();
+    $rows = $page['table']['#rows'];
+    $state = static fn (array $row): string => strip_tags((string) $row[1]['data']['#markup']);
 
     $this->assertSame(['a.test', 'b.test', 'c.test'], array_column($rows, 0));
-    $this->assertSame('open', $rows[0][1]);
+    $this->assertSame('open', $state($rows[0]));
     $this->assertSame(1, $rows[0][2]);
-    $this->assertSame('closed', $rows[1][1]);
-    $this->assertSame('open (by hand)', $rows[2][1]);
+    $this->assertSame('closed', $state($rows[1]));
+    $this->assertSame('open (by hand)', $state($rows[2]));
+    $this->assertStringContainsString('import-pill--failed', (string) $rows[0][1]['data']['#markup']);
+    $this->assertStringContainsString('import-pill--on', (string) $rows[1][1]['data']['#markup']);
+
+    // The line above the page counts them, and the panel says where they stand.
+    $header = (string) $page['header']['#markup'];
+    $this->assertStringContainsString('2 open', $header);
+    $this->assertStringContainsString('1 closed', $header);
+    $this->assertStringContainsString('3 servers watched', $header);
+    $sentences = implode(' ', array_column($page['summary_plain']['box']['list']['#items'], '#markup'));
+    $this->assertStringContainsString('a.test is taken to be down', $sentences);
+    $this->assertStringContainsString('c.test was opened by hand', $sentences);
+    $this->assertStringNotContainsString('b.test', $sentences, 'A closed breaker has nothing to say.');
     $this->assertSame(['reset'], array_keys($rows[0][6]['data']['#links']));
     $this->assertSame(['trip'], array_keys($rows[1][6]['data']['#links']));
   }

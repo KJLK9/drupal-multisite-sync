@@ -15,6 +15,7 @@ use Drupal\Core\Url;
 use Drupal\import_engine\Storage\ItemState;
 use Drupal\import_engine\Storage\ItemStorage;
 use Drupal\import_engine_ui\DeadLetter\DeadLetterOperations;
+use Drupal\import_engine_ui\Help\Chrome;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
@@ -72,19 +73,22 @@ final class DeadLetterForm extends FormBase {
       return $this->buildConfirm($form, $discard);
     }
 
+    $form['#attributes']['class'][] = 'import-engine-form';
+    $form['#attached']['library'][] = 'import_engine_ui/runs';
     $import = $this->selectedImport();
     $run_ids = $this->runIds($import);
-    $form['filter'] = ['#theme' => 'item_list', '#title' => $this->t('Import'), '#items' => $this->filterLinks($import)];
-
     $total = $this->items->countItems($run_ids, ItemState::Dead);
+    $form['queue_header'] = $this->queueHeader($import, $total);
+    $form['filter'] = $this->filterPills($import);
+
     $pager = $this->pagerManager->createPager($total, self::PER_PAGE);
     $options = [];
     foreach ($this->items->listItems($run_ids, ItemState::Dead, self::PER_PAGE, $pager->getCurrentPage() * self::PER_PAGE) as $item) {
       $options[$item->id] = [
         'run' => $item->runId,
-        'key' => $item->key,
+        'key' => ['data' => $item->key, 'class' => ['import-cell--key']],
         'attempts' => $item->attempts,
-        'error' => $item->error ?? '',
+        'error' => ['data' => $item->error ?? '', 'class' => ['import-cell--error']],
         'operations' => ['data' => $this->editLink($item->id)],
       ];
     }
@@ -100,12 +104,19 @@ final class DeadLetterForm extends FormBase {
       '#options' => $options,
       '#empty' => $this->t('The dead letter queue is empty.'),
     ];
+    $form['summary_plain'] = Chrome::panel(
+      'dead-letter-summary-plain',
+      (string) $this->t('In plain words'),
+      (string) $this->t('What is waiting here, and what you can do with it.'),
+      $this->queueSentences($run_ids, $total),
+    );
 
     $allowed = $this->currentUser()->hasPermission('administer import runs');
     $form['actions'] = ['#type' => 'actions', '#access' => $allowed && $options !== []];
     $form['actions']['retry'] = [
       '#type' => 'submit',
       '#value' => $this->t('Retry selected'),
+      '#button_type' => 'primary',
       '#submit' => ['::submitRetry'],
     ];
     $form['actions']['process'] = [
@@ -116,6 +127,7 @@ final class DeadLetterForm extends FormBase {
     $form['actions']['discard'] = [
       '#type' => 'submit',
       '#value' => $this->t('Discard selected'),
+      '#button_type' => 'danger',
       '#submit' => ['::submitDiscard'],
     ];
     $form['pager'] = ['#type' => 'pager'];
@@ -285,18 +297,76 @@ final class DeadLetterForm extends FormBase {
   }
 
   /**
-   * Builds the links that filter on an import.
+   * Builds the line above the queue: what it is and how many items wait.
    *
-   * @return list<\Drupal\Core\Link>
-   *   The links.
+   * @param string|null $import
+   *   The import that is filtered on, or NULL for all.
+   * @param int $total
+   *   How many items wait.
+   *
+   * @return array<string, mixed>
+   *   The element.
    */
-  private function filterLinks(?string $selected): array {
-    $links = [Link::createFromRoute($selected === NULL ? $this->t('all (selected)') : $this->t('all'), 'import_engine_ui.dead_letter')];
+  private function queueHeader(?string $import, int $total): array {
+    $pill = $total === 0
+      ? ['on', (string) $this->t('Empty')]
+      : ['template', (string) $this->formatPlural($total, '1 item waits', '@count items wait')];
+    $definition = $import === NULL ? NULL : $this->entityTypes->getStorage('import_definition')->load($import);
+    $meta = $definition === NULL ? (string) $this->t('All imports') : (string) $definition->label();
+    return Chrome::header((string) $this->t('Waiting for a person'), [$pill], $meta);
+  }
+
+  /**
+   * Builds the buttons that filter on an import, each with its count.
+   *
+   * @param string|null $selected
+   *   The import that is filtered on, or NULL for all.
+   *
+   * @return array<int|string, mixed>
+   *   The element.
+   */
+  private function filterPills(?string $selected): array {
+    $filter = ['#type' => 'container', '#attributes' => ['class' => ['import-run-filter']]];
+    $pills = [[NULL, (string) $this->t('All imports'), $this->items->countItems(NULL, ItemState::Dead)]];
     foreach ($this->entityTypes->getStorage('import_definition')->loadMultiple() as $id => $definition) {
-      $label = (string) $definition->label() . ($selected === (string) $id ? ' ' . $this->t('(selected)') : '');
-      $links[] = Link::createFromRoute($label, 'import_engine_ui.dead_letter', [], ['query' => ['import' => $id]]);
+      $count = $this->items->countItems($this->runIds((string) $id), ItemState::Dead);
+      $pills[] = [(string) $id, (string) $definition->label(), $count];
     }
-    return $links;
+    foreach ($pills as $delta => [$id, $label, $count]) {
+      $filter[$delta] = [
+        '#type' => 'link',
+        '#title' => $this->t('@label (@count)', ['@label' => $label, '@count' => (string) $count]),
+        '#url' => Url::fromRoute('import_engine_ui.dead_letter', [], $id === NULL ? [] : ['query' => ['import' => $id]]),
+        '#attributes' => ['class' => ['import-run-pill', $selected === $id ? 'is-active' : '']],
+      ];
+    }
+    return $filter;
+  }
+
+  /**
+   * Says in sentences what waits, why, and what can be done.
+   *
+   * @param list<int>|null $run_ids
+   *   The runs that are looked at; all when NULL.
+   * @param int $total
+   *   How many items wait.
+   *
+   * @return list<string>
+   *   Sentences, made by t() so that what is put in them is escaped.
+   */
+  private function queueSentences(?array $run_ids, int $total): array {
+    if ($total === 0) {
+      return [
+        (string) $this->t('Nothing waits for a person.'),
+        (string) $this->t('An item that runs out of attempts is put here, with its data, so that it can be fixed and tried again.'),
+      ];
+    }
+    $lines = [(string) $this->formatPlural($total, '1 item ran out of attempts and waits for a person.', '@count items ran out of attempts and wait for a person.')];
+    foreach ($this->items->countByError($run_ids, ItemState::Dead, 3) as $error => $count) {
+      $lines[] = (string) $this->formatPlural($count, '1 item: @error', '@count items: @error', ['@error' => $error]);
+    }
+    $lines[] = (string) $this->t('Edit payload fixes the data of one item. Retry puts the selected items back in the queue for a worker. Handle now runs them straight away. Discard removes them, after asking.');
+    return $lines;
   }
 
   /**

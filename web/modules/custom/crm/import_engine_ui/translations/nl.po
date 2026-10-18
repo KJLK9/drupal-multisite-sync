@@ -918,3 +918,95 @@ msgstr "Er ging niets mis."
 
 msgid "Remark of the engine: @remarks"
 msgstr "Opmerking van de engine: @remarks"
+
+msgid "Waiting for a person"
+msgstr "Wacht op een persoon"
+
+msgid "Empty"
+msgstr "Leeg"
+
+msgid "1 item waits"
+msgid_plural "@count items wait"
+msgstr[0] "1 item wacht"
+msgstr[1] "@count items wachten"
+
+msgid "All imports"
+msgstr "Alle imports"
+
+msgid "@label (@count)"
+msgstr "@label (@count)"
+
+msgid "What is waiting here, and what you can do with it."
+msgstr "Wat hier wacht, en wat je ermee kunt doen."
+
+msgid "Nothing waits for a person."
+msgstr "Er wacht niets op een persoon."
+
+msgid "An item that runs out of attempts is put here, with its data, so that it can be fixed and tried again."
+msgstr "Een item dat geen pogingen meer heeft komt hier terecht, met zijn gegevens, zodat het kan worden hersteld en opnieuw geprobeerd."
+
+msgid "1 item ran out of attempts and waits for a person."
+msgid_plural "@count items ran out of attempts and wait for a person."
+msgstr[0] "1 item had geen pogingen meer en wacht op een persoon."
+msgstr[1] "@count items hadden geen pogingen meer en wachten op een persoon."
+
+msgid "1 item: @error"
+msgid_plural "@count items: @error"
+msgstr[0] "1 item: @error"
+msgstr[1] "@count items: @error"
+
+msgid "Edit payload fixes the data of one item. Retry puts the selected items back in the queue for a worker. Handle now runs them straight away. Discard removes them, after asking."
+msgstr "Payload bewerken herstelt de gegevens van één item. Opnieuw proberen zet de gekozen items terug in de wachtrij voor een worker. Nu verwerken draait ze meteen. Verwijderen haalt ze weg, na een bevestiging."
+
+msgid "Servers that are spared"
+msgstr "Servers die worden ontzien"
+
+msgid "No problems"
+msgstr "Geen problemen"
+
+msgid "1 server watched"
+msgid_plural "@count servers watched"
+msgstr[0] "1 server in de gaten gehouden"
+msgstr[1] "@count servers in de gaten gehouden"
+
+msgid "1 open"
+msgid_plural "@count open"
+msgstr[0] "1 open"
+msgstr[1] "@count open"
+
+msgid "1 being tried again"
+msgid_plural "@count being tried again"
+msgstr[0] "1 wordt opnieuw geprobeerd"
+msgstr[1] "@count worden opnieuw geprobeerd"
+
+msgid "1 closed"
+msgid_plural "@count closed"
+msgstr[0] "1 gesloten"
+msgstr[1] "@count gesloten"
+
+msgid "What a circuit breaker does, and where they stand."
+msgstr "Wat een circuit breaker doet, en hoe ze ervoor staan."
+
+msgid "No server is being spared right now."
+msgstr "Op dit moment wordt geen server ontzien."
+
+msgid "closed"
+msgstr "gesloten"
+
+msgid "open"
+msgstr "open"
+
+msgid "half open"
+msgstr "half open"
+
+msgid "(by hand)"
+msgstr "(met de hand)"
+
+msgid "@server was opened by hand: no calls go to it until someone closes it."
+msgstr "@server is met de hand geopend: er gaan geen aanroepen heen totdat iemand hem sluit."
+
+msgid "@server is taken to be down, and is left alone. From @time a probe checks whether it is back."
+msgstr "@server wordt als uitgevallen beschouwd en met rust gelaten. Vanaf @time kijkt een test of hij terug is."
+
+msgid "@server is being tried again: the next call decides whether it is closed or opens again."
+msgstr "@server wordt opnieuw geprobeerd: de volgende aanroep bepaalt of hij sluit of weer opengaat."

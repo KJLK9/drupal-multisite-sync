@@ -139,9 +139,16 @@ class DeadLetterTest extends NodeTestBase {
     // Newest first.
     $this->assertSame(array_reverse($ids), array_map('intval', array_keys($form['items']['#options'])));
     $row = $form['items']['#options'][$ids[0]];
-    $this->assertSame('["2"]', $row['key']);
-    $this->assertNotSame('', $row['error']);
+    $this->assertSame('["2"]', $row['key']['data']);
+    $this->assertNotSame('', $row['error']['data']);
     $this->assertTrue($form['actions']['#access']);
+
+    // The line above the queue says how many wait; the panel says why.
+    $this->assertStringContainsString('2 items wait', (string) $form['queue_header']['#markup']);
+    $sentences = implode(' ', array_column($form['summary_plain']['box']['list']['#items'], '#markup'));
+    $this->assertStringContainsString('2 items ran out of attempts and wait for a person.', $sentences);
+    $this->assertStringContainsString((string) $row['error']['data'], html_entity_decode($sentences));
+    $this->assertSame('danger', $form['actions']['discard']['#button_type']);
   }
 
   /**

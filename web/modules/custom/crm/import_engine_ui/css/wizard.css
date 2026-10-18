@@ -380,6 +380,7 @@ button.import-wizard-path {
 }
 
 .import-pill {
+  white-space: nowrap;
   padding: 0.15rem 0.7rem;
   border-radius: 999px;
   font-size: 0.8rem;

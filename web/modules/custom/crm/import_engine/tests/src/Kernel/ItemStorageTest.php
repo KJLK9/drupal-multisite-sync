@@ -198,6 +198,22 @@ class ItemStorageTest extends StorageTestBase {
   }
 
   /**
+   * Dead items are counted by their error, the most common first.
+   */
+  public function testCountByError(): void {
+    $this->items->enqueue(1, 'default', $this->makeItems(5), now: 100);
+    $claimed = $this->items->claim('w', 5, 60, now: 200);
+    foreach ($claimed as $index => $item) {
+      $this->items->fail($item, $index < 3 ? 'not an email address' : 'no title', TRUE, 210);
+    }
+
+    $this->assertSame(['not an email address' => 3, 'no title' => 2], $this->items->countByError(NULL, ItemState::Dead));
+    $this->assertSame(['not an email address' => 3], $this->items->countByError([1], ItemState::Dead, 1), 'The most common ones, up to the limit.');
+    $this->assertSame([], $this->items->countByError([99], ItemState::Dead), 'Other runs have none.');
+    $this->assertSame([], $this->items->countByError(NULL, ItemState::Pending));
+  }
+
+  /**
    * A deferred item does not lose an attempt, as it was not its fault.
    */
   public function testDeferDoesNotCountTheAttempt(): void {

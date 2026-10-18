@@ -579,6 +579,36 @@ final class ItemStorage {
   }
 
   /**
+   * Counts items by their error, the most common first.
+   *
+   * For the dead letter queue: thirty items that fail for one reason are one
+   * thing to fix, not thirty. The errors the engine writes say what was wrong,
+   * not what the value was.
+   *
+   * @param list<int>|null $runIds
+   *   Only items of these runs; all runs when NULL.
+   * @param \Drupal\import_engine\Storage\ItemState $state
+   *   Only items in this state.
+   * @param int $limit
+   *   The most errors to return.
+   *
+   * @return array<string, int>
+   *   The number of items per error.
+   */
+  public function countByError(?array $runIds, ItemState $state, int $limit = 5): array {
+    $query = $this->database->select('import_item', 'i');
+    $query->addField('i', 'error');
+    $query->addExpression('COUNT(*)', 'total');
+    $this->filter($query, $runIds, $state);
+    $query->isNotNull('error')->groupBy('error')->orderBy('total', 'DESC')->range(0, $limit);
+    $counts = [];
+    foreach ($this->statement($query) as $row) {
+      $counts[(string) $row->error] = (int) $row->total;
+    }
+    return $counts;
+  }
+
+  /**
    * Counts the handled items of a run by outcome.
    *
    * @return array<string, int>
