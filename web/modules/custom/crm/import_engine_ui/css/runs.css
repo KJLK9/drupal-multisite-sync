@@ -40,8 +40,8 @@
 .import-run-status--extracting,
 .import-run-status--processing,
 .import-run-status--finishing {
-  background: #e1ebfc;
-  color: #003ecc;
+  background: var(--import-wash-strong, #cfe7e4);
+  color: var(--import-accent, var(--gin-color-primary, #0f766e));
 }
 
 /* The buttons between the pages of a run, and the filter of the items. */
@@ -71,13 +71,13 @@
 
 .import-run-pill:hover,
 .import-run-pill:focus {
-  border-color: #003ecc;
-  color: #003ecc;
+  border-color: var(--import-accent, var(--gin-color-primary, #0f766e));
+  color: var(--import-accent, var(--gin-color-primary, #0f766e));
 }
 
 .import-run-pill.is-active {
-  border-color: #003ecc;
-  background: #003ecc;
+  border-color: var(--import-accent, var(--gin-color-primary, #0f766e));
+  background: var(--import-accent, var(--gin-color-primary, #0f766e));
   color: #fff;
   font-weight: 600;
 }
@@ -148,4 +148,113 @@
 
 .import-run-counter.is-problem dd {
   color: #b4300f;
+}
+
+/* Counts in a list: a zero is quiet, a problem is not. */
+.import-count--zero {
+  color: var(--gin-color-text-light, #8a8d99);
+}
+
+.import-count--problem {
+  color: var(--import-warm, #b45309);
+  font-weight: 700;
+}
+
+/* The counters of a run, with colour where it says something. */
+.import-run-counter.is-good {
+  border-color: transparent;
+  background: var(--import-wash, #e6f2f1);
+}
+
+.import-run-counter.is-good dd {
+  color: var(--import-accent, #0f766e);
+}
+
+.import-run-counter.is-zero dd {
+  color: var(--gin-color-text-light, #8a8d99);
+  font-weight: 500;
+}
+
+.import-run-counter.is-problem {
+  border-color: transparent;
+  background: var(--import-warm-wash, #fbeede);
+}
+
+.import-run-counter.is-problem dd {
+  color: var(--import-warm, #b45309);
+}
+
+/* How the items came out, in one bar. */
+.import-run-bar {
+  display: flex;
+  height: 0.9rem;
+  margin: 0 0 0.6rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--import-wash, #e6f2f1);
+}
+
+.import-run-bar__part--created,
+.import-run-bar__key--created {
+  --part: var(--import-accent, #0f766e);
+}
+
+.import-run-bar__part--updated,
+.import-run-bar__key--updated {
+  --part: color-mix(in srgb, var(--import-accent, #0f766e) 55%, white);
+}
+
+.import-run-bar__part--unchanged,
+.import-run-bar__key--unchanged {
+  --part: color-mix(in srgb, var(--import-accent, #0f766e) 22%, white);
+}
+
+.import-run-bar__part--skipped,
+.import-run-bar__key--skipped {
+  --part: #a8abb5;
+}
+
+.import-run-bar__part--failed,
+.import-run-bar__key--failed {
+  --part: var(--import-warm, #b45309);
+}
+
+.import-run-bar__part--dead,
+.import-run-bar__key--dead {
+  --part: #7c2d12;
+}
+
+.import-run-bar__part {
+  background: var(--part);
+}
+
+.import-run-bar__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  padding: 0;
+  margin: 0 0 1.5rem;
+  list-style: none;
+  font-size: 0.85rem;
+}
+
+.import-run-bar__key::before {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-inline-end: 0.4rem;
+  border-radius: 50%;
+  background: var(--part);
+  content: "";
+}
+
+/* The pill in the header of a run that failed, or is still going. */
+.import-pill--failed {
+  background: color-mix(in srgb, #b91c1c 12%, transparent);
+  color: #b91c1c;
+}
+
+.import-pill--live {
+  background: var(--import-wash-strong, #cfe7e4);
+  color: var(--import-accent, #0f766e);
 }

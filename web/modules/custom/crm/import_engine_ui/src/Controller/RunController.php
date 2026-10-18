@@ -19,6 +19,7 @@ use Drupal\import_engine\Run\RunCounters;
 use Drupal\import_engine\Storage\EventLog;
 use Drupal\import_engine\Storage\ItemState;
 use Drupal\import_engine\Storage\ItemStorage;
+use Drupal\import_engine_ui\Help\Chrome;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -70,11 +71,15 @@ final class RunController extends ControllerBase {
       ->execute();
 
     $rows = [];
+    $problems = 0;
     foreach ($storage->loadMultiple($ids) as $run) {
       if (!$run instanceof ImportRunInterface) {
         continue;
       }
       $counters = $this->counters($run);
+      if ($counters['failed'] > 0 || $counters['dead'] > 0) {
+        $problems++;
+      }
       $rows[] = [
         Link::createFromRoute((string) $run->id(), 'import_engine_ui.run', ['import_run' => $run->id()]),
         $this->definitionLabel($run),
@@ -82,15 +87,25 @@ final class RunController extends ControllerBase {
         $run->getTrigger()->value,
         $this->timestamp($run, 'started'),
         $this->duration($run),
-        $counters['items_extracted'],
-        $counters['created'],
-        $counters['updated'],
-        $counters['failed'],
-        $counters['dead'],
+        $this->countCell($counters['items_extracted']),
+        $this->countCell($counters['created']),
+        $this->countCell($counters['updated']),
+        $this->countCell($counters['failed'], TRUE),
+        $this->countCell($counters['dead'], TRUE),
       ];
     }
 
+    $pills = [['on', (string) $this->formatPlural($total, '1 run', '@count runs')]];
+    if ($problems > 0) {
+      $pills[] = ['template', (string) $this->formatPlural(
+        $problems,
+        '1 with failed or dead items on this page',
+        '@count with failed or dead items on this page',
+        ),
+      ];
+    }
     return [
+      'header' => Chrome::header((string) $this->t('All runs'), $pills, (string) $this->t('Newest first')),
       'table' => [
         '#type' => 'table',
         '#header' => [
@@ -129,7 +144,8 @@ final class RunController extends ControllerBase {
    *   A render array.
    */
   public function view(ImportRunInterface $import_run): array {
-    $build = ['#attached' => ['library' => ['import_engine_ui/runs']]];
+    $build = $this->page();
+    $build['header'] = $this->runHeader($import_run);
     $build['nav'] = $this->runNavigation($import_run, 'overview');
 
     if (!$import_run->getStatus()->isFinal() && $this->currentUser()->hasPermission('administer import runs')) {
@@ -166,9 +182,15 @@ final class RunController extends ControllerBase {
       $tiles[] = [
         'label' => str_replace('_', ' ', $name),
         'count' => $count,
-        'class' => in_array($name, ['failed', 'dead'], TRUE) && $count > 0 ? 'is-problem' : '',
+        'class' => match (TRUE) {
+          in_array($name, ['failed', 'dead'], TRUE) && $count > 0 => 'is-problem',
+          $name === 'created' && $count > 0 => 'is-good',
+          $count === 0 => 'is-zero',
+          default => '',
+        },
       ];
     }
+    $build['outcome'] = $this->outcomeBar($counters);
     $build['counters'] = [
       '#type' => 'inline_template',
       '#template' => '<h2 class="import-run-heading">{{ title }}</h2><dl class="import-run-counters">{% for tile in tiles %}<div class="import-run-counter {{ tile.class }}"><dd>{{ tile.count }}</dd><dt>{{ tile.label }}</dt></div>{% endfor %}</dl>',
@@ -177,6 +199,12 @@ final class RunController extends ControllerBase {
         'tiles' => $tiles,
       ],
     ];
+    $build['summary_plain'] = Chrome::panel(
+      'run-summary-plain',
+      (string) $this->t('In plain words'),
+      (string) $this->t('What happened in this run.'),
+      $this->runSentences($import_run, $counters),
+    );
     $build['#cache'] = ['max-age' => 0];
     return $build;
   }
@@ -195,7 +223,8 @@ final class RunController extends ControllerBase {
   public function items(ImportRunInterface $import_run, Request $request): array {
     $run_id = (int) $import_run->id();
     $filter = $this->stateFilter($request);
-    $build = ['#attached' => ['library' => ['import_engine_ui/runs']]];
+    $build = $this->page();
+    $build['header'] = $this->runHeader($import_run);
     $build['nav'] = $this->runNavigation($import_run, 'items');
 
     $states = $this->items->countByState($run_id);
@@ -262,7 +291,8 @@ final class RunController extends ControllerBase {
    */
   public function events(ImportRunInterface $import_run): array {
     $run_id = (int) $import_run->id();
-    $build = ['#attached' => ['library' => ['import_engine_ui/runs']]];
+    $build = $this->page();
+    $build['header'] = $this->runHeader($import_run);
     $build['nav'] = $this->runNavigation($import_run, 'events');
 
     $pager = $this->pagerManager->createPager($this->events->countForRun($run_id), self::PER_PAGE, 0);
@@ -285,6 +315,165 @@ final class RunController extends ControllerBase {
     $build['pager'] = ['#type' => 'pager', '#element' => 0];
     $build['#cache'] = ['max-age' => 0];
     return $build;
+  }
+
+  /**
+   * Starts the render array of a page of a run: the styling and the layout.
+   *
+   * @return array<string, mixed>
+   *   A render array.
+   */
+  private function page(): array {
+    return [
+      '#attached' => ['library' => ['import_engine_ui/runs']],
+      '#prefix' => '<div class="import-engine-form import-run-page">',
+      '#suffix' => '</div>',
+    ];
+  }
+
+  /**
+   * Builds the line above a page of a run: the import, the status, the facts.
+   *
+   * @return array<string, mixed>
+   *   The element.
+   */
+  private function runHeader(ImportRunInterface $run): array {
+    $status = $run->getStatus();
+    $style = match ($status->value) {
+      'completed' => 'on',
+      'completed_with_errors' => 'template',
+      'failed' => 'failed',
+      'cancelled' => 'off',
+      default => 'live',
+    };
+    $meta = $this->t('Run @id · started by @trigger · @started · @duration', [
+      '@id' => (string) $run->id(),
+      '@trigger' => $run->getTrigger()->value,
+      '@started' => $this->timestamp($run, 'started'),
+      '@duration' => $this->duration($run),
+    ]);
+    return Chrome::header($this->definitionLabel($run), [[$style, str_replace('_', ' ', $status->value)]], (string) $meta);
+  }
+
+  /**
+   * Builds a bar that shows how the items of a run came out.
+   *
+   * @param array<string, int> $counters
+   *   The counters of the run.
+   *
+   * @return array<string, mixed>
+   *   A render array.
+   */
+  private function outcomeBar(array $counters): array {
+    $parts = [
+      'created' => $this->t('Created'),
+      'updated' => $this->t('Updated'),
+      'unchanged' => $this->t('Unchanged'),
+      'skipped' => $this->t('Skipped'),
+      'failed' => $this->t('Failed'),
+      'dead' => $this->t('Dead'),
+    ];
+    $total = 0;
+    foreach (array_keys($parts) as $name) {
+      $total += $counters[$name] ?? 0;
+    }
+    if ($total === 0) {
+      return [];
+    }
+    $segments = [];
+    $label = [];
+    foreach ($parts as $name => $title) {
+      $count = $counters[$name] ?? 0;
+      if ($count === 0) {
+        continue;
+      }
+      $segments[] = ['class' => $name, 'percent' => round($count * 100 / $total, 2), 'title' => $title . ': ' . $count];
+      $label[] = $title . ' ' . $count;
+    }
+    return [
+      '#type' => 'inline_template',
+      '#template' => '<div class="import-run-bar" role="img" aria-label="{{ label }}">{% for s in segments %}<span class="import-run-bar__part import-run-bar__part--{{ s.class }}" style="width: {{ s.percent }}%" title="{{ s.title }}"></span>{% endfor %}</div><ul class="import-run-bar__legend">{% for s in segments %}<li class="import-run-bar__key import-run-bar__key--{{ s.class }}">{{ s.title }}</li>{% endfor %}</ul>',
+      '#context' => ['segments' => $segments, 'label' => implode(', ', $label)],
+    ];
+  }
+
+  /**
+   * Says in sentences what happened in a run.
+   *
+   * @param \Drupal\import_engine\Run\ImportRunInterface $run
+   *   The run.
+   * @param array<string, int> $counters
+   *   Its counters.
+   *
+   * @return list<string>
+   *   Sentences, made by t() so that what is put in them is escaped.
+   */
+  private function runSentences(ImportRunInterface $run, array $counters): array {
+    $lines = [];
+    $read = $counters['items_extracted'] ?? 0;
+    $items = $this->formatPlural($read, '1 item', '@count items');
+    $pages = $this->formatPlural($run->getPagesRead(), '1 page', '@count pages');
+    $placeholders = ['@items' => $items, '@pages' => $pages];
+    $lines[] = $run->isExtractComplete()
+      ? (string) $this->t('Read @items from the source, in @pages.', $placeholders)
+      : (string) $this->t('Still reading the source: @items so far, in @pages.', $placeholders);
+    $done = [];
+    $words = [
+      'created' => $this->t('created'),
+      'updated' => $this->t('updated'),
+      'unchanged' => $this->t('left as they were'),
+    ];
+    foreach ($words as $name => $word) {
+      if (($counters[$name] ?? 0) > 0) {
+        $done[] = ($counters[$name]) . ' ' . $word;
+      }
+    }
+    if ($done !== []) {
+      $lines[] = (string) $this->t('Of those, @done.', ['@done' => implode(', ', $done)]);
+    }
+    if (($counters['skipped'] ?? 0) > 0) {
+      $lines[] = (string) $this->formatPlural($counters['skipped'], '1 item was skipped, on purpose.', '@count items were skipped, on purpose.');
+    }
+    if (($counters['failed'] ?? 0) > 0) {
+      $lines[] = (string) $this->formatPlural($counters['failed'], '1 item failed.', '@count items failed.');
+    }
+    if (($counters['dead'] ?? 0) > 0) {
+      $lines[] = (string) $this->t('@count items ran out of attempts and wait in the <a href=":url">dead letter queue</a>, where they can be fixed and tried again.', [
+        '@count' => (string) $counters['dead'],
+        ':url' => Url::fromRoute('import_engine_ui.dead_letter', [], ['query' => ['import' => $run->getDefinitionId()]])->toString(),
+      ]);
+    }
+    if (($counters['deleted'] ?? 0) > 0) {
+      $lines[] = (string) $this->formatPlural($counters['deleted'], '1 item was no longer in the source and was removed or unpublished, as the import says.', '@count items were no longer in the source and were removed or unpublished, as the import says.');
+    }
+    if (($counters['failed'] ?? 0) === 0 && ($counters['dead'] ?? 0) === 0 && $run->getStatus()->isFinal()) {
+      $lines[] = (string) $this->t('Nothing went wrong.');
+    }
+    $remarks = $run->getSummary();
+    if ($remarks !== '') {
+      $lines[] = (string) $this->t('Remark of the engine: @remarks', ['@remarks' => $remarks]);
+    }
+    return $lines;
+  }
+
+  /**
+   * Builds a table cell with a count.
+   *
+   * A zero is quiet, and a count that is a problem is loud.
+   *
+   * @param int $count
+   *   The count.
+   * @param bool $bad
+   *   Whether more than zero is a problem.
+   *
+   * @return array<string, mixed>
+   *   The cell.
+   */
+  private function countCell(int $count, bool $bad = FALSE): array {
+    return [
+      'data' => $count,
+      'class' => $count === 0 ? ['import-count--zero'] : ($bad ? ['import-count--problem'] : []),
+    ];
   }
 
   /**
@@ -329,13 +518,11 @@ final class RunController extends ControllerBase {
     $remarks = $run->getSummary();
     $full = $run->isFullRun() ? ' (full run)' : '';
     $complete = $run->isExtractComplete() ? $this->t('yes') : $this->t('no');
+    // Which import, its status, who started it, when and how long are in the
+    // line above the page.
     return [
-      ['label' => $this->t('Import'), 'value' => $this->definitionLabel($run)],
-      ['label' => $this->t('Status'), 'value' => $this->statusCell($run)['data']],
       ['label' => $this->t('Started by'), 'value' => $run->getTrigger()->value . $full],
-      ['label' => $this->t('Started'), 'value' => $this->timestamp($run, 'started')],
       ['label' => $this->t('Finished'), 'value' => $this->timestamp($run, 'finished')],
-      ['label' => $this->t('Duration'), 'value' => $this->duration($run)],
       ['label' => $this->t('Pages read'), 'value' => $run->getPagesRead()],
       ['label' => $this->t('Extraction complete'), 'value' => $complete],
       ['label' => $this->t('Remarks'), 'value' => $remarks === '' ? '-' : $remarks],

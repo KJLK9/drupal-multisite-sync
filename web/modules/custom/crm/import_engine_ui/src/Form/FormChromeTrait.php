@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine_ui\Form;
 
-use Drupal\Component\Utility\Html;
 use Drupal\Core\Render\Element;
-use Drupal\Core\Render\Markup;
+use Drupal\import_engine_ui\Help\Chrome;
 
 /**
  * What the forms of the engine have in common above and beside their fields.
@@ -44,18 +43,7 @@ trait FormChromeTrait {
    *   The element.
    */
   protected function formHeader(string $name, array $pills, string $meta = '', string $hint = ''): array {
-    $markup = '<div class="import-wizard-header">'
-      . '<span class="import-wizard-header__name">' . Html::escape($name) . '</span>';
-    foreach ($pills as [$style, $text]) {
-      $markup .= '<span class="import-pill import-pill--' . Html::escape($style) . '">' . Html::escape($text) . '</span>';
-    }
-    if ($meta !== '') {
-      $markup .= '<span class="import-wizard-header__meta">' . Html::escape($meta) . '</span>';
-    }
-    if ($hint !== '') {
-      $markup .= '<span class="import-wizard-header__hint">' . Html::escape($hint) . '</span>';
-    }
-    return ['#markup' => Markup::create($markup . '</div>'), '#weight' => -30];
+    return Chrome::header($name, $pills, $meta, $hint);
   }
 
   /**
@@ -72,23 +60,7 @@ trait FormChromeTrait {
    *   The element.
    */
   protected function plainPanel(string $id, string $lead, array $sentences): array {
-    return [
-      '#type' => 'container',
-      '#weight' => 90,
-      '#prefix' => '<aside id="' . Html::escape($id) . '" class="import-wizard-panel">',
-      '#suffix' => '</aside>',
-      'box' => [
-        '#markup' => '<h3 class="import-wizard-panel__title">' . $this->t('In plain words') . '</h3>'
-        . '<p class="import-wizard-panel__lead">' . Html::escape($lead) . '</p>',
-        'list' => [
-          '#theme' => 'item_list',
-          '#items' => array_map(
-            static fn (string $line): array => ['#markup' => nl2br($line)],
-            $sentences,
-          ),
-        ],
-      ],
-    ];
+    return Chrome::panel($id, (string) $this->t('In plain words'), $lead, $sentences);
   }
 
   /**

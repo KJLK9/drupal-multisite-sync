@@ -81,8 +81,11 @@ class RunPagesTest extends NodeTestBase {
     $this->assertSame('Customers', $row[1]);
     $this->assertSame('completed with errors', $this->text($row[2]));
     $this->assertSame('drush', $row[3]);
-    // Extracted, created, updated, failed, dead.
-    $this->assertSame([2, 1, 0, 0, 1], array_slice($row, 6));
+    // Extracted, created, updated, failed, dead; each a cell with a class.
+    $this->assertSame([2, 1, 0, 0, 1], array_map(static fn (array $cell): int => $cell['data'], array_slice($row, 6)));
+    $this->assertSame(['import-count--problem'], $row[10]['class'], 'Dead items stand out.');
+    $this->assertSame(['import-count--zero'], $row[9]['class'], 'A zero is quiet.');
+    $this->assertStringContainsString('1 run', (string) $build['header']['#markup']);
   }
 
   /**
@@ -95,7 +98,7 @@ class RunPagesTest extends NodeTestBase {
     $row = $this->controller->list()['table']['#rows'][0];
 
     $this->assertSame('processing', $this->text($row[2]));
-    $this->assertSame([3, 2, 0, 0, 0], array_slice($row, 6));
+    $this->assertSame([3, 2, 0, 0, 0], array_map(static fn (array $cell): int => $cell['data'], array_slice($row, 6)));
   }
 
   /**
@@ -119,10 +122,18 @@ class RunPagesTest extends NodeTestBase {
     foreach ($build['summary']['#context']['facts'] as $fact) {
       $facts[(string) $fact['label']] = $fact['value'];
     }
-    $this->assertSame('Customers', $facts['Import']);
     $this->assertSame(1, $facts['Pages read']);
-    $this->assertSame('completed with errors', $this->text($facts['Status']));
-    $this->assertArrayHasKey('Duration', $facts);
+    $this->assertArrayHasKey('Finished', $facts);
+    // The import, the status and the time are in the line above the page.
+    $header = (string) $build['header']['#markup'];
+    $this->assertStringContainsString('Customers', $header);
+    $this->assertStringContainsString('import-pill--template', $header);
+    $this->assertStringContainsString('completed with errors', $header);
+    $this->assertStringContainsString('started by drush', $header);
+    $sentences = implode(' ', array_column($build['summary_plain']['box']['list']['#items'], '#markup'));
+    $this->assertStringContainsString('Read 2 items from the source, in 1 page.', $sentences);
+    $this->assertStringContainsString('dead letter queue', $sentences);
+    $this->assertArrayHasKey('outcome', $build);
     $this->assertArrayNotHasKey('items', $build, 'The items have a page of their own.');
     $this->assertArrayNotHasKey('events', $build, 'The events have a page of their own.');
     $this->assertArrayNotHasKey('actions', $build, 'A finished run cannot be cancelled.');
@@ -134,7 +145,8 @@ class RunPagesTest extends NodeTestBase {
     }
     $this->assertSame(2, $tiles['items extracted']['count']);
     $this->assertSame('is-problem', $tiles['dead']['class'], 'A counter that went wrong stands out.');
-    $this->assertSame('', $tiles['created']['class']);
+    $this->assertSame('is-good', $tiles['created']['class'], 'What was made is marked.');
+    $this->assertSame('is-zero', $tiles['updated']['class'], 'A zero is quiet.');
   }
 
   /**
@@ -149,7 +161,8 @@ class RunPagesTest extends NodeTestBase {
     $overview = $this->controller->view($run);
     $html = (string) $renderer->renderInIsolation($overview);
     $this->assertStringContainsString('import-run-facts', $html);
-    $this->assertStringContainsString('import-run-status--completed-with-errors', $html);
+    $this->assertStringContainsString('import-pill--template', $html);
+    $this->assertStringContainsString('import-run-bar', $html);
     $this->assertStringContainsString('import-run-counter is-problem', $html);
     $this->assertStringContainsString('Items (2)', $html);
 

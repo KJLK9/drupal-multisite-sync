@@ -844,3 +844,77 @@ msgstr "Cron laat runs met rust. Start ze vanuit de lijst, met drush of met een 
 
 msgid "Cron carries on with runs that are not over, for up to @seconds seconds each time. It never starts a run."
 msgstr "Cron gaat door met runs die niet klaar zijn, hooguit @seconds seconden per keer. Hij start nooit een run."
+
+msgid "All runs"
+msgstr "Alle runs"
+
+msgid "Newest first"
+msgstr "Nieuwste eerst"
+
+msgid "1 run"
+msgid_plural "@count runs"
+msgstr[0] "1 run"
+msgstr[1] "@count runs"
+
+msgid "1 with failed or dead items on this page"
+msgid_plural "@count with failed or dead items on this page"
+msgstr[0] "1 met mislukte of dode items op deze pagina"
+msgstr[1] "@count met mislukte of dode items op deze pagina"
+
+msgid "Run @id · started by @trigger · @started · @duration"
+msgstr "Run @id · gestart door @trigger · @started · @duration"
+
+msgid "What happened in this run."
+msgstr "Wat er gebeurde in deze run."
+
+msgid "1 item"
+msgid_plural "@count items"
+msgstr[0] "1 item"
+msgstr[1] "@count items"
+
+msgid "1 page"
+msgid_plural "@count pages"
+msgstr[0] "1 pagina"
+msgstr[1] "@count pagina's"
+
+msgid "Read @items from the source, in @pages."
+msgstr "@items gelezen uit de bron, in @pages."
+
+msgid "Still reading the source: @items so far, in @pages."
+msgstr "Nog bezig met de bron te lezen: tot nu toe @items, in @pages."
+
+msgid "Of those, @done."
+msgstr "Daarvan: @done."
+
+msgid "created"
+msgstr "aangemaakt"
+
+msgid "updated"
+msgstr "bijgewerkt"
+
+msgid "left as they were"
+msgstr "ongemoeid gelaten"
+
+msgid "1 item was skipped, on purpose."
+msgid_plural "@count items were skipped, on purpose."
+msgstr[0] "1 item is bewust overgeslagen."
+msgstr[1] "@count items zijn bewust overgeslagen."
+
+msgid "1 item failed."
+msgid_plural "@count items failed."
+msgstr[0] "1 item is mislukt."
+msgstr[1] "@count items zijn mislukt."
+
+msgid "@count items ran out of attempts and wait in the <a href=\":url\">dead letter queue</a>, where they can be fixed and tried again."
+msgstr "@count items hadden geen pogingen meer en wachten in de <a href=\":url\">dead letter queue</a>, waar ze kunnen worden hersteld en opnieuw geprobeerd."
+
+msgid "1 item was no longer in the source and was removed or unpublished, as the import says."
+msgid_plural "@count items were no longer in the source and were removed or unpublished, as the import says."
+msgstr[0] "1 item stond niet meer in de bron en is verwijderd of gedepubliceerd, zoals de import zegt."
+msgstr[1] "@count items stonden niet meer in de bron en zijn verwijderd of gedepubliceerd, zoals de import zegt."
+
+msgid "Nothing went wrong."
+msgstr "Er ging niets mis."
+
+msgid "Remark of the engine: @remarks"
+msgstr "Opmerking van de engine: @remarks"

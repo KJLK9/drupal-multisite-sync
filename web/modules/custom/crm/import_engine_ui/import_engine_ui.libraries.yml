@@ -12,3 +12,5 @@ runs:
   css:
     theme:
       css/runs.css: {}
+  dependencies:
+    - import_engine_ui/wizard
