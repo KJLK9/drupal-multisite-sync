@@ -703,3 +703,50 @@ msgstr "Welke waarde uit de bron komt in welk veld? Laat een veld leeg om het on
 
 msgid "What should happen when things go wrong, and should the import run now? A new import is off until you switch it on."
 msgstr "Wat moet er gebeuren als het misgaat, en moet de import nu draaien? Een nieuwe import staat uit totdat je hem aanzet."
+
+msgid "Used by 1 import"
+msgid_plural "Used by @count imports"
+msgstr[0] "Gebruikt door 1 import"
+msgstr[1] "Gebruikt door @count imports"
+
+msgid "Not used yet"
+msgstr "Nog niet gebruikt"
+
+msgid "New connection"
+msgstr "Nieuwe verbinding"
+
+msgid "What a connection is, and what it will do once it is saved."
+msgstr "Wat een verbinding is, en wat hij gaat doen als hij is opgeslagen."
+
+msgid "What this connection does, as it is saved."
+msgstr "Wat deze verbinding doet, zoals hij is opgeslagen."
+
+msgid "A connection is an address with its login, kept once so that several imports can share it."
+msgstr "Een verbinding is een adres met bijbehorende inlog, één keer bewaard zodat meerdere imports het kunnen delen."
+
+msgid "Change it in one place and every import that uses it follows."
+msgstr "Pas het op één plek aan en elke import die het gebruikt volgt."
+
+msgid "Reads from @host, as a @type source."
+msgstr "Leest van @host, als een @type-bron."
+
+msgid "Gives up when the source does not answer within @seconds seconds."
+msgstr "Geeft het op als de bron niet binnen @seconds seconden antwoordt."
+
+msgid "It does not log in."
+msgstr "Hij logt niet in."
+
+msgid "It logs in with an API key, sent in the header @header; the key is read from the environment variable @variable."
+msgstr "Hij logt in met een API-sleutel, verstuurd in de header @header; de sleutel wordt gelezen uit de omgevingsvariabele @variable."
+
+msgid "It logs in with @plugin."
+msgstr "Hij logt in met @plugin."
+
+msgid "No import uses it yet."
+msgstr "Nog geen import gebruikt hem."
+
+msgid "Used by the imports @imports. A change here applies to all of them."
+msgstr "Gebruikt door de imports @imports. Een wijziging hier geldt voor alle imports."
+
+msgid "an address"
+msgstr "een adres"

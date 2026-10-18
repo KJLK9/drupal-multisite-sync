@@ -15,10 +15,12 @@ use Drupal\Core\Url;
 use Drupal\Core\Form\SubformState;
 use Drupal\Core\Plugin\DefaultPluginManager;
 use Drupal\Core\Plugin\PluginFormInterface;
+use Drupal\Core\Security\TrustedCallbackInterface;
 use Drupal\Component\Plugin\ConfigurableInterface;
 use Drupal\import_engine\Connection\ConnectionResolver;
 use Drupal\import_engine\ImportConnectionInterface;
 use Drupal\import_engine\Storage\ImportConnectionStorage;
+use Drupal\import_engine_ui\Help\Glossary;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
@@ -28,9 +30,10 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * (which the source plugin says); what the import asks for is set in the
  * import. The settings forms are those of the plugins, as in the wizard.
  */
-final class ConnectionForm extends FormBase {
+final class ConnectionForm extends FormBase implements TrustedCallbackInterface {
 
   use AutowireTrait;
+  use FormChromeTrait;
 
   /**
    * The connection that is changed; none when one is added.
@@ -49,6 +52,8 @@ final class ConnectionForm extends FormBase {
     protected DefaultPluginManager $authentications,
     #[Autowire(service: 'import_engine.connection_resolver')]
     protected ConnectionResolver $resolver,
+    #[Autowire(service: 'import_engine_ui.glossary')]
+    protected Glossary $glossary,
   ) {
   }
 
@@ -77,6 +82,10 @@ final class ConnectionForm extends FormBase {
     $form['#tree'] = TRUE;
     $form['#attributes']['class'][] = 'import-engine-form';
     $form['#attached']['library'][] = 'import_engine_ui/wizard';
+    // A method, not a closure: the form is serialized into the form cache.
+    $form['#pre_render'][] = [$this, 'addInfoIcons'];
+    $used = $this->usedBy();
+    $form['connection_header'] = $this->connectionHeader($import_connection, $used);
     $form['label'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Name'),
@@ -93,19 +102,12 @@ final class ConnectionForm extends FormBase {
       '#maxlength' => 64,
     ];
     $form['description'] = [
-      '#type' => 'textfield',
+      '#type' => 'textarea',
+      '#rows' => 2,
       '#title' => $this->t('Description'),
       '#default_value' => $import_connection?->getDescription(),
       '#description' => $this->t('Where this connection goes, for the person who chooses it in an import.'),
     ];
-
-    $used = $this->usedBy();
-    if ($used !== []) {
-      $form['used'] = [
-        '#markup' => '<p>' . $this->t('Used by the imports @imports. A change here applies to all of them.', ['@imports' => implode(', ', $used)]) . '</p>',
-        '#weight' => -10,
-      ];
-    }
 
     $source = $import_connection?->getSource() ?? ['plugin' => '', 'configuration' => []];
     $form['source'] = $this->section(
@@ -130,6 +132,14 @@ final class ConnectionForm extends FormBase {
       FALSE,
     );
 
+    $form['summary_plain'] = $this->plainPanel(
+      'connection-summary-plain',
+      (string) ($import_connection === NULL
+        ? $this->t('What a connection is, and what it will do once it is saved.')
+        : $this->t('What this connection does, as it is saved.')),
+      $this->connectionSentences($import_connection, $used),
+    );
+
     $form['actions'] = ['#type' => 'actions'];
     $form['actions']['submit'] = [
       '#type' => 'submit',
@@ -143,6 +153,97 @@ final class ConnectionForm extends FormBase {
       '#attributes' => ['class' => ['dialog-cancel']],
     ];
     return $form;
+  }
+
+  /**
+   * Builds the line above the form: which connection, who uses it, and where.
+   *
+   * @param \Drupal\import_engine\ImportConnectionInterface|null $connection
+   *   The connection, or NULL for a new one.
+   * @param list<string> $used
+   *   The imports that use it.
+   *
+   * @return array<string, mixed>
+   *   The element.
+   */
+  private function connectionHeader(?ImportConnectionInterface $connection, array $used): array {
+    $pills = [];
+    if ($connection === NULL) {
+      $pills[] = ['new', (string) $this->t('Not saved yet')];
+    }
+    else {
+      $pills[] = $used === []
+        ? ['off', (string) $this->t('Not used yet')]
+        : ['on', (string) $this->formatPlural(count($used), 'Used by 1 import', 'Used by @count imports')];
+    }
+    $meta = '';
+    if ($connection !== NULL) {
+      $source = $connection->getSource();
+      $meta = $source['plugin'] . ' · ' . $this->hostOf((string) ($source['configuration']['url'] ?? ''));
+    }
+    return $this->formHeader(
+      $connection === NULL ? (string) $this->t('New connection') : (string) $connection->label(),
+      $pills,
+      $meta,
+    );
+  }
+
+  /**
+   * Says in sentences what a connection does.
+   *
+   * @param \Drupal\import_engine\ImportConnectionInterface|null $connection
+   *   The connection, or NULL for a new one.
+   * @param list<string> $used
+   *   The imports that use it.
+   *
+   * @return list<string>
+   *   Sentences, made by t() so that what is put in them is escaped.
+   */
+  private function connectionSentences(?ImportConnectionInterface $connection, array $used): array {
+    if ($connection === NULL) {
+      return [
+        (string) $this->t('A connection is an address with its login, kept once so that several imports can share it.'),
+        (string) $this->t('Change it in one place and every import that uses it follows.'),
+      ];
+    }
+    $source = $connection->getSource();
+    $label = (string) ($this->sources->getDefinition($source['plugin'], FALSE)['label'] ?? $source['plugin']);
+    $configuration = $source['configuration'];
+    $lines = [(string) $this->t('Reads from @host, as a @type source.', [
+      '@host' => $this->hostOf((string) ($configuration['url'] ?? '')),
+      '@type' => $label,
+    ]),
+    ];
+    if (isset($configuration['timeout'])) {
+      $lines[] = (string) $this->t('Gives up when the source does not answer within @seconds seconds.', ['@seconds' => (string) $configuration['timeout']]);
+    }
+    $login = $connection->getAuthentication();
+    $lines[] = match ($login['plugin']) {
+      'none' => (string) $this->t('It does not log in.'),
+      'api_key_header' => (string) $this->t('It logs in with an API key, sent in the header @header; the key is read from the environment variable @variable.', [
+        '@header' => (string) ($login['configuration']['header'] ?? ''),
+        '@variable' => (string) ($login['configuration']['env_var'] ?? ''),
+      ]),
+      default => (string) $this->t('It logs in with @plugin.', ['@plugin' => $login['plugin']]),
+    };
+    $lines[] = $used === []
+      ? (string) $this->t('No import uses it yet.')
+      : (string) $this->t('Used by the imports @imports. A change here applies to all of them.', ['@imports' => implode(', ', $used)]);
+    return $lines;
+  }
+
+  /**
+   * Returns the host of an address, without a path or a query.
+   *
+   * A query may hold a key, and what is on this page is read by more people
+   * than the secret was meant for.
+   */
+  private function hostOf(string $url): string {
+    $parts = parse_url($url);
+    if (!is_array($parts) || !isset($parts['host'])) {
+      return (string) $this->t('an address');
+    }
+    return ($parts['scheme'] ?? 'https') . '://' . $parts['host'] . (isset($parts['port']) ? ':' . $parts['port'] : '');
   }
 
   /**

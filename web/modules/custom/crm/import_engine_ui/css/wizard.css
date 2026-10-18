@@ -522,14 +522,14 @@ button.import-wizard-path {
 }
 
 /* Sections: a coloured bar instead of a box in a box. */
-.import-definition-wizard fieldset.fieldset {
+.import-engine-form fieldset.fieldset {
   padding: 0;
   border: 0;
   background: transparent;
   box-shadow: none;
 }
 
-.import-definition-wizard fieldset.fieldset > legend.fieldset__legend .fieldset__label {
+.import-engine-form fieldset.fieldset > legend.fieldset__legend .fieldset__label {
   display: inline-block;
   padding-inline: 0.8rem 0;
   border-inline-start: 4px solid var(--import-accent);
@@ -537,14 +537,14 @@ button.import-wizard-path {
   font-weight: 600;
 }
 
-.import-definition-wizard .fieldset__wrapper {
+.import-engine-form .fieldset__wrapper {
   padding: 0.5rem 0 0;
 }
 
 /* Parts that open and close are a wash of the accent. */
-.import-definition-wizard > details.claro-details,
-.import-definition-wizard #import-wizard-source-test > details,
-.import-definition-wizard details.claro-details:not(.import-wizard-mapping details) {
+.import-engine-form > details.claro-details,
+.import-engine-form #import-wizard-source-test > details,
+.import-engine-form details.claro-details:not(.import-wizard-mapping details) {
   border: 0;
   border-radius: 0.6rem;
   background: var(--import-wash);
@@ -594,41 +594,41 @@ button.import-wizard-path {
 }
 
 /* Room: the form has a width it reads well in; the summary has its own column. */
-.import-definition-wizard > * {
+.import-engine-form > * {
   max-width: 64rem;
 }
 
-.import-definition-wizard > input.button {
+.import-engine-form > input.button {
   justify-self: start;
 }
 
-.import-definition-wizard > .import-wizard-header,
-.import-definition-wizard > .import-wizard-steps,
-.import-definition-wizard > #import-wizard-mapping,
-.import-definition-wizard > #edit-actions,
-.import-definition-wizard > .import-wizard-summary {
+.import-engine-form > .import-wizard-header,
+.import-engine-form > .import-wizard-steps,
+.import-engine-form > #import-wizard-mapping,
+.import-engine-form > #edit-actions,
+.import-engine-form > .import-wizard-summary {
   max-width: none;
 }
 
 @media (min-width: 1500px) {
-  .import-definition-wizard {
+  .import-engine-form:has(> .import-wizard-panel) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 24rem;
     column-gap: 2.5rem;
     align-items: start;
   }
 
-  .import-definition-wizard > * {
+  .import-engine-form:has(> .import-wizard-panel) > * {
     grid-column: 1;
   }
 
-  .import-definition-wizard > .import-wizard-header,
-  .import-definition-wizard > .import-wizard-steps {
+  .import-engine-form:has(> .import-wizard-panel) > .import-wizard-header,
+  .import-engine-form:has(> .import-wizard-panel) > .import-wizard-steps {
     grid-column: 1 / -1;
   }
 
-  .import-definition-wizard > .import-wizard-panel,
-  .import-definition-wizard > div:has(> .import-wizard-panel) {
+  .import-engine-form > .import-wizard-panel,
+  .import-engine-form > div:has(> .import-wizard-panel) {
     position: sticky;
     inset-block-start: 5rem;
     grid-column: 2;
@@ -636,5 +636,11 @@ button.import-wizard-path {
     align-self: start;
     max-height: calc(100vh - 7rem);
     overflow-y: auto;
+  }
+
+  /* A form without steps has the panel next to its first field. */
+  .import-engine-form:has(> .import-wizard-panel):not(:has(> .import-wizard-steps)) > .import-wizard-panel,
+  .import-engine-form:has(> .import-wizard-panel):not(:has(> .import-wizard-steps)) > div:has(> .import-wizard-panel) {
+    grid-row: 2 / span 12;
   }
 }

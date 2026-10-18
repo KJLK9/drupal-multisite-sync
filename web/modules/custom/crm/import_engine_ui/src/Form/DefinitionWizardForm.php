@@ -63,6 +63,7 @@ final class DefinitionWizardForm extends FormBase implements TrustedCallbackInte
 
   use AutowireTrait;
   use ScheduleFormTrait;
+  use FormChromeTrait;
 
   /**
    * The steps, by number.
@@ -1476,14 +1477,16 @@ final class DefinitionWizardForm extends FormBase implements TrustedCallbackInte
       ? $configuration['entity_type'] . ($configuration['bundle'] ?? '' ? '/' . $configuration['bundle'] : '')
       : '';
     $meta = $target === '' ? $source : $source . ' → ' . $target;
-    $markup = '<div class="import-wizard-header">'
-      . '<span class="import-wizard-header__name">' . Html::escape($name !== '' ? $name : (string) $this->t('New import')) . '</span>'
-      . '<span class="import-pill import-pill--' . $class . '">' . Html::escape((string) $state) . '</span>'
-      . ($isNew ? '<span class="import-pill import-pill--new">' . Html::escape((string) $this->t('Not saved yet')) . '</span>' : '')
-      . ($meta === '' ? '' : '<span class="import-wizard-header__meta">' . Html::escape($meta) . '</span>')
-      . '<span class="import-wizard-header__hint">' . Html::escape((string) $this->t('Click a step to jump to it.')) . '</span>'
-      . '</div>';
-    return ['#markup' => Markup::create($markup), '#weight' => -30];
+    $pills = [[$class, (string) $state]];
+    if ($isNew) {
+      $pills[] = ['new', (string) $this->t('Not saved yet')];
+    }
+    return $this->formHeader(
+      $name !== '' ? $name : (string) $this->t('New import'),
+      $pills,
+      $meta,
+      (string) $this->t('Click a step to jump to it.'),
+    );
   }
 
   /**
@@ -2282,34 +2285,24 @@ final class DefinitionWizardForm extends FormBase implements TrustedCallbackInte
    *   The element.
    */
   private function plainSummary(array $values, bool $withButton): array {
-    $items = array_map(
-      // The sentences are made by t(), which has escaped what was put in.
-      static fn (string $line): array => ['#markup' => nl2br($line)],
+    $panel = $this->plainPanel(
+      'import-wizard-summary-plain',
+      (string) $this->t('What this import will do, as far as it is filled in.'),
       $this->summary->sentences($this->entityFromValues($values)),
     );
-    return [
-      '#type' => 'container',
-      '#weight' => 90,
-      '#prefix' => '<aside id="import-wizard-summary-plain" class="import-wizard-panel">',
-      '#suffix' => '</aside>',
-      'box' => [
-        '#markup' => '<h3 class="import-wizard-panel__title">' . $this->t('In plain words') . '</h3>'
-        . '<p class="import-wizard-panel__lead">' . $this->t('What this import will do, as far as it is filled in.') . '</p>',
-        'list' => ['#theme' => 'item_list', '#items' => $items],
+    $panel['summarize'] = [
+      '#access' => $withButton,
+      '#type' => 'submit',
+      '#value' => $this->t('Update this summary'),
+      '#name' => 'summarize',
+      '#limit_validation_errors' => [
+        ['status'], ['delete_policy'], ['delete_threshold_percent'], ['pool'],
+        ['resilience'], ['breaker'], ['reporters'], ['schedule'],
       ],
-      'summarize' => [
-        '#access' => $withButton,
-        '#type' => 'submit',
-        '#value' => $this->t('Update this summary'),
-        '#name' => 'summarize',
-        '#limit_validation_errors' => [
-          ['status'], ['delete_policy'], ['delete_threshold_percent'], ['pool'],
-          ['resilience'], ['breaker'], ['reporters'], ['schedule'],
-        ],
-        '#submit' => ['::summarize'],
-        '#ajax' => ['callback' => '::ajaxSummary', 'wrapper' => 'import-wizard-summary-plain'],
-      ],
+      '#submit' => ['::summarize'],
+      '#ajax' => ['callback' => '::ajaxSummary', 'wrapper' => 'import-wizard-summary-plain'],
     ];
+    return $panel;
   }
 
   /**
@@ -2352,47 +2345,6 @@ final class DefinitionWizardForm extends FormBase implements TrustedCallbackInte
       4 => $this->t('Which value of the source goes into which field? Leave a field empty to leave it alone.'),
       default => $this->t('What should happen when things go wrong, and should the import run now? A new import is off until you switch it on.'),
     };
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public static function trustedCallbacks(): array {
-    return ['addInfoIcons'];
-  }
-
-  /**
-   * Puts an info icon after the label of every element that has a term.
-   *
-   * Done when the form is rendered, so that the labels the checks and the
-   * error messages read are the plain ones. An example of the term becomes
-   * the placeholder of an empty text field.
-   *
-   * @param array<mixed> $element
-   *   The form, or a part of it.
-   *
-   * @return array<mixed>
-   *   The same, with the icons.
-   */
-  public function addInfoIcons(array $element): array {
-    foreach (Element::children($element) as $key) {
-      $child = &$element[$key];
-      if (!is_array($child)) {
-        continue;
-      }
-      $parents = (array) ($child['#parents'] ?? [(string) $key]);
-      $name = (string) end($parents);
-      $term = $this->glossary->forField($name);
-      if ($term !== NULL && isset($child['#title']) && ($child['#title_display'] ?? '') !== 'invisible') {
-        $child['#title'] = $this->glossary->labelWithIcon($child['#title'], $term);
-        if ($term->example !== NULL && in_array($child['#type'] ?? '', ['textfield', 'textarea', 'url'], TRUE)
-          && empty($child['#default_value']) && !isset($child['#attributes']['placeholder'])) {
-          $child['#attributes']['placeholder'] = (string) $term->example;
-        }
-      }
-      $child = $this->addInfoIcons($child);
-    }
-    return $element;
   }
 
   /**

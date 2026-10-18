@@ -120,7 +120,7 @@ class Glossary {
         $this->t('Source'),
         $this->t('The place the data is read from, usually the address of an API.'),
         $this->t('https://example.com/api/customers'),
-        ['url'],
+        ['source', 'url'],
       ),
       new GlossaryTerm(
         'connection',
