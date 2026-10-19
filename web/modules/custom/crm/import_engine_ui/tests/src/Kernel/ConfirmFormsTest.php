@@ -89,6 +89,21 @@ class ConfirmFormsTest extends NodeTestBase {
   }
 
   /**
+   * A label with markup characters is shown once-escaped, not twice.
+   */
+  public function testHeaderEscapesTheLabelOnce(): void {
+    $definition = ImportDefinition::create(['id' => 'odd', 'label' => 'Tom & "Jerry" <b>']);
+    $definition->save();
+
+    $form = $this->build(DefinitionDeleteForm::class, [$definition]);
+    $markup = (string) $form['confirm_header']['#markup'];
+
+    $this->assertStringContainsString('Tom &amp; &quot;Jerry&quot; &lt;b&gt;', $markup);
+    $this->assertStringNotContainsString('&amp;amp;', $markup);
+    $this->assertStringNotContainsString('<b>', $markup);
+  }
+
+  /**
    * Starting a run keeps its own checkbox, and the plain look.
    */
   public function testRunFormKeepsItsOption(): void {

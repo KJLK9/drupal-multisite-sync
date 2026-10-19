@@ -33,6 +33,7 @@
     "minimum-stability": "stable",
     "prefer-stable": true,
     "config": {
+        "process-timeout": 0,
         "allow-plugins": {
             "composer/installers": true,
             "drupal/core-composer-scaffold": true,

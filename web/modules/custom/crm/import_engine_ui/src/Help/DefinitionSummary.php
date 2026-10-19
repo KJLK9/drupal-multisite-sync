@@ -66,7 +66,7 @@ class DefinitionSummary {
       try {
         array_push($lines, ...$part());
       }
-      catch (\ValueError | \TypeError | \OutOfBoundsException $exception) {
+      catch (\ValueError | \TypeError | \OutOfBoundsException | \InvalidArgumentException $exception) {
         // What a half-filled import cannot tell is left out; anything else is
         // a bug and is not swallowed here.
         $this->logger->debug('A part of the summary of an import could not be made: @message', ['@message' => $exception->getMessage()]);

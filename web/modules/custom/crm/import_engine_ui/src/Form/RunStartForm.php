@@ -77,6 +77,11 @@ final class RunStartForm extends ConfirmFormBase {
     $this->activeRun = $import_definition === NULL ? NULL : $this->starter->activeRunId((string) $import_definition->id());
     $form = $this->chromeConfirm(parent::buildForm($form, $form_state));
 
+    if ($import_definition !== NULL && $import_definition->isTemplate()) {
+      $this->messenger()->addError($this->t('The import @label is a template: it is copied, never run. Use it as a template to make an import that can run.', ['@label' => (string) $import_definition->label()]));
+      $form['actions']['submit']['#access'] = FALSE;
+      return $form;
+    }
     if ($import_definition !== NULL && !$import_definition->status()) {
       $this->messenger()->addError($this->t('The import @label is disabled. Enable it in its settings to run it.', ['@label' => (string) $import_definition->label()]));
       $form['actions']['submit']['#access'] = FALSE;

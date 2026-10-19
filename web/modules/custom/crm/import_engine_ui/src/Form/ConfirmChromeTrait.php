@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\import_engine_ui\Form;
 
+use Drupal\Component\Utility\Html;
 use Drupal\import_engine_ui\Help\Chrome;
 
 /**
@@ -41,7 +42,12 @@ trait ConfirmChromeTrait {
       'careful' => [['template', (string) $this->t('Take care')]],
       default => [],
     };
-    $form['confirm_header'] = Chrome::header((string) $this->getQuestion(), $pills);
+    // The question was made by t(), which has escaped what it holds; the header
+    // escapes again, so it gets the plain text.
+    $form['confirm_header'] = Chrome::header(
+      Html::decodeEntities(strip_tags((string) $this->getQuestion())),
+      $pills,
+    );
     $sentences = [(string) $this->getDescription(), ...$more];
     unset($form['description']);
     $form['summary_plain'] = Chrome::panel(

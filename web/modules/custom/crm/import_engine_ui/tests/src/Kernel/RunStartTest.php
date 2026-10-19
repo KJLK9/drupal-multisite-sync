@@ -209,6 +209,22 @@ class RunStartTest extends NodeTestBase {
   }
 
   /**
+   * A template is not run, and the form says it is a template.
+   */
+  public function testTemplateIsRefusedWithItsOwnMessage(): void {
+    $definition = $this->httpImport([$this->answer([1])]);
+    $definition->set('template', TRUE)->save();
+    $state = new FormState();
+    $state->addBuildInfo('args', [$definition]);
+
+    $form = $this->container->get('form_builder')->buildForm(RunStartForm::class, $state);
+
+    $this->assertFalse($form['actions']['submit']['#access']);
+    $this->assertStringContainsString('is a template', $this->messages()['error'][0]);
+    $this->assertNull($this->container->get('import_engine.run_manager')->latest('customers'));
+  }
+
+  /**
    * A request that leaves out the button does not start a disabled import.
    *
    * Hiding the button is for the person; what runs is decided on submit, and by
