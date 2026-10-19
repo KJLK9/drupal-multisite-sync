@@ -6,6 +6,7 @@ namespace Drupal\Tests\import_engine_ui\Kernel;
 
 use Drupal\Core\Form\FormState;
 use Drupal\import_engine\Breaker\BreakerState;
+use Drupal\import_engine\Entity\ImportConnection;
 use Drupal\import_engine\Breaker\BreakerStore;
 use Drupal\import_engine_ui\Controller\BreakerController;
 use Drupal\import_engine_ui\Form\BreakerActionForm;
@@ -60,6 +61,28 @@ class BreakerPagesTest extends StorageTestBase {
    */
   public function testEmpty(): void {
     $this->assertSame('No server has had a problem yet.', (string) $this->page()['table']['#empty']);
+  }
+
+  /**
+   * The server of a connection can be opened by hand before it had a problem.
+   */
+  public function testServersOfConnectionsAreListedAsClosed(): void {
+    ImportConnection::create([
+      'id' => 'shop',
+      'label' => 'Shop',
+      'source' => ['plugin' => 'graphql', 'configuration' => ['url' => 'https://Shop.Test:8443/graphql']],
+    ])->save();
+    $this->store->trip('shop.test:8443', time());
+
+    $rows = $this->page()['table']['#rows'];
+    $this->assertSame(['shop.test:8443'], array_column($rows, 0), 'One row, not a second for the same server.');
+
+    $this->store->reset('shop.test:8443', time());
+    $rows = $this->page()['table']['#rows'];
+    $this->assertSame(['trip'], array_keys($rows[0][6]['data']['#links']));
+
+    ImportConnection::load('shop')?->delete();
+    $this->assertSame('shop.test:8443', $this->page()['table']['#rows'][0][0], 'A server with a record stays.');
   }
 
   /**

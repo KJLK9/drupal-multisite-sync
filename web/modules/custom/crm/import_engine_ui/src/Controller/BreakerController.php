@@ -8,10 +8,12 @@ use Drupal\Component\Utility\Html;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\DependencyInjection\AutowireTrait;
+use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Url;
 use Drupal\import_engine\Breaker\BreakerRecord;
 use Drupal\import_engine\Breaker\BreakerState;
 use Drupal\import_engine\Breaker\BreakerStore;
+use Drupal\import_engine\ImportConnectionInterface;
 use Drupal\import_engine_ui\Help\Chrome;
 use Drupal\import_engine_ui\Help\Glossary;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -33,7 +35,38 @@ final class BreakerController extends ControllerBase {
     private readonly DateFormatterInterface $dateFormatter,
     #[Autowire(service: 'import_engine_ui.glossary')]
     private readonly Glossary $glossary,
+    #[Autowire(service: 'entity_type.manager')]
+    private readonly EntityTypeManagerInterface $typeManager,
   ) {
+  }
+
+  /**
+   * Returns the breakers, and the servers of the connections that have none.
+   *
+   * A server that never had a problem has no record, but it can be opened by
+   * hand to see what an outage does; it is listed as closed.
+   *
+   * @return list<\Drupal\import_engine\Breaker\BreakerRecord>
+   *   The records, by server.
+   */
+  private function records(): array {
+    $records = [];
+    foreach ($this->breakers->all() as $record) {
+      $records[$record->endpoint] = $record;
+    }
+    foreach ($this->typeManager->getStorage('import_connection')->loadMultiple() as $connection) {
+      if (!$connection instanceof ImportConnectionInterface) {
+        continue;
+      }
+      $parts = parse_url((string) ($connection->getSource()['configuration']['url'] ?? ''));
+      if (!is_array($parts) || !isset($parts['host'])) {
+        continue;
+      }
+      $endpoint = strtolower($parts['host']) . (isset($parts['port']) ? ':' . $parts['port'] : '');
+      $records[$endpoint] ??= new BreakerRecord($endpoint);
+    }
+    ksort($records);
+    return array_values($records);
   }
 
   /**
@@ -47,7 +80,7 @@ final class BreakerController extends ControllerBase {
     $rows = [];
     $counts = [BreakerState::Closed->value => 0, BreakerState::Open->value => 0, BreakerState::HalfOpen->value => 0];
     $sentences = [];
-    foreach ($this->breakers->all() as $record) {
+    foreach ($this->records() as $record) {
       $counts[$record->state->value]++;
       $links = [];
       if ($may_change && $record->state !== BreakerState::Closed) {
