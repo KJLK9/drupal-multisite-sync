@@ -49,7 +49,8 @@ er: "de echte oplossing is bij de bron; hier lossen we het zonder de bron op".
 
 ## 3. De bron valt weg (circuit breaker)
 
-1. Circuit breakers: de server van site A staat er, dicht. (Een server staat in
+1. Circuit breakers: de server van site A staat er, dicht (op het cluster heet
+   hij `web`, lokaal `site-a.ddev.site`). (Een server staat in
    de lijst zodra er een connectie naar wijst.)
 2. Bij die server: Open → bevestigen. Het scherm waarschuwt dat er niets meer
    naartoe gaat.
