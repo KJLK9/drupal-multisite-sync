@@ -1,0 +1,13 @@
+services:
+  import_audit.history:
+    class: Drupal\import_audit\History\EntityHistory
+    arguments:
+      - '@import_engine.mapping_store'
+      - '@import_engine.event_log'
+
+  import_audit.access:
+    class: Drupal\import_audit\Access\HistoryAccessCheck
+    arguments:
+      - '@import_audit.history'
+    tags:
+      - { name: access_check, applies_to: _import_audit_history }

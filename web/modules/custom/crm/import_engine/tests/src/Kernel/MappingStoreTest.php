@@ -34,6 +34,39 @@ class MappingStoreTest extends StorageTestBase {
   }
 
   /**
+   * The items that became an entity are found, with their import.
+   */
+  public function testFindsItemsByTheirTarget(): void {
+    $mapping = $this->container->get('import_engine.mapping_store');
+    $mapping->record('customers', '["1"]', 'node', '10', NULL, 1, TRUE, 100);
+    $mapping->record('orders', '["9"]', 'node', '10', NULL, 1, TRUE, 100);
+    $mapping->record('customers', '["2"]', 'node', '11', NULL, 1, TRUE, 100);
+    // The same ID of another entity type is another entity.
+    $mapping->record('customers', '["3"]', 'user', '10', NULL, 1, TRUE, 100);
+
+    $found = $mapping->forTarget('node', '10');
+
+    $this->assertSame(['customers', 'orders'], array_map(static fn ($record): string => $record->definitionId, $found));
+    $this->assertSame(['["1"]', '["9"]'], array_map(static fn ($record): string => $record->key, $found));
+    $this->assertSame([], $mapping->forTarget('node', '99'));
+  }
+
+  /**
+   * The index for the lookup is added by the update, and only once.
+   */
+  public function testTheTargetIndexIsAddedByTheUpdate(): void {
+    $schema = $this->container->get('database')->schema();
+    $schema->dropIndex('import_mapping', 'target');
+    $this->assertFalse($schema->indexExists('import_mapping', 'target'));
+    require_once __DIR__ . '/../../../import_engine.install';
+
+    import_engine_update_10003();
+    import_engine_update_10003();
+
+    $this->assertTrue($schema->indexExists('import_mapping', 'target'));
+  }
+
+  /**
    * Seeing an item again keeps when it was first seen; a change is noted.
    */
   public function testRecordKeepsFirstSeenAndTracksChanges(): void {

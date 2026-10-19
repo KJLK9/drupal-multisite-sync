@@ -134,6 +134,8 @@ function import_engine_schema(): array {
     'indexes' => [
       // The sweep: everything of an import not seen in the latest run.
       'last_seen' => ['definition_id', 'gone', 'last_seen_run'],
+      // Which items became a given entity (the history of an entity).
+      'target' => ['target_type', 'target_id'],
     ],
   ];
 
@@ -213,4 +215,22 @@ function import_engine_update_10002(): string {
     }
   }
   return 'The keys of source items are compared exactly.';
+}
+
+/**
+ * Adds an index to find the items that became a given entity.
+ *
+ * Used for the history of an entity; harmless when nothing uses it.
+ */
+function import_engine_update_10003(): string {
+  $schema = \Drupal::database()->schema();
+  if ($schema->tableExists('import_mapping') && !$schema->indexExists('import_mapping', 'target')) {
+    $schema->addIndex('import_mapping', 'target', ['target_type', 'target_id'], [
+      'fields' => [
+        'target_type' => ['type' => 'varchar_ascii', 'length' => 32, 'not null' => FALSE],
+        'target_id' => ['type' => 'varchar_ascii', 'length' => 64, 'not null' => FALSE],
+      ],
+    ]);
+  }
+  return 'Added an index to find the items that became an entity.';
 }

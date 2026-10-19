@@ -20,6 +20,7 @@ module:
   filter: 0
   help: 0
   image: 0
+  import_audit: 0
   import_engine: 0
   import_engine_ui: 0
   layout_builder: 0

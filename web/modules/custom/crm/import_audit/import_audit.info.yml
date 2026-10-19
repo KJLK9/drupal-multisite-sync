@@ -1,0 +1,8 @@
+name: 'Import audit'
+type: module
+description: 'Follow an import event to the entity it changed, and see on an entity what imports did to it recently. Optional: the import engine works without it.'
+package: Custom
+core_version_requirement: ^11.2
+dependencies:
+  - import_engine:import_engine
+  - import_engine_ui:import_engine_ui

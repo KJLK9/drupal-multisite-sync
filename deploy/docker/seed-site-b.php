@@ -25,6 +25,7 @@ if (Role::load('import_viewer') === NULL) {
 $role = Role::load('import_viewer');
 foreach ([
   'view import runs',
+  'view import history',
   'view the administration theme',
   'access administration pages',
   'access catalog lists',

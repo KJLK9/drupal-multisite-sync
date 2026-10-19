@@ -1,0 +1,4 @@
+view import history:
+  title: 'View the import history of entities'
+  restrict access: true
+  description: 'See, on an entity, what the imports did to it recently, including the values of the source.'

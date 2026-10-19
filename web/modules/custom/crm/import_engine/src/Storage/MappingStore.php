@@ -45,6 +45,31 @@ final class MappingStore {
   }
 
   /**
+   * Returns the source items that became a target entity.
+   *
+   * Normally one, but two imports can write the same entity.
+   *
+   * @param string $targetType
+   *   The entity type of the target entity.
+   * @param string $targetId
+   *   The ID of the target entity.
+   * @param int $limit
+   *   The most records to return.
+   *
+   * @return list<\Drupal\import_engine\Storage\MappingRecord>
+   *   The records, with the import they belong to.
+   */
+  public function forTarget(string $targetType, string $targetId, int $limit = 100): array {
+    return array_map($this->hydrate(...), $this->rows($this->database->select('import_mapping', 'm')
+      ->fields('m')
+      ->condition('target_type', $targetType)
+      ->condition('target_id', $targetId)
+      ->orderBy('definition_id')
+      ->orderBy('source_key')
+      ->range(0, $limit)));
+  }
+
+  /**
    * Records which target entity a source item became.
    *
    * @param string $definitionId
@@ -221,6 +246,7 @@ final class MappingStore {
       (int) $row->last_seen_run,
       (int) $row->last_changed_run,
       (bool) $row->gone,
+      (string) ($row->definition_id ?? ''),
     );
   }
 

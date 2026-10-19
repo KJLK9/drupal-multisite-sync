@@ -28,6 +28,9 @@ final class MappingRecord {
    *   The run that last changed the target.
    * @param bool $gone
    *   Whether the item went missing in the source and was unpublished.
+   * @param string $definitionId
+   *   The import definition the item belongs to; empty when the record was
+   *   read for one definition and the caller knows it.
    */
   public function __construct(
     public readonly string $key,
@@ -38,6 +41,7 @@ final class MappingRecord {
     public readonly int $lastSeenRun,
     public readonly int $lastChangedRun,
     public readonly bool $gone = FALSE,
+    public readonly string $definitionId = '',
   ) {
   }
 

@@ -9,6 +9,7 @@ use Drupal\Component\Utility\Html;
 use Drupal\Core\Controller\ControllerBase;
 use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\DependencyInjection\AutowireTrait;
+use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Link;
 use Drupal\Core\Pager\PagerManagerInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
@@ -51,6 +52,8 @@ final class RunController extends ControllerBase {
     private readonly PagerManagerInterface $pagerManager,
     #[Autowire(service: 'datetime.time')]
     private readonly TimeInterface $clock,
+    #[Autowire(service: 'module_handler')]
+    private readonly ModuleHandlerInterface $modules,
   ) {
   }
 
@@ -299,13 +302,22 @@ final class RunController extends ControllerBase {
     $build['nav'] = $this->runNavigation($import_run, 'events');
 
     $pager = $this->pagerManager->createPager($this->events->countForRun($run_id), self::PER_PAGE, 0);
+    $events = $this->events->forRun($run_id, self::PER_PAGE, $pager->getCurrentPage() * self::PER_PAGE);
+    // The target of an event is text ("account:30"). A module that knows more
+    // can turn it into something better, for all the events of the page at
+    // once (hook_import_engine_ui_event_targets_alter).
+    $targets = [];
+    foreach ($events as $event) {
+      $targets[$event->id] = $event->target ?? '';
+    }
+    $this->modules->alter('import_engine_ui_event_targets', $targets, $events);
     $rows = [];
-    foreach ($this->events->forRun($run_id, self::PER_PAGE, $pager->getCurrentPage() * self::PER_PAGE) as $event) {
+    foreach ($events as $event) {
       $rows[] = [
         $this->dateFormatter->format($event->occurred, 'custom', 'Y-m-d H:i:s'),
         $event->event->name,
         $event->key,
-        $event->target ?? '',
+        is_array($targets[$event->id] ?? NULL) ? ['data' => $targets[$event->id]] : ($targets[$event->id] ?? ''),
         $event->message ?? '',
       ];
     }

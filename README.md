@@ -61,6 +61,7 @@ web/modules/custom/
   util/       money_field, published_access (shared helpers)
   crm/        import_engine      the engine, generic
               import_engine_ui   admin interface of the engine
+              import_audit       optional: events to entities and back
               site_b_catalog     content model and imports of site B
 web/themes/custom/
   import_admin   the admin theme: Gin with the colours of this project

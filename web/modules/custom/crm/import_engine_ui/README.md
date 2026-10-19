@@ -75,6 +75,10 @@ with the code.
   use it. A GraphQL source starts its paging with the paging values as
   variables. See ADR 0021.
 
+The Target column of the events of a run can be reworked by other modules
+(`hook_import_engine_ui_event_targets_alter`); the optional module
+`import_audit` uses it to link an event to the entity it changed.
+
 ## Testing
 
 There is no web server in CI, so the pages are tested as Kernel tests: the
