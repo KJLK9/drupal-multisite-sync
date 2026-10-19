@@ -8,6 +8,7 @@ use Drupal\Component\Datetime\TimeInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\import_engine\Entity\ImportDefinition;
 use Drupal\import_engine\ImportDefinitionInterface;
+use Drupal\import_engine\Event\ItemWritten;
 use Drupal\import_engine\Mapper\DependencyNotReadyException;
 use Drupal\import_engine\Mapper\MappingException;
 use Drupal\import_engine\Page\PageFingerprint;
@@ -22,6 +23,8 @@ use Drupal\import_engine\Storage\MappingStore;
 use Drupal\import_engine\Storage\Outcome;
 use Drupal\import_engine\Target\TargetException;
 use Drupal\import_engine\Validator\SkipItemException;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Takes items from the work queue, maps them and writes them to the target.
@@ -56,6 +59,8 @@ final class ProcessStage {
     private readonly RetryPolicy $retry,
     private readonly EntityTypeManagerInterface $entityTypeManager,
     private readonly TimeInterface $time,
+    private readonly EventDispatcherInterface $dispatcher,
+    private readonly LoggerInterface $logger,
   ) {
   }
 
@@ -265,13 +270,28 @@ final class ProcessStage {
       return $this->items->complete($item, Outcome::Unchanged, $hash, $now) ? 'unchanged' : 'lost';
     }
 
-    $result = $plan->target->save($values, $existing_id);
+    $track = $this->dispatcher->hasListeners(ItemWritten::class);
+    $result = $plan->target->save($values, $existing_id, $track);
     if ($known !== NULL && $known->gone && !array_key_exists('status', $values)) {
       // It left the source, was unpublished and is back: show it again.
       $plan->target->publish($result->id);
     }
     $this->mapping->record($definition_id, $item->key, $result->type, $result->id, $hash, $run_id, TRUE, $now);
     $this->events->record($run_id, $definition_id, $result->created ? EventType::Created : EventType::Updated, $item->key, $result->type . ':' . $result->id, $recreated ? 'Made again: what it was written as had been deleted.' : NULL, $now);
+    if ($track) {
+      try {
+        $this->dispatcher->dispatch(new ItemWritten($run_id, $definition_id, $item->key, $result->type, $result->id, $result->created, $result->changes, $now));
+      }
+      catch (\Throwable $exception) {
+        // The item is written and remembered; a listener that fails (an audit
+        // trail whose table is missing) must not turn that into a failure.
+        $this->logger->error('A listener of the write of @key in @import failed: @message', [
+          '@key' => $item->key,
+          '@import' => $definition_id,
+          '@message' => $exception->getMessage(),
+        ]);
+      }
+    }
     foreach ($mapped->notes as $note) {
       $this->events->record($run_id, $definition_id, EventType::Invalid, $item->key, $result->type . ':' . $result->id, $note, $now);
     }

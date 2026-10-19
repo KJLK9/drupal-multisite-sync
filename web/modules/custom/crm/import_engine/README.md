@@ -82,6 +82,15 @@ changes in. Last run (the `Process`, `Storage`, `Run`, `Drive`, `Finish` and
 620 were skipped because their tests are slow; the score is not a proof of
 correctness.
 
+## Telling others what was written
+
+After every write the process stage sends the event
+`Drupal\import_engine\Event\ItemWritten` on the event dispatcher: the run,
+the import, the key, the target and, per field that changed, the old and the
+new value as short text. The changes are only worked out when something
+listens, so an engine without a listener does not pay for them. `import_audit`
+is the listener that ships (ADR 0031).
+
 ## Templates and previews
 
 An import with `template: true` never runs and is never scheduled (saving it

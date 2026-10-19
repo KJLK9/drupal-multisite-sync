@@ -18,11 +18,15 @@ final class SaveResult {
    *   The ID of what was written.
    * @param bool $created
    *   Whether it was created, as opposed to updated.
+   * @param array<string, array{old: string, new: string}> $changes
+   *   The fields that changed, as short text; only filled when the caller
+   *   asked for it.
    */
   public function __construct(
     public readonly string $type,
     public readonly string $id,
     public readonly bool $created,
+    public readonly array $changes = [],
   ) {
   }
 

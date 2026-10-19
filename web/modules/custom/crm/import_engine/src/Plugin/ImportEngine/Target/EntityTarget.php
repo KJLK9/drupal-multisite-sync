@@ -16,6 +16,7 @@ use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountSwitcherInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\import_engine\Attribute\ImportTarget;
+use Drupal\import_engine\Target\FieldValueText;
 use Drupal\import_engine\Target\SaveResult;
 use Drupal\import_engine\Target\TargetException;
 use Drupal\import_engine\Target\TargetField;
@@ -147,18 +148,18 @@ final class EntityTarget extends TargetPluginBase implements ContainerFactoryPlu
   /**
    * {@inheritdoc}
    */
-  public function save(array $values, ?string $existingId): SaveResult {
+  public function save(array $values, ?string $existingId, bool $trackChanges = FALSE): SaveResult {
     $owner = (int) $this->configuration['owner'];
     $account = $owner > 0 ? $this->entityTypeManager->getStorage('user')->load($owner) : NULL;
     if ($owner > 0 && $account === NULL) {
       throw new TargetException(sprintf('The owner, user %d, does not exist.', $owner));
     }
     if ($account === NULL) {
-      return $this->write($values, $existingId);
+      return $this->write($values, $existingId, $trackChanges);
     }
     $this->accountSwitcher->switchTo($account);
     try {
-      return $this->write($values, $existingId);
+      return $this->write($values, $existingId, $trackChanges);
     }
     finally {
       $this->accountSwitcher->switchBack();
@@ -172,8 +173,10 @@ final class EntityTarget extends TargetPluginBase implements ContainerFactoryPlu
    *   The values keyed by field name.
    * @param string|null $existingId
    *   The ID of the entity an earlier run wrote, if any.
+   * @param bool $trackChanges
+   *   Whether to say which fields changed.
    */
-  private function write(array $values, ?string $existingId): SaveResult {
+  private function write(array $values, ?string $existingId, bool $trackChanges): SaveResult {
     $type = $this->entityType();
     $storage = $this->entityTypeManager->getStorage($type);
     $entity = $existingId === NULL ? NULL : $storage->load($existingId);
@@ -189,8 +192,12 @@ final class EntityTarget extends TargetPluginBase implements ContainerFactoryPlu
       throw new TargetException(sprintf('The entity type "%s" has no fields.', $type));
     }
 
+    $before = [];
     foreach ($values as $field => $value) {
       try {
+        if ($trackChanges) {
+          $before[$field] = $created ? '' : FieldValueText::of($entity->get($field)->getValue());
+        }
         $entity->set($field, $value);
       }
       catch (\InvalidArgumentException $exception) {
@@ -209,8 +216,15 @@ final class EntityTarget extends TargetPluginBase implements ContainerFactoryPlu
       }
       throw new TargetValidationException(implode(' | ', $messages));
     }
+    $changes = [];
+    foreach ($before as $field => $old) {
+      $new = FieldValueText::of($entity->get($field)->getValue());
+      if ($new !== $old) {
+        $changes[$field] = ['old' => $old, 'new' => $new];
+      }
+    }
     $entity->save();
-    return new SaveResult($type, (string) $entity->id(), $created);
+    return new SaveResult($type, (string) $entity->id(), $created, $changes);
   }
 
   /**

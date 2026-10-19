@@ -1,0 +1,50 @@
+<?php
+
+/**
+ * @file
+ * Install and update hooks of the import audit module.
+ */
+
+declare(strict_types=1);
+
+/**
+ * Implements hook_schema().
+ *
+ * @phpstan-return array<string, array<string, mixed>>
+ */
+function import_audit_schema(): array {
+  $schema['import_audit_change'] = [
+    'description' => 'One row per field that an import changed: the old and the new value, as short text.',
+    'fields' => [
+      'id' => ['type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE],
+      'occurred' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      'run_id' => ['type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0],
+      'definition_id' => ['type' => 'varchar_ascii', 'length' => 64, 'not null' => TRUE],
+      'source_key' => ['type' => 'varchar', 'length' => 190, 'not null' => TRUE, 'binary' => TRUE],
+      'target_type' => ['type' => 'varchar_ascii', 'length' => 32, 'not null' => TRUE],
+      'target_id' => ['type' => 'varchar_ascii', 'length' => 64, 'not null' => TRUE],
+      'field_name' => ['type' => 'varchar_ascii', 'length' => 128, 'not null' => TRUE],
+      'old_value' => ['type' => 'varchar', 'length' => 512, 'not null' => TRUE, 'default' => ''],
+      'new_value' => ['type' => 'varchar', 'length' => 512, 'not null' => TRUE, 'default' => ''],
+    ],
+    'primary key' => ['id'],
+    'indexes' => [
+      'target' => ['target_type', 'target_id', 'id'],
+      'occurred' => ['occurred'],
+    ],
+  ];
+  return $schema;
+}
+
+/**
+ * Creates the table of changes on a site where the module was already on.
+ */
+function import_audit_update_10001(): string {
+  $schema = \Drupal::database()->schema();
+  if ($schema->tableExists('import_audit_change')) {
+    return 'The table of changes was there already.';
+  }
+  $spec = import_audit_schema();
+  $schema->createTable('import_audit_change', $spec['import_audit_change']);
+  return 'Made the table in which the changes of the imports are kept.';
+}

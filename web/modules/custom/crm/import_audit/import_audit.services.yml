@@ -11,3 +11,15 @@ services:
       - '@import_audit.history'
     tags:
       - { name: access_check, applies_to: _import_audit_history }
+
+  import_audit.change_log:
+    class: Drupal\import_audit\History\ChangeLog
+    arguments:
+      - '@database'
+
+  import_audit.change_recorder:
+    class: Drupal\import_audit\EventSubscriber\ChangeRecorder
+    arguments:
+      - '@import_audit.change_log'
+    tags:
+      - { name: event_subscriber }

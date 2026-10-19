@@ -126,6 +126,8 @@ services:
       - '@import_engine.retry_policy'
       - '@entity_type.manager'
       - '@datetime.time'
+      - '@event_dispatcher'
+      - '@logger.channel.import_engine'
 
   logger.channel.import_engine:
     parent: logger.channel_base

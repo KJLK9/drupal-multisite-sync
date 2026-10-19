@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\import_engine\Kernel;
 
+use Drupal\import_engine\Event\ItemWritten;
 use Drupal\import_engine\Process\ProcessResult;
 use Drupal\import_engine\Run\RunStatus;
 use Drupal\import_engine\Storage\EventType;
+use Drupal\import_engine\Target\TargetException;
+use Drupal\import_engine\Target\TargetInterface;
 use Drupal\node\Entity\Node;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
@@ -59,6 +62,92 @@ class ProcessStageTest extends NodeTestBase {
     $this->assertNotNull($record);
     $this->assertSame('Acme', Node::load((int) $record->targetId)?->label());
     $this->assertSame(2, $this->container->get('import_engine.event_log')->countByEvent((int) $run->id())['created']);
+  }
+
+  /**
+   * With a listener, a write says which fields changed from what to what.
+   */
+  public function testWritesAreAnnouncedWithTheirChanges(): void {
+    $heard = [];
+    $this->container->get('event_dispatcher')->addListener(ItemWritten::class, static function (ItemWritten $event) use (&$heard): void {
+      $heard[] = $event;
+    });
+    $first = $this->extractRows([['id' => 1, 'name' => 'Acme', 'code' => 'A']]);
+    $this->process->process('w', 10, 'default', 600, 1000);
+    $first->transitionTo(RunStatus::Finishing)->transitionTo(RunStatus::Completed)->save();
+
+    $this->assertCount(1, $heard);
+    $this->assertTrue($heard[0]->created);
+    $this->assertSame('customers', $heard[0]->definitionId);
+    $this->assertSame('node', $heard[0]->targetType);
+    $this->assertSame(['old' => '', 'new' => 'Acme'], $heard[0]->changes['title']);
+    $this->assertSame(['old' => '', 'new' => 'A'], $heard[0]->changes['field_code']);
+
+    $second = $this->extractAll(new FakeSource([[['id' => 1, 'name' => 'Acme BV', 'code' => 'A']]]), $this->accounts());
+    $this->process->process('w', 10, 'default', 600, 2000);
+    $second->transitionTo(RunStatus::Finishing)->transitionTo(RunStatus::Completed)->save();
+
+    $this->assertCount(2, $heard);
+    $this->assertFalse($heard[1]->created);
+    $this->assertSame(['title' => ['old' => 'Acme', 'new' => 'Acme BV']], $heard[1]->changes, 'Only what changed.');
+
+    $this->extractAll(new FakeSource([[['id' => 1, 'name' => 'Acme BV', 'code' => 'A']]]), $this->accounts());
+    $this->process->process('w', 10, 'default', 600, 3000);
+    $this->assertCount(2, $heard, 'An item that did not change is not announced.');
+  }
+
+  /**
+   * A listener that fails does not fail the item, which is written.
+   */
+  public function testFailingListenerDoesNotFailTheItem(): void {
+    $this->container->get('event_dispatcher')->addListener(ItemWritten::class, static function (): void {
+      throw new \RuntimeException('The audit table is gone.');
+    });
+    $run = $this->extractRows([['id' => 1, 'name' => 'Acme', 'code' => 'A']]);
+
+    $result = $this->process->process('w', 10, 'default', 600, 1000);
+
+    $this->assertProcessed($result, created: 1);
+    $this->assertCount(1, Node::loadMultiple());
+    $this->assertSame(1, $this->container->get('import_engine.event_log')->countByEvent((int) $run->id())['created']);
+  }
+
+  /**
+   * Tracking changes does not change what a wrong field does.
+   */
+  public function testUnknownFieldFailsTheSameWhenTracking(): void {
+    $target = $this->container->get('plugin.manager.import_engine_target')->createInstance('entity', [
+      'entity_type' => 'node',
+      'bundle' => 'account',
+      'owner' => 1,
+    ]);
+    $this->assertInstanceOf(TargetInterface::class, $target);
+
+    foreach ([FALSE, TRUE] as $track) {
+      try {
+        $target->save(['title' => 'X', 'field_nope' => 'Y'], NULL, $track);
+        $this->fail('An unknown field must be refused.');
+      }
+      catch (TargetException) {
+        $this->addToAssertionCount(1);
+      }
+    }
+  }
+
+  /**
+   * Without a listener nothing is worked out.
+   */
+  public function testNoListenerMeansNoChangesAreTracked(): void {
+    $this->extractRows([['id' => 1, 'name' => 'Acme', 'code' => 'A']]);
+    $target = $this->container->get('plugin.manager.import_engine_target')->createInstance('entity', [
+      'entity_type' => 'node',
+      'bundle' => 'account',
+      'owner' => 1,
+    ]);
+    $this->assertInstanceOf(TargetInterface::class, $target);
+
+    $this->assertSame([], $target->save(['title' => 'Plain'], NULL)->changes);
+    $this->assertSame(['old' => '', 'new' => 'Tracked'], $target->save(['title' => 'Tracked'], NULL, TRUE)->changes['title']);
   }
 
   /**

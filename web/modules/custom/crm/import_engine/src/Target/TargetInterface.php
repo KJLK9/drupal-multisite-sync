@@ -36,11 +36,14 @@ interface TargetInterface extends PluginInspectionInterface, ConfigurableInterfa
    * @param string|null $existingId
    *   The ID of what an earlier run wrote for this item, if any. When it is
    *   gone the item is written as a new one.
+   * @param bool $trackChanges
+   *   Whether to say, in the result, which fields changed from what to what.
+   *   Costs a comparison, so only asked for when somebody wants to know.
    *
    * @throws \Drupal\import_engine\Target\TargetException
    *   When the values are not accepted.
    */
-  public function save(array $values, ?string $existingId): SaveResult;
+  public function save(array $values, ?string $existingId, bool $trackChanges = FALSE): SaveResult;
 
   /**
    * Returns whether the target can hide what it wrote without deleting it.

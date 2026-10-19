@@ -14,6 +14,8 @@ test('an imported entity has a history tab that says what it leaves out', async 
   await expect(page.locator('.import-wizard-header')).toContainText('Import history of');
   await expect(page.locator('#import-history-about')).toContainText('A change made by hand is not in it.');
   await expect(page.locator('#import-history-about')).toContainText('Events are kept for');
+  await expect(page.locator('#import-history-about')).toContainText('The old and new values of the fields are kept for');
+  await expect(page.locator('table thead')).toContainText('Changes');
 });
 
 test('an entity that no import wrote has no history', async ({ page }) => {

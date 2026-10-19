@@ -1,2 +1,8 @@
 import_audit.history:
   deriver: 'Drupal\import_audit\Plugin\Derivative\HistoryLocalTasks'
+
+import_audit.tab_settings:
+  title: 'Audit'
+  route_name: import_audit.settings
+  base_route: import_engine_ui.overview
+  weight: -2

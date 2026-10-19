@@ -20,5 +20,9 @@ page, `HistoryLocalTasks` the tab, `HistoryAccessCheck` hides the tab on any
 entity that is not in the mapping table, `EntityHistory` reads the engine's
 mapping and event log, and `AuditHooks` reworks the events page.
 
-Not yet: which fields changed from what to what (the events do not hold it).
-See ADR 0031 for the plan.
+**Which fields changed:** the engine sends `ItemWritten` after every write (only
+when someone listens). `ChangeRecorder` keeps the old and new value of each
+changed field in `import_audit_change`; the history shows them beside the event.
+They are kept for `retention_days` (30 by default, tab *Audit* of the engine
+settings), purged by cron, and exist only from the moment the module was on.
+See ADR 0031.

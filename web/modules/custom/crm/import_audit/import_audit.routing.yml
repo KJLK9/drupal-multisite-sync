@@ -1,2 +1,10 @@
 route_callbacks:
   - 'Drupal\import_audit\Routing\HistoryRoutes::routes'
+
+import_audit.settings:
+  path: '/admin/config/system/import-engine/audit'
+  defaults:
+    _form: 'Drupal\import_audit\Form\AuditSettingsForm'
+    _title: 'Audit settings'
+  requirements:
+    _permission: 'administer import definitions'

@@ -58,6 +58,7 @@ class ImportHistoryTest extends NodeTestBase {
    */
   protected function setUp(): void {
     parent::setUp();
+    $this->installSchema('import_audit', ['import_audit_change']);
     $this->installConfig(['system']);
     $this->container->get('router.builder')->rebuild();
     $this->definition($this->accounts())->save();
