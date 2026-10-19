@@ -33,7 +33,6 @@
     "minimum-stability": "stable",
     "prefer-stable": true,
     "config": {
-        "process-timeout": 0,
         "allow-plugins": {
             "composer/installers": true,
             "drupal/core-composer-scaffold": true,
@@ -132,10 +131,10 @@
             "@rector",
             "@test"
         ],
-        "verify": "bash -c 'mkdir -p /tmp/php-opcache && PHP_INI_SCAN_DIR=:build/php.d exec vendor/bin/paratest -c phpunit.guarantee.xml.dist --functional --processes=${PARATEST_PROCESSES:-6} \"$@\"' --",
+        "verify": ["Composer\\Config::disableProcessTimeout", "bash -c 'mkdir -p /tmp/php-opcache && PHP_INI_SCAN_DIR=:build/php.d exec vendor/bin/paratest -c phpunit.guarantee.xml.dist --functional --processes=${PARATEST_PROCESSES:-6} \"$@\"' --"],
         "verify:live": "bash bin/verify-live.sh",
-        "coverage": "bash -c 'mkdir -p /tmp/php-opcache build/coverage && PHP_INI_SCAN_DIR=:build/php.d:build/php.cov.d exec vendor/bin/paratest -c phpunit.coverage.xml.dist --functional --processes=${PARATEST_PROCESSES:-6} --coverage-xml=build/coverage/coverage-xml --log-junit=build/coverage/junit.xml \"$@\"' --",
-        "mutate": "bash bin/mutate.sh",
+        "coverage": ["Composer\\Config::disableProcessTimeout", "bash -c 'mkdir -p /tmp/php-opcache build/coverage && PHP_INI_SCAN_DIR=:build/php.d:build/php.cov.d exec vendor/bin/paratest -c phpunit.coverage.xml.dist --functional --processes=${PARATEST_PROCESSES:-6} --coverage-xml=build/coverage/coverage-xml --log-junit=build/coverage/junit.xml \"$@\"' --"],
+        "mutate": ["Composer\\Config::disableProcessTimeout", "bash bin/mutate.sh"],
         "test:unit": "phpunit -c phpunit.xml.dist --testsuite unit",
         "test:serial": "phpunit -c phpunit.xml.dist",
         "e2e": "bash -c 'cd e2e && npm ci --no-audit --no-fund --silent && npx playwright install --with-deps chromium && npx playwright test \"$@\"' --",

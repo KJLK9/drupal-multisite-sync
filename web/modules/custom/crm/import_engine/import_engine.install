@@ -201,6 +201,8 @@ function import_engine_update_10001(): string {
  * ignores case and accents: the items "a/b" and "A/B" were one row in the
  * mapping and a duplicate in the queue, which stopped the extraction with a
  * database error. A key is now compared as it is written.
+ *
+ * It rebuilds two tables: run it with no import running.
  */
 function import_engine_update_10002(): string {
   $schema = \Drupal::database()->schema();
