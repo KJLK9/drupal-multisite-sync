@@ -27,6 +27,9 @@
   "tmpDir": "build/infection/tmp",
   "testFramework": "phpunit",
   "timeout": 120,
+  // Reached: 85.9% (docs/decisions/0030-guarantee-tests.md); a fall below 80 fails.
+  "minMsi": 80,
+  "minCoveredMsi": 80,
   "mutators": {
     "@default": true
   }

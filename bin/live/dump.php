@@ -84,6 +84,18 @@ else {
   throw new \RuntimeException('This is neither site A nor site B of the catalog.');
 }
 
+// The time each record was last saved: a second run that rewrote a record,
+// even with the same values, shows here (and only on site B).
+if ($data['side'] === 'b') {
+  $data['saved'] = [];
+  foreach (['account', 'item', 'agreement'] as $type) {
+    foreach ($manager->getStorage($type)->loadMultiple() as $entity) {
+      $data['saved'][$type . ':' . $entity->id()] = $entity->hasField('changed') ? (int) $entity->get('changed')->value : 0;
+    }
+  }
+  ksort($data['saved']);
+}
+
 ksort($data['customers']);
 ksort($data['products']);
 ksort($data['prices']);

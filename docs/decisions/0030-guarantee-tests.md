@@ -1,6 +1,6 @@
 # 30. Guarantee tests for the import engine, and mutation testing
 
-Date: 2026-10-19 · Status: accepted · Qualifies ADR 0020
+Date: 2026-10-18 · Status: accepted · Qualifies ADR 0020
 
 ## Context
 `ddev composer check` runs about 800 tests and takes two and a half minutes, which is as much as can be asked before every commit and in CI. Most of them test one part of the engine. What was missing is a test of the promises the engine makes as a whole: that a run which is stopped, crashed or repeated ends in the same place; that a source that fails removes nothing; that every way of paging reads every item once. And there was no way to know how good the tests were: if someone broke the engine by accident, would a test notice?
@@ -24,3 +24,12 @@ Guaranteed: what is in the list above, for the sources, targets and plugins that
 - A change that breaks a promise is found by `ddev composer verify` in a minute and a half, with the name of the promise in the test.
 - The suite is a cost: a change to the engine's behaviour has to be changed in these tests as well, on purpose.
 - The first run of the mutation tests is long (hours for all of the engine); it is for after a big change, not for every commit.
+
+## Mutation score reached
+
+First run on 2026-10-19, over the parts where a silent mistake costs most: `Process`, `Storage`, `Run`, `Drive`, `Finish` and `Breaker` (49 files, 1431 mutants, 6 threads, 1 h 25 min).
+
+- Killed by the tests: 525; timed out (counted as caught, the changed code loops or hangs): 172; escaped: 114. **Covered MSI 85.9%**, and the minimum in `infection.json5` is 80%.
+- 620 mutants were skipped by Infection because the tests that cover them take longer than the time it allows per mutant (the large-run and the whole-chain scenarios). They are not counted in the score; the real coverage of those lines is therefore lower than the number says.
+- The escapes are mostly in the clean-up code (`RetentionPurger`, `DefinitionCleaner`, `Sweeper` counters and messages): off-by-one in batch sizes and the text of event details. The retention boundaries were closed with a test to the second (`RetentionTest::testEachRetentionIsAppliedToTheSecond`); the others are known and not closed.
+- The other directories (pagination, authentication, mappers, validators and so on) were not mutated in this run; `ddev composer mutate -- --filter=Pagination` does one.

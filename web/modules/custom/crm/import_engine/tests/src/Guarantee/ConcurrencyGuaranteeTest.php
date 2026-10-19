@@ -31,14 +31,19 @@ class ConcurrencyGuaranteeTest extends GuaranteeTestBase {
     $now = 1000;
     $guard = 0;
     while ($guard++ < 100) {
-      $round = 0;
+      // All the workers hold their claims at the same time, then finish.
+      $held = [];
       foreach (['a' => 4, 'b' => 7, 'c' => 1] as $worker => $batch) {
-        $items = $this->items->claim($worker, $batch, 600, now: $now);
+        $held[$worker] = $this->items->claim($worker, $batch, 600, now: $now);
+      }
+      $ids = array_merge(...array_map(static fn (array $items): array => array_map(static fn ($item): int => $item->id, $items), array_values($held)));
+      $this->assertSame($ids, array_values(array_unique($ids)), 'Claims held at the same time are disjoint.');
+      $round = count($ids);
+      foreach ($held as $items) {
         foreach ($items as $item) {
           $claimed[] = $item->id;
           $this->items->complete($item, Outcome::Created, NULL, $now);
         }
-        $round += count($items);
       }
       if ($round === 0) {
         break;

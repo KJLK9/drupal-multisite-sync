@@ -126,9 +126,9 @@ class DataShapesGuaranteeTest extends GuaranteeTestBase {
   }
 
   /**
-   * Keys that look alike are different items.
+   * Keys are compared as exact text: '1' and 1 are one, '01' and 'A/B' are not.
    */
-  public function testKeysThatLookAlikeStayApart(): void {
+  public function testKeysAreComparedAsExactText(): void {
     $definition = $this->saveImport();
     $items = [
       ['id' => '1', 'name' => 'String one', 'code' => 'A'],

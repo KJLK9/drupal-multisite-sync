@@ -47,13 +47,13 @@ class ResilienceGuaranteeTest extends GuaranteeTestBase {
    * The strategies, and the delay they give after each attempt.
    *
    * @return array<string, array{string, list<int>}>
-   *   The strategy and the delays after the first and the second attempt.
+   *   The strategy and the delays after each attempt but the last.
    */
   public static function strategies(): array {
     return [
-      'fixed' => ['fixed', [60, 60]],
-      'linear' => ['linear', [60, 120]],
-      'exponential' => ['exponential', [60, 120]],
+      'fixed' => ['fixed', [60, 60, 60]],
+      'linear' => ['linear', [60, 120, 180]],
+      'exponential' => ['exponential', [60, 120, 240]],
     ];
   }
 
@@ -69,7 +69,7 @@ class ResilienceGuaranteeTest extends GuaranteeTestBase {
   public function testRetriesFollowTheStrategy(string $strategy, array $delays): void {
     $this->referencingImport([
       'resilience' => [
-        'max_attempts' => 3,
+        'max_attempts' => count($delays) + 1,
         'backoff' => $strategy,
         'retry_delay' => 60,
         'dlq_enabled' => TRUE,
@@ -87,10 +87,10 @@ class ResilienceGuaranteeTest extends GuaranteeTestBase {
       $now += $delay;
     }
     $last = $this->process->process('w', 10, 'default', 600, $now);
-    $this->assertSame(1, $last->failed, 'The third attempt is the last.');
+    $this->assertSame(1, $last->failed, 'The last attempt is the last.');
     $dead = $this->items->listItems(NULL, ItemState::Dead, 5);
     $this->assertCount(1, $dead);
-    $this->assertSame(3, $dead[0]->attempts, 'Never more attempts than the import allows.');
+    $this->assertSame(count($delays) + 1, $dead[0]->attempts, 'Never more attempts than the import allows.');
   }
 
   /**

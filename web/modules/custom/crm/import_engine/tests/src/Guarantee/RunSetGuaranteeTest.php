@@ -6,7 +6,6 @@ namespace Drupal\Tests\import_engine\Guarantee;
 
 use Drupal\import_engine\Entity\ImportRunSet;
 use Drupal\import_engine\Drive\RunBudget;
-use Drupal\import_engine\Entity\ImportDefinition;
 use Drupal\import_engine\Run\RunStatus;
 use Drupal\import_engine\Run\Trigger;
 use Drupal\import_engine\RunSet\SetProgress;
@@ -88,10 +87,6 @@ class RunSetGuaranteeTest extends GuaranteeTestBase {
 
     $set = ImportRunSet::load('catalog');
     $set?->set('stop_on_errors', TRUE)->save();
-    foreach (['first', 'second'] as $id) {
-      $definition = ImportDefinition::load($id);
-      $this->assertNotNull($definition);
-    }
     $this->answers($answers());
     $stops = $this->runSetToEnd();
     $this->assertSame(SetState::Stopped, $stops->state, 'With it, the set stops at the first import that has errors.');

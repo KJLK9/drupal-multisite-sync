@@ -12,7 +12,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-if [ ! -f build/coverage/junit.xml ] || [ "${REFRESH:-}" = "1" ]; then
+if [ ! -f build/coverage/junit.xml ] || [ ! -d build/coverage/coverage-xml ] || [ "${REFRESH:-}" = "1" ]; then
   echo "Making the coverage of the tests of the engine ..."
   composer coverage
 fi

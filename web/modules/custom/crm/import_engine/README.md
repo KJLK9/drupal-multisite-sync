@@ -77,7 +77,10 @@ They are heavy and are not part of `check`. See ADR 0030 for the list of what
 is guaranteed and what is not, `bin/verify-live.sh` for the check of site B
 against site A over the real API, and `ddev composer mutate` for the mutation
 tests (Infection) that measure how much of the engine's code the tests notice
-changes in.
+changes in. Last run (the `Process`, `Storage`, `Run`, `Drive`, `Finish` and
+`Breaker` directories): 85.9% of the mutants that were tried were noticed,
+620 were skipped because their tests are slow; the score is not a proof of
+correctness.
 
 ## Templates and previews
 

@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  The tests of the engine with code coverage, for "ddev composer coverage" and
-  the mutation tests ("ddev composer mutate"). Not the file that CI uses.
+  The tests that Infection runs for a changed line, with the paths relative to
+  this directory. Keep it in step with phpunit.coverage.xml.dist, which makes
+  the coverage Infection reads.
 -->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.5/phpunit.xsd"

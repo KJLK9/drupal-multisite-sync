@@ -30,6 +30,7 @@ class SecurityGuaranteeTest extends GuaranteeTestBase {
    */
   protected function tearDown(): void {
     putenv('SITE_A_API_KEY');
+    putenv('SITE_A_DB_PASSWORD');
     parent::tearDown();
   }
 
@@ -134,8 +135,11 @@ class SecurityGuaranteeTest extends GuaranteeTestBase {
 
     $violations = $definition->getTypedData()->validate();
 
-    $this->assertGreaterThan(0, $violations->count(), 'The schema refuses a variable that is not a key.');
-    putenv('SITE_A_DB_PASSWORD');
+    $paths = [];
+    foreach ($violations as $violation) {
+      $paths[] = $violation->getPropertyPath();
+    }
+    $this->assertNotEmpty(array_filter($paths, static fn (string $path): bool => str_ends_with($path, 'env_var')), 'The schema refuses a variable that is not a key.');
   }
 
 }

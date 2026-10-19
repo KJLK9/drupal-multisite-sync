@@ -72,6 +72,41 @@ class RetentionTest extends StorageTestBase {
   }
 
   /**
+   * Each kind uses its own number of days, to the second.
+   */
+  public function testEachRetentionIsAppliedToTheSecond(): void {
+    $this->config('import_engine.settings')
+      ->set('retention_items_days', 3)
+      ->set('retention_dead_days', 4)
+      ->set('retention_events_days', 5)
+      ->set('retention_runs_days', 6)
+      ->save();
+    $now = 1_000 * self::DAY;
+    $this->items->enqueue(1, 'default', $this->makeItems(4), now: $now - 10 * self::DAY);
+    $claimed = $this->items->claim('w', 4, 60, now: $now - 10 * self::DAY + 1);
+    // Done: one second beyond 3 days, and one second within.
+    $this->items->complete($claimed[0], Outcome::Created, now: $now - 3 * self::DAY - 1);
+    $this->items->complete($claimed[1], Outcome::Created, now: $now - 3 * self::DAY + 1);
+    // Dead: 4 days.
+    $this->items->fail($claimed[2], 'bad', TRUE, $now - 4 * self::DAY - 1);
+    $this->items->fail($claimed[3], 'bad', TRUE, $now - 4 * self::DAY + 1);
+    $this->events->record(1, 'customers', EventType::Created, 'out', NULL, NULL, $now - 5 * self::DAY - 1);
+    $this->events->record(1, 'customers', EventType::Created, 'in', NULL, NULL, $now - 5 * self::DAY + 1);
+    $out = $this->finishedRun($now - 6 * self::DAY - 1);
+    $in = $this->finishedRun($now - 6 * self::DAY + 1);
+    $running = $this->createRun();
+
+    $removed = $this->container->get('import_engine.retention_purger')->purge(now: $now);
+
+    $this->assertSame(['items' => 1, 'dead_items' => 1, 'events' => 1, 'runs' => 1], $removed);
+    $this->assertSame(['in'], array_column($this->events->forRun(1), 'key'));
+    $this->assertNull(ImportRun::load($out->id()));
+    $this->assertNotNull(ImportRun::load($in->id()));
+    // A run that has not finished is never removed.
+    $this->assertNotNull(ImportRun::load($running->id()));
+  }
+
+  /**
    * Zero keeps for ever.
    */
   public function testZeroKeepsForEver(): void {
