@@ -216,14 +216,20 @@ final class EntityTarget extends TargetPluginBase implements ContainerFactoryPlu
       }
       throw new TargetValidationException(implode(' | ', $messages));
     }
+    $entity->save();
     $changes = [];
-    foreach ($before as $field => $old) {
-      $new = FieldValueText::of($entity->get($field)->getValue());
-      if ($new !== $old) {
-        $changes[$field] = ['old' => $old, 'new' => $new];
+    if ($before !== []) {
+      // Both sides are read from what the storage holds, so that a value that
+      // is written differently but stored the same ("10.5" and "10.50") is
+      // not reported as a change.
+      $stored = $storage->loadUnchanged((string) $entity->id());
+      foreach ($before as $field => $old) {
+        $new = $stored instanceof FieldableEntityInterface ? FieldValueText::of($stored->get($field)->getValue()) : '';
+        if ($new !== $old) {
+          $changes[$field] = ['old' => $old, 'new' => $new];
+        }
       }
     }
-    $entity->save();
     return new SaveResult($type, (string) $entity->id(), $created, $changes);
   }
 

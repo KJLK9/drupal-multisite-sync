@@ -135,6 +135,27 @@ class ProcessStageTest extends NodeTestBase {
   }
 
   /**
+   * A value written another way but stored the same is not a change.
+   */
+  public function testSameStoredValueIsNoChange(): void {
+    $target = $this->container->get('plugin.manager.import_engine_target')->createInstance('entity', [
+      'entity_type' => 'node',
+      'bundle' => 'account',
+      'owner' => 1,
+    ]);
+    $this->assertInstanceOf(TargetInterface::class, $target);
+    $rate = static fn (string $number): array => [['number' => $number, 'currency_code' => 'EUR']];
+    $first = $target->save(['title' => 'Acme', 'field_rate' => $rate('10.5'), 'field_count' => '5'], NULL, TRUE);
+
+    $again = $target->save(['title' => 'Acme', 'field_rate' => $rate('10.50'), 'field_count' => 5], $first->id, TRUE);
+
+    $this->assertSame([], $again->changes, 'Nothing differs in what is stored.');
+    $changed = $target->save(['field_rate' => $rate('11')], $first->id, TRUE);
+    $this->assertSame(['field_rate'], array_keys($changed->changes));
+    $this->assertNotSame($changed->changes['field_rate']['old'], $changed->changes['field_rate']['new']);
+  }
+
+  /**
    * Without a listener nothing is worked out.
    */
   public function testNoListenerMeansNoChangesAreTracked(): void {
